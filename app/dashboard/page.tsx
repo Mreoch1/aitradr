@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const session = await getSession();

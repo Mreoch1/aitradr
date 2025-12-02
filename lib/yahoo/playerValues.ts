@@ -5,7 +5,7 @@
  * Formula weights all Yahoo Fantasy scoring categories to match their rankings.
  */
 
-import { prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Calculate player value based on actual stats.
