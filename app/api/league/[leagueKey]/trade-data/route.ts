@@ -200,7 +200,7 @@ export async function GET(
           name: team.name,
           managerName: team.managerName,
           roster,
-          draftPicks: teamDraftPicks.map((pick) => pick.round).sort((a, b) => a - b) || [],
+          draftPicks: teamDraftPicks.map((pick: { round: number }) => pick.round).sort((a, b) => a - b) || [],
         };
       })
     );
