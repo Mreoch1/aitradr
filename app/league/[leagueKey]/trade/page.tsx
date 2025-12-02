@@ -1,0 +1,1223 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
+import { handleTokenExpiration } from "@/lib/yahoo/client";
+
+type TradeSide = {
+  teamId: string | null;
+  playerIds: string[];
+  picks: number[]; // rounds
+};
+
+// Helper to get stat value by name - more robust matching
+function getStatValue(stats: { statName: string; value: number }[] | null | undefined, statName: string): number {
+  if (!stats || stats.length === 0) return 0;
+  
+  const lowerStatName = statName.toLowerCase().trim();
+  const statMap: Record<string, string[]> = {
+    "goals": ["goal", "g"],
+    "assists": ["assist", "a"],
+    "points": ["point", "p"],
+    "plus/minus": ["plus/minus", "+/-", "plus minus", "plusminus"],
+    "penalty minutes": ["penalty minute", "pim", "pen min"],
+    "power play points": ["power play point", "ppp", "pp point"],
+    "short handed points": ["short handed point", "shp", "sh point"],
+    "game winning goals": ["game winning goal", "gwg", "gw goal"],
+    "shots on goal": ["shot on goal", "sog", "shot"],
+    "faceoffs won": ["faceoff won", "fw", "face off won", "fo won"],
+    "hits": ["hit"],
+    "blocked shots": ["blocked shot", "blk", "block"],
+    "wins": ["win", "w"],
+    "losses": ["loss", "l"],
+    "goals against": ["goal against", "ga", "goals allowed"],
+    "goals against average": ["goal against average", "gaa", "goals against avg"],
+    "saves": ["save", "sv"],
+    "save percentage": ["save percentage", "sv%", "save pct", "save %"],
+    "shutouts": ["shutout", "sho"],
+  };
+  
+  // Try exact match first
+  const exactMatch = stats.find((s) => 
+    s.statName.toLowerCase().trim() === lowerStatName
+  );
+  if (exactMatch) return exactMatch.value;
+  
+  // Try keyword matching
+  const keywords = statMap[lowerStatName] || [lowerStatName];
+  for (const keyword of keywords) {
+    const match = stats.find((s) => 
+      s.statName.toLowerCase().includes(keyword) || 
+      keyword.includes(s.statName.toLowerCase())
+    );
+    if (match) return match.value;
+  }
+  
+  // Try partial match as last resort
+  const partialMatch = stats.find((s) => 
+    s.statName.toLowerCase().includes(lowerStatName) ||
+    lowerStatName.includes(s.statName.toLowerCase())
+  );
+  
+  return partialMatch?.value ?? 0;
+}
+
+// Helper to format stat name for display
+function formatStatName(name: string): string {
+  const abbreviations: Record<string, string> = {
+    "goals": "G",
+    "assists": "A",
+    "points": "P",
+    "plus/minus": "+/-",
+    "penalty minutes": "PIM",
+    "power play points": "PPP",
+    "short handed points": "SHP",
+    "game winning goals": "GWG",
+    "shots on goal": "SOG",
+    "faceoffs won": "FW",
+    "hits": "HIT",
+    "blocked shots": "BLK",
+    "wins": "W",
+    "losses": "L",
+    "goals against": "GA",
+    "goals against average": "GAA",
+    "saves": "SV",
+    "save percentage": "SV%",
+    "shutouts": "SHO",
+  };
+  
+  const lower = name.toLowerCase();
+  for (const [key, abbrev] of Object.entries(abbreviations)) {
+    if (lower.includes(key)) return abbrev;
+  }
+  return name;
+}
+
+export default function TradeBuilderPage() {
+  const params = useParams();
+  const leagueKey = params.leagueKey as string;
+
+  const [tradeData, setTradeData] = useState<TradeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sideA, setSideA] = useState<TradeSide>({
+    teamId: null,
+    playerIds: [],
+    picks: [],
+  });
+  const [sideB, setSideB] = useState<TradeSide>({
+    teamId: null,
+    playerIds: [],
+    picks: [],
+  });
+  const [pendingSelections, setPendingSelections] = useState<{
+    A: string[];
+    B: string[];
+  }>({ A: [], B: [] });
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{
+    teamA: { key: string; direction: 'asc' | 'desc' } | null;
+    teamB: { key: string; direction: 'asc' | 'desc' } | null;
+  }>({ teamA: null, teamB: null });
+  
+  // Refs for syncing top and bottom scroll bars
+  const topScrollRefA = useRef<HTMLDivElement>(null);
+  const tableScrollRefA = useRef<HTMLDivElement>(null);
+  const topScrollRefB = useRef<HTMLDivElement>(null);
+  const tableScrollRefB = useRef<HTMLDivElement>(null);
+
+  // Sync scroll handlers
+  const handleTopScrollA = () => {
+    if (topScrollRefA.current && tableScrollRefA.current) {
+      tableScrollRefA.current.scrollLeft = topScrollRefA.current.scrollLeft;
+    }
+  };
+
+  const handleTableScrollA = () => {
+    if (topScrollRefA.current && tableScrollRefA.current) {
+      topScrollRefA.current.scrollLeft = tableScrollRefA.current.scrollLeft;
+    }
+  };
+
+  const handleTopScrollB = () => {
+    if (topScrollRefB.current && tableScrollRefB.current) {
+      tableScrollRefB.current.scrollLeft = topScrollRefB.current.scrollLeft;
+    }
+  };
+
+  const handleTableScrollB = () => {
+    if (topScrollRefB.current && tableScrollRefB.current) {
+      topScrollRefB.current.scrollLeft = tableScrollRefB.current.scrollLeft;
+    }
+  };
+
+  useEffect(() => {
+    async function fetchTradeData() {
+      try {
+        const response = await fetch(`/api/league/${leagueKey}/trade-data`);
+        const result = await response.json();
+
+        if (!result.ok) {
+          if (handleTokenExpiration(result, `/league/${leagueKey}/trade`)) {
+            return;
+          }
+          setError(result.error || "Failed to load trade data");
+          return;
+        }
+
+        setTradeData(result.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load trade data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTradeData();
+    
+    // Auto-refresh data every 30 seconds
+    const interval = setInterval(fetchTradeData, 30000);
+    return () => clearInterval(interval);
+  }, [leagueKey]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center py-20">
+            {/* Hockey Player Shooting Animation */}
+            <div className="relative mb-8" style={{ width: '400px', height: '200px' }}>
+              {/* Ice Rink Background */}
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-200">
+                {/* Center Line */}
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-blue-300"></div>
+                {/* Face-off Circles */}
+                <div className="absolute top-1/4 left-1/4 w-16 h-16 rounded-full border-2 border-blue-300"></div>
+                <div className="absolute top-1/4 right-1/4 w-16 h-16 rounded-full border-2 border-blue-300"></div>
+              </div>
+              
+              {/* Hockey Player (Left Side) */}
+              <div className="absolute left-8 top-1/2 -translate-y-1/2">
+                {/* Stick */}
+                <div 
+                  className="absolute w-16 h-1 bg-amber-800 origin-bottom-left"
+                  style={{
+                    transform: 'rotate(-20deg)',
+                    bottom: '20px',
+                    left: '15px',
+                    animation: 'stickSwing 1.5s ease-in-out infinite'
+                  }}
+                ></div>
+                {/* Body */}
+                <div className="w-8 h-12 bg-blue-600 rounded-t-lg"></div>
+                {/* Head */}
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-amber-100 border-2 border-blue-600"></div>
+                {/* Helmet */}
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 border-gray-800"></div>
+              </div>
+              
+              {/* Puck */}
+              <div 
+                className="absolute w-6 h-6 rounded-full bg-gray-800 shadow-lg z-10"
+                style={{
+                  left: '100px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  animation: 'puckShot 1.5s ease-in-out infinite'
+                }}
+              >
+                <div className="absolute inset-0.5 rounded-full border border-gray-600"></div>
+              </div>
+              
+              {/* Goal Net (Right Side) */}
+              <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                {/* Net Frame */}
+                <div className="w-20 h-16 border-4 border-red-600 rounded-t-lg">
+                  {/* Net Lines */}
+                  <div className="absolute inset-0 border border-red-400 opacity-50" style={{
+                    backgroundImage: `
+                      repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(220, 38, 38, 0.3) 4px, rgba(220, 38, 38, 0.3) 8px),
+                      repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(220, 38, 38, 0.3) 4px, rgba(220, 38, 38, 0.3) 8px)
+                    `
+                  }}></div>
+                </div>
+                {/* Goal Posts */}
+                <div className="absolute -bottom-2 left-0 w-1 h-4 bg-red-600"></div>
+                <div className="absolute -bottom-2 right-0 w-1 h-4 bg-red-600"></div>
+              </div>
+            </div>
+            
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Loading Trade Data</h2>
+            <p className="text-gray-600">Fetching player stats and rosters...</p>
+            
+            <style jsx>{`
+              @keyframes puckShot {
+                0% {
+                  left: 100px;
+                  opacity: 1;
+                }
+                50% {
+                  left: 280px;
+                  opacity: 1;
+                }
+                100% {
+                  left: 320px;
+                  opacity: 0;
+                }
+              }
+              
+              @keyframes stickSwing {
+                0%, 100% {
+                  transform: rotate(-20deg);
+                }
+                30% {
+                  transform: rotate(-5deg);
+                }
+                50% {
+                  transform: rotate(-20deg);
+                }
+              }
+            `}</style>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !tradeData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+            <p className="text-red-600">{error || "Failed to load trade data"}</p>
+            <Link
+              href={`/league/${leagueKey}`}
+              className="mt-4 inline-block text-blue-600 hover:text-blue-800"
+            >
+              ← Back to League
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure all teams have draftPicks array
+  const normalizedTradeData: TradeData = {
+    ...tradeData,
+    teams: tradeData.teams.map((team) => ({
+      ...team,
+      draftPicks: team.draftPicks || [],
+    })),
+  };
+
+  const teamA = normalizedTradeData.teams.find((t) => t.id === sideA.teamId);
+  const teamB = normalizedTradeData.teams.find((t) => t.id === sideB.teamId);
+
+  const playerValueMap = new Map<string, number>();
+  normalizedTradeData.teams.forEach((team) => {
+    team.roster.forEach((player) => {
+      playerValueMap.set(player.playerId, player.valueScore);
+    });
+  });
+
+  const pickValueMap = new Map<number, number>();
+  normalizedTradeData.draftPickValues.forEach((pick) => {
+    pickValueMap.set(pick.round, pick.score);
+  });
+
+  const togglePendingPlayer = (side: "A" | "B", playerId: string) => {
+    setPendingSelections((prev) => ({
+      ...prev,
+      [side]: prev[side].includes(playerId)
+        ? prev[side].filter((id) => id !== playerId)
+        : [...prev[side], playerId],
+    }));
+  };
+
+  const confirmPlayers = (side: "A" | "B") => {
+    if (side === "A") {
+      setSideA((prev) => ({
+        ...prev,
+        playerIds: [...prev.playerIds, ...pendingSelections.A],
+      }));
+      setPendingSelections((prev) => ({ ...prev, A: [] }));
+    } else {
+      setSideB((prev) => ({
+        ...prev,
+        playerIds: [...prev.playerIds, ...pendingSelections.B],
+      }));
+      setPendingSelections((prev) => ({ ...prev, B: [] }));
+    }
+  };
+
+  const removePlayer = (side: "A" | "B", playerId: string) => {
+    if (side === "A") {
+      setSideA((prev) => ({
+        ...prev,
+        playerIds: prev.playerIds.filter((id) => id !== playerId),
+      }));
+    } else {
+      setSideB((prev) => ({
+        ...prev,
+        playerIds: prev.playerIds.filter((id) => id !== playerId),
+      }));
+    }
+  };
+
+  const handleSort = (team: 'teamA' | 'teamB', statKey: string) => {
+    setSortConfig((prev) => {
+      const currentConfig = prev[team];
+      const newDirection = 
+        currentConfig?.key === statKey && currentConfig.direction === 'desc'
+          ? 'asc'
+          : 'desc';
+      
+      return {
+        ...prev,
+        [team]: { key: statKey, direction: newDirection },
+      };
+    });
+  };
+
+  const sortPlayers = (
+    players: TradeData["teams"][0]["roster"],
+    config: { key: string; direction: 'asc' | 'desc' } | null
+  ) => {
+    if (!config) return players;
+    
+    const sorted = [...players].sort((a, b) => {
+      let aValue: number | string = 0;
+      let bValue: number | string = 0;
+      
+      if (config.key === 'value') {
+        aValue = a.valueScore;
+        bValue = b.valueScore;
+      } else if (config.key === 'name') {
+        aValue = a.name;
+        bValue = b.name;
+      } else {
+        // Stat sorting
+        aValue = getStatValue(a.stats, config.key);
+        bValue = getStatValue(b.stats, config.key);
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return config.direction === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      return config.direction === 'asc' 
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+    
+    return sorted;
+  };
+
+  const togglePick = (side: "A" | "B", round: number) => {
+    if (side === "A") {
+      setSideA((prev) => ({
+        ...prev,
+        picks: prev.picks.includes(round)
+          ? prev.picks.filter((r) => r !== round)
+          : [...prev.picks, round],
+      }));
+    } else {
+      setSideB((prev) => ({
+        ...prev,
+        picks: prev.picks.includes(round)
+          ? prev.picks.filter((r) => r !== round)
+          : [...prev.picks, round],
+      }));
+    }
+  };
+
+  const teamASends = [
+    ...sideA.playerIds.map((pid) => ({
+      type: "player" as const,
+      id: pid,
+      value: playerValueMap.get(pid) ?? 0,
+    })),
+    ...sideA.picks.map((round) => ({
+      type: "pick" as const,
+      id: round,
+      value: pickValueMap.get(round) ?? 0,
+    })),
+  ];
+
+  const teamBSends = [
+    ...sideB.playerIds.map((pid) => ({
+      type: "player" as const,
+      id: pid,
+      value: playerValueMap.get(pid) ?? 0,
+    })),
+    ...sideB.picks.map((round) => ({
+      type: "pick" as const,
+      id: round,
+      value: pickValueMap.get(round) ?? 0,
+    })),
+  ];
+
+  const teamAReceiveTotal = teamBSends.reduce((sum, item) => sum + item.value, 0);
+  const teamBReceiveTotal = teamASends.reduce((sum, item) => sum + item.value, 0);
+  const diff = teamAReceiveTotal - teamBReceiveTotal;
+
+  // Sortable header component
+  const SortableHeader = ({ 
+    label, 
+    statKey, 
+    team, 
+    className = "px-2 py-2 text-center font-semibold text-gray-700" 
+  }: { 
+    label: string; 
+    statKey: string; 
+    team: 'teamA' | 'teamB'; 
+    className?: string;
+  }) => {
+    const config = sortConfig[team];
+    const isActive = config?.key === statKey;
+    const arrow = isActive ? (config.direction === 'desc' ? ' ↓' : ' ↑') : '';
+    
+    return (
+      <th 
+        className={`${className} cursor-pointer hover:bg-gray-200 select-none`}
+        onClick={() => handleSort(team, statKey)}
+        title={`Sort by ${label}`}
+      >
+        {label}{arrow}
+      </th>
+    );
+  };
+
+  // Render player row with stats
+  const renderPlayerRow = (
+    player: TradeData["teams"][0]["roster"][0],
+    side: "A" | "B",
+    isPending: boolean,
+    isConfirmed: boolean,
+    isGoalieTable: boolean,
+    index: number
+  ) => {
+    const isGoalie = player.position === "G";
+    const stats = player.stats || [];
+    
+    const rowBgColor = index % 2 === 0 ? "bg-white" : "bg-gray-50";
+    const hoverColor = "hover:bg-blue-50";
+    const selectedColor = isConfirmed ? "bg-green-50" : "";
+
+    return (
+      <tr key={player.playerId} className={`border-t border-gray-200 ${selectedColor || rowBgColor} ${hoverColor} transition-colors`}>
+        <td className="px-2 py-2">
+          <input
+            type="checkbox"
+            checked={isPending || isConfirmed}
+            onChange={() => {
+              if (isConfirmed) {
+                removePlayer(side, player.playerId);
+              } else {
+                togglePendingPlayer(side, player.playerId);
+              }
+            }}
+            className="h-4 w-4"
+          />
+        </td>
+        <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
+          {player.valueScore.toFixed(1)}
+        </td>
+        <td className="px-2 py-2 text-sm font-medium text-gray-900">
+          <div className="flex items-center gap-2">
+            <span>{player.name}</span>
+            {player.status && (player.status === "IR" || player.status === "IR+" || player.status === "O") && (
+              <span className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-red-600 rounded">
+                {player.status}
+              </span>
+            )}
+          </div>
+        </td>
+        <td className="px-2 py-2 text-sm text-gray-600">
+          {(() => {
+            if (!player.positions && !player.position) return "-";
+            
+            // Get positions string and clean it up
+            let posStr = player.positions || player.position || "";
+            
+            // Remove brackets, quotes, and extra characters
+            posStr = posStr.replace(/[\[\]"']/g, '');
+            
+            // Split by comma or slash
+            const positions = posStr.split(/[,\/]/).map(p => p.trim());
+            
+            // Filter out non-position items (Util, IR, IR+, O, etc.)
+            const validPositions = positions.filter(p => {
+              const upper = p.toUpperCase();
+              return ['C', 'LW', 'RW', 'D', 'G'].includes(upper);
+            });
+            
+            // Return unique positions joined by slash
+            return [...new Set(validPositions)].join('/') || (player.position || "-");
+          })()}
+        </td>
+        <td className="px-2 py-2 text-sm text-gray-600">{player.nhlTeam || "-"}</td>
+        {isGoalieTable ? (
+          // Goalie stats
+          <>
+            <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
+              {getStatValue(stats, "wins").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-medium text-red-700">
+              {getStatValue(stats, "losses").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "goals against").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "goals against average").toFixed(2)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
+              {getStatValue(stats, "saves").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {(() => {
+                const svPct = getStatValue(stats, "save percentage");
+                // Yahoo stores SV% as a whole number like 915 for 91.5%
+                // But sometimes it's already a decimal or percentage
+                if (svPct > 100) {
+                  return (svPct / 1000).toFixed(3); // 915 -> 0.915
+                } else if (svPct > 1) {
+                  return (svPct / 100).toFixed(3); // 91.5 -> 0.915
+                } else {
+                  return svPct.toFixed(3); // 0.915 -> 0.915
+                }
+              })()}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-medium text-purple-700">
+              {getStatValue(stats, "shutouts").toFixed(0)}
+            </td>
+          </>
+        ) : (
+          // Skater stats
+          <>
+            <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
+              {getStatValue(stats, "goals").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
+              {getStatValue(stats, "assists").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-semibold text-purple-700">
+              {getStatValue(stats, "points").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "plus/minus").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "penalty minutes").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center font-medium text-orange-700">
+              {getStatValue(stats, "power play points").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "short handed points").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "game winning goals").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "shots on goal").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "faceoffs won").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "hits").toFixed(0)}
+            </td>
+            <td className="px-2 py-2 text-sm text-center text-gray-700">
+              {getStatValue(stats, "blocked shots").toFixed(0)}
+            </td>
+          </>
+        )}
+      </tr>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6">
+        {/* Retro Header with Branding */}
+        <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-6 py-4 shadow-lg" style={{ imageRendering: 'pixelated' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Mooninites image */}
+              <div className="flex h-20 w-20 items-center justify-center rounded border-4 border-black bg-black shadow-lg overflow-hidden">
+                <img 
+                  src="/mooninites.png" 
+                  alt="Mooninites" 
+                  className="h-full w-full object-contain"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              </div>
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wider text-black" style={{ fontFamily: 'monospace', textShadow: '1px 1px 0px rgba(255,255,255,0.5)' }}>
+                  Brought to you by
+                </div>
+                <h1 className="text-2xl font-bold uppercase text-white" style={{ fontFamily: 'monospace', textShadow: '3px 3px 0px rgba(0,0,0,0.5), 0 0 10px rgba(0,255,0,0.5)' }}>
+                  The Mooninites
+                </h1>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-bold uppercase text-black" style={{ fontFamily: 'monospace' }}>
+                Trade Builder
+              </div>
+              <div className="text-lg font-bold text-white" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
+                {normalizedTradeData.leagueName}
+              </div>
+            </div>
+          </div>
+          {/* Retro pixel effect border */}
+          <div className="mt-2 flex gap-1">
+            {[...Array(50)].map((_, i) => (
+              <div key={i} className="h-1 w-1 bg-black"></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Team Selectors */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Team A</label>
+            <select
+              value={sideA.teamId || ""}
+              onChange={(e) =>
+                setSideA({ teamId: e.target.value || null, playerIds: [], picks: [] })
+              }
+              className="w-full rounded border border-gray-300 bg-white px-4 py-2"
+            >
+              <option value="">Select Team A</option>
+              {normalizedTradeData.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name} {team.managerName && `(${team.managerName})`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Team B</label>
+            <select
+              value={sideB.teamId || ""}
+              onChange={(e) =>
+                setSideB({ teamId: e.target.value || null, playerIds: [], picks: [] })
+              }
+              className="w-full rounded border border-gray-300 bg-white px-4 py-2"
+            >
+              <option value="">Select Team B</option>
+              {normalizedTradeData.teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name} {team.managerName && `(${team.managerName})`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Roster Tables */}
+        <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Team A */}
+          <div className="bg-white">
+            <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Team A {teamA && `- ${teamA.name}`}
+              </h2>
+            </div>
+            {teamA ? (
+              <>
+                {/* Skaters Section */}
+                {teamA.roster.some((p) => p.position !== "G") && (
+                  <>
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
+                    </div>
+                    {/* Top Scrollbar for Skaters */}
+                    <div 
+                      ref={topScrollRefA}
+                      className="overflow-x-auto border-b border-gray-200" 
+                      style={{ maxWidth: '100%', overflowX: 'scroll', overflowY: 'hidden' }}
+                      onScroll={handleTopScrollA}
+                    >
+                      <div style={{ width: '900px', height: '1px' }}></div>
+                    </div>
+                    {/* Skaters Table */}
+                    <div 
+                      ref={tableScrollRefA}
+                      className="overflow-x-auto" 
+                      style={{ maxWidth: '100%', overflowX: 'scroll' }}
+                      onScroll={handleTableScrollA}
+                    >
+                      <table className="w-full text-xs" style={{ minWidth: '900px' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
+                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold text-gray-700" />
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                            <SortableHeader label="G" statKey="goals" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700" />
+                            <SortableHeader label="A" statKey="assists" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
+                            <SortableHeader label="P" statKey="points" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                            <SortableHeader label="+/-" statKey="plus/minus" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="PPP" statKey="power play points" team="teamA" className="px-2 py-2 text-center font-semibold text-orange-700" />
+                            <SortableHeader label="SHP" statKey="short handed points" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="GWG" statKey="game winning goals" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SOG" statKey="shots on goal" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="FW" statKey="faceoffs won" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="HIT" statKey="hits" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="BLK" statKey="blocked shots" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortPlayers(teamA.roster.filter((p) => p.position !== "G"), sortConfig.teamA).map((player, index) => {
+                            const isPending = pendingSelections.A.includes(player.playerId);
+                            const isConfirmed = sideA.playerIds.includes(player.playerId);
+                            return renderPlayerRow(player, "A", isPending, isConfirmed, false, index);
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                
+                {/* Goalies Section */}
+                {teamA.roster.some((p) => p.position === "G") && (
+                  <>
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
+                      <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
+                    </div>
+                    {/* Goalies Table */}
+                    <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
+                      <table className="w-full text-xs" style={{ minWidth: '600px' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
+                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold text-gray-700" />
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                            <SortableHeader label="W" statKey="wins" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700" />
+                            <SortableHeader label="L" statKey="losses" team="teamA" className="px-2 py-2 text-center font-semibold text-red-700" />
+                            <SortableHeader label="GA" statKey="goals against" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="GAA" statKey="goals against average" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SV" statKey="saves" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
+                            <SortableHeader label="SV%" statKey="save percentage" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SHO" statKey="shutouts" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortPlayers(teamA.roster.filter((p) => p.position === "G"), sortConfig.teamA).map((player, index) => {
+                            const isPending = pendingSelections.A.includes(player.playerId);
+                            const isConfirmed = sideA.playerIds.includes(player.playerId);
+                            return renderPlayerRow(player, "A", isPending, isConfirmed, true, index);
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                
+                {pendingSelections.A.length > 0 && (
+                  <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                    <button
+                      onClick={() => confirmPlayers("A")}
+                      className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      Add {pendingSelections.A.length} Player{pendingSelections.A.length !== 1 ? "s" : ""} to Trade
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 text-gray-600">Select Team A to view roster</div>
+            )}
+
+            {/* Draft Picks for Team A */}
+            {teamA && normalizedTradeData.draftPickValues.length > 0 && (
+              <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                  Draft Picks {teamA?.draftPicks && teamA.draftPicks.length > 0 && `(${teamA.draftPicks.length} owned)`}
+                </h3>
+                <div className="grid grid-cols-8 gap-2">
+                  {normalizedTradeData.draftPickValues.map((pick) => {
+                    const isSelected = sideA.picks.includes(pick.round);
+                    const isOwned = teamA?.draftPicks?.includes(pick.round) ?? false;
+                    return (
+                      <button
+                        key={pick.round}
+                        onClick={() => togglePick("A", pick.round)}
+                        className={`rounded border px-2 py-1 text-xs ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
+                            : isOwned
+                            ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
+                            : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                        title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
+                      >
+                        R{pick.round} ({pick.score.toFixed(1)})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Team B */}
+          <div className="bg-white">
+            <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Team B {teamB && `- ${teamB.name}`}
+              </h2>
+            </div>
+            {teamB ? (
+              <>
+                {/* Skaters Section */}
+                {teamB.roster.some((p) => p.position !== "G") && (
+                  <>
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
+                    </div>
+                    {/* Top Scrollbar for Skaters */}
+                    <div 
+                      ref={topScrollRefB}
+                      className="overflow-x-auto border-b border-gray-200" 
+                      style={{ maxWidth: '100%', overflowX: 'scroll', overflowY: 'hidden' }}
+                      onScroll={handleTopScrollB}
+                    >
+                      <div style={{ width: '900px', height: '1px' }}></div>
+                    </div>
+                    {/* Skaters Table */}
+                    <div 
+                      ref={tableScrollRefB}
+                      className="overflow-x-auto" 
+                      style={{ maxWidth: '100%', overflowX: 'scroll' }}
+                      onScroll={handleTableScrollB}
+                    >
+                      <table className="w-full text-xs" style={{ minWidth: '900px' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
+                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold text-gray-700" />
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                            <SortableHeader label="G" statKey="goals" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700" />
+                            <SortableHeader label="A" statKey="assists" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
+                            <SortableHeader label="P" statKey="points" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                            <SortableHeader label="+/-" statKey="plus/minus" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="PPP" statKey="power play points" team="teamB" className="px-2 py-2 text-center font-semibold text-orange-700" />
+                            <SortableHeader label="SHP" statKey="short handed points" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="GWG" statKey="game winning goals" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SOG" statKey="shots on goal" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="FW" statKey="faceoffs won" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="HIT" statKey="hits" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="BLK" statKey="blocked shots" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortPlayers(teamB.roster.filter((p) => p.position !== "G"), sortConfig.teamB).map((player, index) => {
+                            const isPending = pendingSelections.B.includes(player.playerId);
+                            const isConfirmed = sideB.playerIds.includes(player.playerId);
+                            return renderPlayerRow(player, "B", isPending, isConfirmed, false, index);
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                
+                {/* Goalies Section */}
+                {teamB.roster.some((p) => p.position === "G") && (
+                  <>
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
+                      <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
+                    </div>
+                    {/* Goalies Table */}
+                    <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
+                      <table className="w-full text-xs" style={{ minWidth: '600px' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
+                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold text-gray-700" />
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                            <SortableHeader label="W" statKey="wins" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700" />
+                            <SortableHeader label="L" statKey="losses" team="teamB" className="px-2 py-2 text-center font-semibold text-red-700" />
+                            <SortableHeader label="GA" statKey="goals against" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="GAA" statKey="goals against average" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SV" statKey="saves" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
+                            <SortableHeader label="SV%" statKey="save percentage" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                            <SortableHeader label="SHO" statKey="shutouts" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortPlayers(teamB.roster.filter((p) => p.position === "G"), sortConfig.teamB).map((player, index) => {
+                            const isPending = pendingSelections.B.includes(player.playerId);
+                            const isConfirmed = sideB.playerIds.includes(player.playerId);
+                            return renderPlayerRow(player, "B", isPending, isConfirmed, true, index);
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                
+                {pendingSelections.B.length > 0 && (
+                  <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                    <button
+                      onClick={() => confirmPlayers("B")}
+                      className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      Add {pendingSelections.B.length} Player{pendingSelections.B.length !== 1 ? "s" : ""} to Trade
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 text-gray-600">Select Team B to view roster</div>
+            )}
+
+            {/* Draft Picks for Team B */}
+            {teamB && normalizedTradeData.draftPickValues.length > 0 && (
+              <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                  Draft Picks {teamB?.draftPicks && teamB.draftPicks.length > 0 && `(${teamB.draftPicks.length} owned)`}
+                </h3>
+                <div className="grid grid-cols-8 gap-2">
+                  {normalizedTradeData.draftPickValues.map((pick) => {
+                    const isSelected = sideB.picks.includes(pick.round);
+                    const isOwned = teamB?.draftPicks?.includes(pick.round) ?? false;
+                    return (
+                      <button
+                        key={pick.round}
+                        onClick={() => togglePick("B", pick.round)}
+                        className={`rounded border px-2 py-1 text-xs ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
+                            : isOwned
+                            ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
+                            : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                        title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
+                      >
+                        R{pick.round} ({pick.score.toFixed(1)})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Value Formula Reference */}
+        <div className="mb-6 rounded border border-gray-300 bg-white p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Value Calculation Formula</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <h3 className="mb-2 font-semibold text-gray-700">Skaters</h3>
+              <div className="space-y-1 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Goals (G):</span>
+                  <span className="font-mono text-green-700">× 4</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Assists (A):</span>
+                  <span className="font-mono text-blue-700">× 3</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Power Play Points (PPP):</span>
+                  <span className="font-mono text-orange-700">× 2</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Short Handed Points (SHP):</span>
+                  <span className="font-mono">× 3</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Game Winning Goals (GWG):</span>
+                  <span className="font-mono">× 2.5</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Plus/Minus (+/-):</span>
+                  <span className="font-mono">× 0.5</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Penalty Minutes (PIM):</span>
+                  <span className="font-mono">× 0.08</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shots on Goal (SOG):</span>
+                  <span className="font-mono">× 0.15</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Faceoffs Won (FW):</span>
+                  <span className="font-mono">× 0.02</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hits (HIT):</span>
+                  <span className="font-mono">× 0.25</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Blocks (BLK):</span>
+                  <span className="font-mono">× 0.3</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-2 font-semibold text-gray-700">Goalies</h3>
+              <div className="space-y-1 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Wins (W):</span>
+                  <span className="font-mono text-green-700">× 8</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Saves (SV):</span>
+                  <span className="font-mono text-blue-700">× 0.10</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Save Percentage (SV%):</span>
+                  <span className="font-mono">× 50</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shutouts (SHO):</span>
+                  <span className="font-mono text-purple-700">× 12</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Losses (L):</span>
+                  <span className="font-mono text-red-700">× -4</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Goals Against (GA):</span>
+                  <span className="font-mono text-red-700">× -0.3</span>
+                </div>
+              </div>
+              <div className="mt-4 rounded bg-blue-50 p-3 text-xs text-gray-600">
+                <p className="font-semibold mb-1">Draft Pick Values:</p>
+                <p>Calculated dynamically based on average player values in each draft tier. Round 1 = top-tier players, later rounds = depth players.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Trade Summary */}
+        <div className="rounded border border-gray-300 bg-white p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">Trade Summary</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-lg font-medium text-gray-700">Team A Sends</h3>
+              <div className="space-y-1">
+                {teamASends.length === 0 ? (
+                  <p className="text-sm text-gray-500">(Nothing selected)</p>
+                ) : (
+                  teamASends.map((item) => {
+                    if (item.type === "player") {
+                      const player = teamA?.roster.find((p) => p.playerId === item.id);
+                      return (
+                        <div key={`player-${item.id}`} className="flex justify-between text-sm">
+                          <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
+                          <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                        </div>
+                      );
+                    } else {
+                        return (
+                          <div key={`pick-${item.id}`} className="flex justify-between text-sm">
+                            <span className="text-gray-700">Round {item.id} Pick</span>
+                            <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                          </div>
+                        );
+                      }
+                  })
+                )}
+                {teamASends.length > 0 && (
+                  <div className="mt-2 border-t border-gray-200 pt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-gray-900">Total</span>
+                      <span className="text-gray-900">
+                        {teamASends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-2 text-lg font-medium text-gray-700">Team B Sends</h3>
+              <div className="space-y-1">
+                {teamBSends.length === 0 ? (
+                  <p className="text-sm text-gray-500">(Nothing selected)</p>
+                ) : (
+                  teamBSends.map((item) => {
+                    if (item.type === "player") {
+                      const player = teamB?.roster.find((p) => p.playerId === item.id);
+                      return (
+                        <div key={`player-${item.id}`} className="flex justify-between text-sm">
+                          <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
+                          <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                        </div>
+                      );
+                    } else {
+                        return (
+                          <div key={`pick-${item.id}`} className="flex justify-between text-sm">
+                            <span className="text-gray-700">Round {item.id} Pick</span>
+                            <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                          </div>
+                        );
+                      }
+                  })
+                )}
+                {teamBSends.length > 0 && (
+                  <div className="mt-2 border-t border-gray-200 pt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-gray-900">Total</span>
+                      <span className="text-gray-900">
+                        {teamBSends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 rounded border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Team A Receives:</span>
+              <span className="text-sm font-semibold text-gray-900">{teamAReceiveTotal.toFixed(1)}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Team B Receives:</span>
+              <span className="text-sm font-semibold text-gray-900">{teamBReceiveTotal.toFixed(1)}</span>
+            </div>
+            <div className="mt-4 border-t border-gray-300 pt-4">
+              {diff === 0 ? (
+                <p className="text-center text-lg font-semibold text-green-600">Even trade</p>
+              ) : diff > 0 ? (
+                <p className="text-center text-lg font-semibold text-blue-600">
+                  Advantage: Team A by {diff.toFixed(1)}
+                </p>
+              ) : (
+                <p className="text-center text-lg font-semibold text-orange-600">
+                  Advantage: Team B by {Math.abs(diff).toFixed(1)}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

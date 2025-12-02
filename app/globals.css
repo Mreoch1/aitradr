@@ -2,7 +2,10 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a1a;
+  --yahoo-purple: #6001D2;
+  --yahoo-purple-hover: #720E9E;
+  --yahoo-blue: #0066CC;
 }
 
 @theme inline {
@@ -12,15 +15,29 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Yahoo-style button */
+.btn-yahoo {
+  background-color: var(--yahoo-purple);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-yahoo:hover {
+  background-color: var(--yahoo-purple-hover);
+}
+
+.btn-yahoo:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }

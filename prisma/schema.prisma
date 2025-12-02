@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  yahooAccount YahooAccount?
+  leagues      League[]
+  teams        Team[]
+  rosterEntries RosterEntry[]
+
+  @@map("users")
+}
+
+model YahooAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  yahooUserId  String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("yahoo_accounts")
+}
+
+model League {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueKey  String
+  name       String
+  season     String
+  sport      String
+  teamCount  Int?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  teams      Team[]
+  rosterEntries RosterEntry[]
+  playerValues PlayerValue[]
+  draftPickValues DraftPickValue[]
+  teamDraftPicks TeamDraftPick[]
+  playerStats PlayerStat[]
+
+  @@unique([userId, leagueKey])
+  @@map("leagues")
+}
+
+model Team {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId    String
+  league      League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamKey     String
+  name        String
+  managerName String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  standing    TeamStanding?
+  rosterEntries RosterEntry[]
+  draftPicks  TeamDraftPick[]
+
+  @@unique([leagueId, teamKey])
+  @@map("teams")
+}
+
+model TeamStanding {
+  id            String   @id @default(cuid())
+  teamId        String   @unique
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  ties          Int      @default(0)
+  pointsFor     Float?
+  pointsAgainst Float?
+  rank          Int?
+  createdAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("team_standings")
+}
+
+model Player {
+  id              String        @id @default(cuid())
+  playerKey       String        @unique
+  name            String
+  teamAbbr        String?
+  positions       String?
+  primaryPosition String?
+  status          String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  rosterEntries   RosterEntry[]
+  playerValues    PlayerValue[]
+  playerStats     PlayerStat[]
+
+  @@map("players")
+}
+
+model RosterEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId      String
+  league        League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamId        String
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId      String
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  yahooPosition String?
+  isBench       Boolean  @default(false)
+  isInjuredList Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("roster_entries")
+}
+
+model PlayerValue {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  score     Float
+  breakdown String?  // JSON string for future use
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, leagueId])
+  @@map("player_values")
+}
+
+model DraftPickValue {
+  id        String   @id @default(cuid())
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  round     Int
+  score     Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([leagueId, round])
+  @@map("draft_pick_values")
+}
+
+model TeamDraftPick {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  round     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, leagueId, round])
+  @@map("team_draft_picks")
+}
+
+model PlayerStat {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  statId    String   // Yahoo stat ID
+  statName  String   // Stat name (e.g., "Goals", "Assists")
+  value     Float    // Stat value
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, leagueId, statId])
+  @@map("player_stats")
+}
