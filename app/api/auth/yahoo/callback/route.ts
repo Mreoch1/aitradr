@@ -6,7 +6,7 @@ import {
   getYahooClientSecret,
   getYahooRedirectUri,
 } from "@/lib/yahoo/config";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@prisma/client";
 import { parseYahooXml } from "@/lib/yahoo/normalize";
 
 /**

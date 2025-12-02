@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@prisma/client";
 import { getYahooGameKey } from "@/lib/yahoo/config";
 import {
   YahooNotLinkedError,
