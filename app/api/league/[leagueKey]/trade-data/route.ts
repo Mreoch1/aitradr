@@ -43,6 +43,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ leagueKey: string }> }
 ) {
+  // Extract leagueKey first so it's available in catch blocks
+  const { leagueKey } = await params;
+  
   try {
     const session = await getSession();
 
@@ -63,8 +66,6 @@ export async function GET(
         { status: 400 }
       );
     }
-
-    const { leagueKey } = await params;
 
     if (!leagueKey) {
       return NextResponse.json(
