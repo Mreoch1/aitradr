@@ -73,7 +73,7 @@ export async function GET(
 
     return NextResponse.json({
       ok: true,
-      draftPicks: draftPicks.map((pick) => pick.round),
+      draftPicks: draftPicks.map((pick: { round: number }) => pick.round),
     });
   } catch (error) {
     console.error("Error fetching draft picks:", error);
