@@ -523,6 +523,7 @@ export type PlayerStatCreateOrConnectWithoutLeagueInput = {
 
 export type PlayerStatCreateManyLeagueInputEnvelope = {
   data: Prisma.PlayerStatCreateManyLeagueInput | Prisma.PlayerStatCreateManyLeagueInput[]
+  skipDuplicates?: boolean
 }
 
 export type PlayerStatUpsertWithWhereUniqueWithoutLeagueInput = {
@@ -579,6 +580,7 @@ export type PlayerStatCreateOrConnectWithoutPlayerInput = {
 
 export type PlayerStatCreateManyPlayerInputEnvelope = {
   data: Prisma.PlayerStatCreateManyPlayerInput | Prisma.PlayerStatCreateManyPlayerInput[]
+  skipDuplicates?: boolean
 }
 
 export type PlayerStatUpsertWithWhereUniqueWithoutPlayerInput = {
@@ -1406,6 +1408,7 @@ export type PlayerStatCreateManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * The data used to create many PlayerStats.
    */
   data: Prisma.PlayerStatCreateManyInput | Prisma.PlayerStatCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1424,6 +1427,7 @@ export type PlayerStatCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    * The data used to create many PlayerStats.
    */
   data: Prisma.PlayerStatCreateManyInput | Prisma.PlayerStatCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

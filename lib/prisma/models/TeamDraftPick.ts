@@ -499,6 +499,7 @@ export type TeamDraftPickCreateOrConnectWithoutLeagueInput = {
 
 export type TeamDraftPickCreateManyLeagueInputEnvelope = {
   data: Prisma.TeamDraftPickCreateManyLeagueInput | Prisma.TeamDraftPickCreateManyLeagueInput[]
+  skipDuplicates?: boolean
 }
 
 export type TeamDraftPickUpsertWithWhereUniqueWithoutLeagueInput = {
@@ -552,6 +553,7 @@ export type TeamDraftPickCreateOrConnectWithoutTeamInput = {
 
 export type TeamDraftPickCreateManyTeamInputEnvelope = {
   data: Prisma.TeamDraftPickCreateManyTeamInput | Prisma.TeamDraftPickCreateManyTeamInput[]
+  skipDuplicates?: boolean
 }
 
 export type TeamDraftPickUpsertWithWhereUniqueWithoutTeamInput = {
@@ -1365,6 +1367,7 @@ export type TeamDraftPickCreateManyArgs<ExtArgs extends runtime.Types.Extensions
    * The data used to create many TeamDraftPicks.
    */
   data: Prisma.TeamDraftPickCreateManyInput | Prisma.TeamDraftPickCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1383,6 +1386,7 @@ export type TeamDraftPickCreateManyAndReturnArgs<ExtArgs extends runtime.Types.E
    * The data used to create many TeamDraftPicks.
    */
   data: Prisma.TeamDraftPickCreateManyInput | Prisma.TeamDraftPickCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

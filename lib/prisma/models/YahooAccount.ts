@@ -1209,6 +1209,7 @@ export type YahooAccountCreateManyArgs<ExtArgs extends runtime.Types.Extensions.
    * The data used to create many YahooAccounts.
    */
   data: Prisma.YahooAccountCreateManyInput | Prisma.YahooAccountCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1227,6 +1228,7 @@ export type YahooAccountCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
    * The data used to create many YahooAccounts.
    */
   data: Prisma.YahooAccountCreateManyInput | Prisma.YahooAccountCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

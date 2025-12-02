@@ -636,6 +636,7 @@ export type RosterEntryCreateOrConnectWithoutUserInput = {
 
 export type RosterEntryCreateManyUserInputEnvelope = {
   data: Prisma.RosterEntryCreateManyUserInput | Prisma.RosterEntryCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type RosterEntryUpsertWithWhereUniqueWithoutUserInput = {
@@ -701,6 +702,7 @@ export type RosterEntryCreateOrConnectWithoutLeagueInput = {
 
 export type RosterEntryCreateManyLeagueInputEnvelope = {
   data: Prisma.RosterEntryCreateManyLeagueInput | Prisma.RosterEntryCreateManyLeagueInput[]
+  skipDuplicates?: boolean
 }
 
 export type RosterEntryUpsertWithWhereUniqueWithoutLeagueInput = {
@@ -750,6 +752,7 @@ export type RosterEntryCreateOrConnectWithoutTeamInput = {
 
 export type RosterEntryCreateManyTeamInputEnvelope = {
   data: Prisma.RosterEntryCreateManyTeamInput | Prisma.RosterEntryCreateManyTeamInput[]
+  skipDuplicates?: boolean
 }
 
 export type RosterEntryUpsertWithWhereUniqueWithoutTeamInput = {
@@ -799,6 +802,7 @@ export type RosterEntryCreateOrConnectWithoutPlayerInput = {
 
 export type RosterEntryCreateManyPlayerInputEnvelope = {
   data: Prisma.RosterEntryCreateManyPlayerInput | Prisma.RosterEntryCreateManyPlayerInput[]
+  skipDuplicates?: boolean
 }
 
 export type RosterEntryUpsertWithWhereUniqueWithoutPlayerInput = {
@@ -1780,6 +1784,7 @@ export type RosterEntryCreateManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * The data used to create many RosterEntries.
    */
   data: Prisma.RosterEntryCreateManyInput | Prisma.RosterEntryCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1798,6 +1803,7 @@ export type RosterEntryCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ext
    * The data used to create many RosterEntries.
    */
   data: Prisma.RosterEntryCreateManyInput | Prisma.RosterEntryCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

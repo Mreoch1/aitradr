@@ -677,6 +677,7 @@ export type LeagueCreateOrConnectWithoutUserInput = {
 
 export type LeagueCreateManyUserInputEnvelope = {
   data: Prisma.LeagueCreateManyUserInput | Prisma.LeagueCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type LeagueUpsertWithWhereUniqueWithoutUserInput = {
@@ -2111,6 +2112,7 @@ export type LeagueCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many Leagues.
    */
   data: Prisma.LeagueCreateManyInput | Prisma.LeagueCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -2129,6 +2131,7 @@ export type LeagueCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * The data used to create many Leagues.
    */
   data: Prisma.LeagueCreateManyInput | Prisma.LeagueCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */
