@@ -145,7 +145,7 @@ export async function GET(
     const teamsData = await Promise.all(
       teams.map(async (team: any) => {
         const roster = await Promise.all(
-          team.rosterEntries.map(async (entry) => {
+          team.rosterEntries.map(async (entry: any) => {
             const playerValue = await prisma.playerValue.findUnique({
               where: {
                 playerId_leagueId: {
