@@ -143,7 +143,7 @@ export async function GET(
 
     // Build team roster data with player values and stats
     const teamsData = await Promise.all(
-      teams.map(async (team) => {
+      teams.map(async (team: any) => {
         const roster = await Promise.all(
           team.rosterEntries.map(async (entry) => {
             const playerValue = await prisma.playerValue.findUnique({
