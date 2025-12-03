@@ -240,11 +240,11 @@ export default async function FormulaPage({
               <strong>Trade Score Formula:</strong> valueDelta × 1.0 + categoryGain × 2.5 + keeperImpact
             </p>
             <p>
-              <strong>Elite Protection:</strong> Players valued 155+ cannot be traded for >10% downgrades. 
+              <strong>Elite Protection:</strong> Players valued 155+ cannot be traded for greater than 10% downgrades. 
               No "Celebrini for Tom Wilson" suggestions.
             </p>
             <p>
-              <strong>Bad Trade Blocker:</strong> Net loss >10 points requires categoryGain ≥15 or strong keeper justification.
+              <strong>Bad Trade Blocker:</strong> Net loss over 10 points requires categoryGain of 15+ or strong keeper justification.
             </p>
           </div>
         </div>
