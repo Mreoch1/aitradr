@@ -1,146 +1,299 @@
 /**
- * Player value calculation and management.
+ * Player value calculation using z-scores to mirror Yahoo Fantasy rankings.
  * 
- * Uses actual player stats from Yahoo Fantasy API to calculate trade values.
- * Formula weights all Yahoo Fantasy scoring categories to match their rankings.
+ * This approach treats each category as equally important (like Yahoo H2H categories)
+ * and calculates standardized scores (z-scores) for each stat.
  */
 
 import prisma from "@/lib/prisma";
 
+// ===== TUNABLE CONSTANTS =====
+
+// Games started baseline for goalie volume adjustment
+const BASELINE_GS = 15;
+
+// Optional scaling factor to balance goalies vs skaters
+const GOALIE_SCALING = 1.0; // Adjust if goalies still seem over/undervalued
+
+// ===== TYPES =====
+
+interface StatData {
+  playerId: string;
+  playerName: string;
+  stats: Map<string, number>;
+}
+
+interface ZScoreStats {
+  mean: number;
+  stdDev: number;
+}
+
+// ===== STAT CATEGORIES =====
+
+// Skater categories (11 total)
+const SKATER_CATEGORIES = [
+  "goals", "assists", "plus/minus", "penalty minutes",
+  "powerplay points", "shorthanded points", "game winning goals",
+  "shots on goal", "faceoffs won", "hits", "blocks"
+] as const;
+
+// Goalie categories (5 total)
+const GOALIE_CATEGORIES = [
+  "wins", "goals against average", "saves", "save percentage", "shutouts"
+] as const;
+
+// Negative categories (lower is better)
+const NEGATIVE_CATEGORIES = ["goals against average"];
+
+// ===== UTILITY FUNCTIONS =====
+
 /**
- * Calculate player value based on actual stats.
- * Formula: 2 * goals + 1.5 * assists + 0.3 * shots + 0.4 * hits + 0.4 * blocks
- * For goalies: Uses wins, saves, and save percentage
+ * Normalize stat names for consistent lookup
  */
-function calculatePlayerValueFromStats(
-  stats: Array<{ statName: string; value: number }>,
-  position?: string | null
-): number {
-  // Normalize stat names for lookup
-  const normalizeStatName = (name: string) =>
-    name.toLowerCase().trim().replace(/\s+/g, " ").replace(/\./g, "");
-
-  const statMap = new Map<string, number>();
-  for (const stat of stats) {
-    const normalized = normalizeStatName(stat.statName);
-    statMap.set(normalized, stat.value);
-  }
-
-  // Goalie-specific calculation
-  // League uses: GS, W, L, GAA, SV, SV%, SHO
-  if (position === "G") {
-    const W = statMap.get("wins") || statMap.get("w") || 0;
-    const L = statMap.get("losses") || statMap.get("l") || 0;
-    const SV = statMap.get("saves") || statMap.get("sv") || 0;
-    const svPct = statMap.get("save percentage") || statMap.get("sv%") || 0;
-    const SHO = statMap.get("shutouts") || statMap.get("sho") || 0;
-    const GAA = statMap.get("goals against average") || statMap.get("gaa") || 0;
-    const GS = statMap.get("games started") || statMap.get("gs") || 0;
-    
-    // Baselines for comparison
-    const baselineSvPct = 0.9;
-    const baselineGaa = 2.9;
-    
-    // Goalie formula based on league scoring
-    const goalieRaw =
-      W * 3.0 +
-      SV * 0.04 +
-      (svPct - baselineSvPct) * 400 +
-      (baselineGaa - GAA) * 120 +
-      SHO * 4.0 -
-      L * 1.0;
-    
-    // Apply scaling factor to balance goalies vs skaters
-    const GOALIE_SCALING = 0.8;
-    return goalieRaw * GOALIE_SCALING;
-  }
-
-  // Skater formula weighted for standard Yahoo categories
-  const goals = statMap.get("goals") || statMap.get("g") || 0;
-  const assists = statMap.get("assists") || statMap.get("a") || 0;
-  const points = statMap.get("points") || statMap.get("p") || 0;
-  const plusMinus = statMap.get("plus/minus") || statMap.get("+/-") || statMap.get("plusminus") || 0;
-  const pim = statMap.get("penalty minutes") || statMap.get("pim") || 0;
-  const ppp = statMap.get("power play points") || statMap.get("ppp") || 0;
-  const shp = statMap.get("short handed points") || statMap.get("shp") || statMap.get("shorthanded points") || 0;
-  const gwg = statMap.get("game winning goals") || statMap.get("gwg") || 0;
-  const shots = statMap.get("shots") || statMap.get("shots on goal") || statMap.get("sog") || 0;
-  const faceoffs = statMap.get("faceoffs won") || statMap.get("fw") || statMap.get("faceoff wins") || 0;
-  const hits = statMap.get("hits") || statMap.get("hit") || 0;
-  const blocks = statMap.get("blocks") || statMap.get("blocked shots") || statMap.get("blk") || 0;
-  
-  // Comprehensive formula matching Yahoo's scoring categories:
-  return (
-    4 * goals +                     // Goals: 4 points each (most valuable)
-    3 * assists +                   // Assists: 3 points each
-    0.5 * plusMinus +               // +/-: 0.5 per point
-    0.08 * pim +                    // PIM: 0.08 per minute
-    2 * ppp +                       // PPP: 2 points each (power play is important)
-    3 * shp +                       // SHP: 3 points each (rare and valuable)
-    2.5 * gwg +                     // GWG: 2.5 points each
-    0.15 * shots +                  // SOG: 0.15 per shot
-    0.02 * faceoffs +               // FW: 0.02 per faceoff won
-    0.25 * hits +                   // HIT: 0.25 per hit
-    0.3 * blocks                    // BLK: 0.3 per block
-  );
+function normalizeStatName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ").replace(/\./g, "");
 }
 
 /**
- * Fallback calculation based on position if stats are not available
+ * Calculate mean of an array
  */
-function calculatePlayerValueFromPosition(player: {
-  primaryPosition?: string | null;
-  positions?: string | null;
-}): number {
-  const positionValues: Record<string, number> = {
-    C: 50,
-    LW: 48,
-    RW: 48,
-    D: 45,
-    G: 55,
-  };
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
 
-  const position = player.primaryPosition || "";
-  if (position && positionValues[position]) {
-    return positionValues[position];
+/**
+ * Calculate standard deviation
+ */
+function stdDev(values: number[], meanValue: number): number {
+  if (values.length === 0) return 1; // Avoid division by zero
+  const variance = values.reduce((sum, v) => sum + Math.pow(v - meanValue, 2), 0) / values.length;
+  return Math.sqrt(variance) || 1; // Return 1 if stdDev is 0
+}
+
+/**
+ * Calculate z-score
+ */
+function zScore(value: number, mean: number, std: number, isNegative: boolean = false): number {
+  if (std === 0) return 0;
+  return isNegative 
+    ? (mean - value) / std  // For negative categories (GAA), lower is better
+    : (value - mean) / std; // For positive categories
+}
+
+// ===== SKATER VALUE CALCULATION =====
+
+/**
+ * Calculate skater value using z-scores across all skater categories
+ */
+export async function calculateSkaterValue(
+  playerId: string,
+  leagueId: string,
+  allSkaterStats?: Map<string, StatData>
+): Promise<number> {
+  // If stats not provided, fetch them
+  if (!allSkaterStats) {
+    allSkaterStats = await fetchAllSkaterStats(leagueId);
   }
+  
+  const playerStats = allSkaterStats.get(playerId);
+  if (!playerStats) {
+    return 40; // Default for players without stats
+  }
+  
+  // Calculate z-scores for each category
+  const categoryStats = calculateCategoryStats(allSkaterStats, SKATER_CATEGORIES);
+  
+  let totalZScore = 0;
+  
+  for (const category of SKATER_CATEGORIES) {
+    const playerValue = playerStats.stats.get(category) || 0;
+    const catStats = categoryStats.get(category);
+    
+    if (!catStats) continue;
+    
+    const isNegative = NEGATIVE_CATEGORIES.includes(category);
+    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    
+    totalZScore += z;
+  }
+  
+  // Return raw z-score sum (can be negative for below-average players)
+  // Scale to make values positive and easier to read
+  return totalZScore * 10 + 100;
+}
 
-  if (player.positions) {
-    try {
-      const positions = JSON.parse(player.positions) as string[];
-      if (Array.isArray(positions) && positions.length > 0) {
-        const firstPos = positions[0];
-        if (positionValues[firstPos]) {
-          return positionValues[firstPos];
-        }
+// ===== GOALIE VALUE CALCULATION =====
+
+/**
+ * Calculate goalie value using z-scores with games-started volume adjustment
+ */
+export async function calculateGoalieValue(
+  playerId: string,
+  leagueId: string,
+  allGoalieStats?: Map<string, StatData>
+): Promise<number> {
+  // If stats not provided, fetch them
+  if (!allGoalieStats) {
+    allGoalieStats = await fetchAllGoalieStats(leagueId);
+  }
+  
+  const playerStats = allGoalieStats.get(playerId);
+  if (!playerStats) {
+    return 40; // Default for players without stats
+  }
+  
+  // Calculate z-scores for each category
+  const categoryStats = calculateCategoryStats(allGoalieStats, GOALIE_CATEGORIES);
+  
+  let totalZScore = 0;
+  
+  for (const category of GOALIE_CATEGORIES) {
+    const playerValue = playerStats.stats.get(category) || 0;
+    const catStats = categoryStats.get(category);
+    
+    if (!catStats) continue;
+    
+    const isNegative = NEGATIVE_CATEGORIES.includes(category);
+    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    
+    totalZScore += z;
+  }
+  
+  // Apply games-started volume adjustment
+  const gamesStarted = playerStats.stats.get("games started") || 0;
+  const gsFactor = Math.min(Math.sqrt(gamesStarted / BASELINE_GS), 1.0);
+  
+  // Scale to make values positive and easier to read
+  const baseValue = totalZScore * 10 + 100;
+  
+  // Apply volume factor and optional scaling
+  return baseValue * gsFactor * GOALIE_SCALING;
+}
+
+// ===== HELPER FUNCTIONS =====
+
+/**
+ * Fetch all skater stats for a league
+ */
+async function fetchAllSkaterStats(leagueId: string): Promise<Map<string, StatData>> {
+  const players = await prisma.player.findMany({
+    where: {
+      primaryPosition: { not: "G" },
+      playerStats: {
+        some: { leagueId },
+      },
+    },
+    include: {
+      playerStats: {
+        where: { leagueId },
+      },
+    },
+  });
+  
+  const statsMap = new Map<string, StatData>();
+  
+  for (const player of players) {
+    const statMap = new Map<string, number>();
+    
+    for (const stat of player.playerStats) {
+      const normalized = normalizeStatName(stat.statName);
+      statMap.set(normalized, stat.value);
+    }
+    
+    statsMap.set(player.id, {
+      playerId: player.id,
+      playerName: player.name,
+      stats: statMap,
+    });
+  }
+  
+  return statsMap;
+}
+
+/**
+ * Fetch all goalie stats for a league
+ */
+async function fetchAllGoalieStats(leagueId: string): Promise<Map<string, StatData>> {
+  const goalies = await prisma.player.findMany({
+    where: {
+      primaryPosition: "G",
+      playerStats: {
+        some: { leagueId },
+      },
+    },
+    include: {
+      playerStats: {
+        where: { leagueId },
+      },
+    },
+  });
+  
+  const statsMap = new Map<string, StatData>();
+  
+  for (const goalie of goalies) {
+    const statMap = new Map<string, number>();
+    
+    for (const stat of goalie.playerStats) {
+      const normalized = normalizeStatName(stat.statName);
+      statMap.set(normalized, stat.value);
+    }
+    
+    statsMap.set(goalie.id, {
+      playerId: goalie.id,
+      playerName: goalie.name,
+      stats: statMap,
+    });
+  }
+  
+  return statsMap;
+}
+
+/**
+ * Calculate mean and standard deviation for each category
+ */
+function calculateCategoryStats(
+  allPlayerStats: Map<string, StatData>,
+  categories: readonly string[]
+): Map<string, ZScoreStats> {
+  const categoryStats = new Map<string, ZScoreStats>();
+  
+  for (const category of categories) {
+    const values: number[] = [];
+    
+    for (const playerData of allPlayerStats.values()) {
+      const value = playerData.stats.get(category);
+      if (value !== undefined && value !== null) {
+        values.push(value);
       }
-    } catch {
-      // Ignore parse errors
+    }
+    
+    if (values.length > 0) {
+      const meanVal = mean(values);
+      const stdDevVal = stdDev(values, meanVal);
+      
+      categoryStats.set(category, {
+        mean: meanVal,
+        stdDev: stdDevVal,
+      });
     }
   }
-
-  return 40;
+  
+  return categoryStats;
 }
+
+// ===== MAIN CALCULATION FUNCTION =====
 
 /**
  * Calculate and store player value for a league.
- * Creates or updates PlayerValue record.
- * Uses actual stats if available, falls back to position-based calculation.
+ * Automatically detects if player is a goalie or skater.
  */
 export async function calculateAndStorePlayerValue(
   playerId: string,
-  leagueId: string
+  leagueId: string,
+  allSkaterStats?: Map<string, StatData>,
+  allGoalieStats?: Map<string, StatData>
 ): Promise<number> {
-  // Defensive check for Prisma client
-  if (!prisma) {
-    throw new Error("Prisma client is not initialized");
-  }
-  
-  if (!prisma.playerValue) {
-    console.error("prisma.playerValue is undefined. Available models:", Object.keys(prisma).filter(key => !key.startsWith('$')));
-    throw new Error("Prisma client does not have playerValue model. Please restart the server after running 'npx prisma generate'");
-  }
-
   const player = await prisma.player.findUnique({
     where: { id: playerId },
   });
@@ -149,40 +302,15 @@ export async function calculateAndStorePlayerValue(
     throw new Error(`Player not found: ${playerId}`);
   }
 
-  // Try to get stats first
-  const playerStats = await prisma.playerStat.findMany({
-    where: {
-      playerId,
-      leagueId,
-    },
-    select: {
-      statName: true,
-      value: true,
-    },
-  });
-
   let score: number;
-  if (playerStats.length > 0) {
-    // Use stats-based calculation
-    score = calculatePlayerValueFromStats(
-      playerStats,
-      player.primaryPosition
-    );
+  
+  if (player.primaryPosition === "G") {
+    score = await calculateGoalieValue(playerId, leagueId, allGoalieStats);
   } else {
-    // Fallback to position-based calculation
-    score = calculatePlayerValueFromPosition({
-      primaryPosition: player.primaryPosition,
-      positions: player.positions,
-    });
+    score = await calculateSkaterValue(playerId, leagueId, allSkaterStats);
   }
 
-  // Store breakdown as JSON for reference
-  const breakdown = {
-    method: playerStats.length > 0 ? "stats" : "position",
-    statsCount: playerStats.length,
-    position: player.primaryPosition,
-  };
-
+  // Store value
   await prisma.playerValue.upsert({
     where: {
       playerId_leagueId: {
@@ -192,13 +320,13 @@ export async function calculateAndStorePlayerValue(
     },
     update: {
       score,
-      breakdown: JSON.stringify(breakdown),
+      breakdown: JSON.stringify({ method: "z-score", position: player.primaryPosition }),
     },
     create: {
       playerId,
       leagueId,
       score,
-      breakdown: JSON.stringify(breakdown),
+      breakdown: JSON.stringify({ method: "z-score", position: player.primaryPosition }),
     },
   });
 
@@ -207,33 +335,34 @@ export async function calculateAndStorePlayerValue(
 
 /**
  * Ensure all players in a league have calculated values.
- * This is a batch operation that calculates values for all players
- * that don't have values yet, or updates existing values.
- * Also recalculates draft pick values based on player values.
+ * This is a batch operation that recalculates all values using z-scores.
  */
 export async function ensureLeaguePlayerValues(leagueId: string): Promise<void> {
-  // Get all players that have roster entries in this league
-  const rosterEntries = await prisma.rosterEntry.findMany({
-    where: { leagueId },
-    select: {
-      playerId: true,
-    },
-    distinct: ["playerId"],
-  });
+  console.log(`[PlayerValues] Calculating z-score based values for league`);
+  
+  // Fetch all stats once for efficiency
+  const allSkaterStats = await fetchAllSkaterStats(leagueId);
+  const allGoalieStats = await fetchAllGoalieStats(leagueId);
+  
+  console.log(`[PlayerValues] Found ${allSkaterStats.size} skaters, ${allGoalieStats.size} goalies`);
 
-  const playerIds = rosterEntries.map((entry) => entry.playerId);
-
-  console.log(`[PlayerValues] Calculating values for ${playerIds.length} players`);
-
-  // Calculate values for all players
-  for (const playerId of playerIds) {
-    await calculateAndStorePlayerValue(playerId, leagueId);
+  // Calculate skater values
+  for (const playerId of allSkaterStats.keys()) {
+    await calculateAndStorePlayerValue(playerId, leagueId, allSkaterStats, allGoalieStats);
   }
   
-  console.log(`[PlayerValues] Player values calculated, now calculating draft pick values`);
+  // Calculate goalie values
+  for (const playerId of allGoalieStats.keys()) {
+    await calculateAndStorePlayerValue(playerId, leagueId, allSkaterStats, allGoalieStats);
+  }
+  
+  console.log(`[PlayerValues] All player values calculated, now calculating draft pick values`);
   
   // Calculate draft pick values based on player values
   await calculateDraftPickValues(leagueId);
+  
+  // Debug: Print top players for verification
+  await printTopPlayers(leagueId);
 }
 
 /**
@@ -258,19 +387,10 @@ export async function getPlayerValue(
 
 /**
  * Calculate draft pick values dynamically based on actual player values.
- * Each round represents the average value of players in that draft range.
- * 
- * Logic:
- * - Get all player values in the league, sorted highest to lowest
- * - Divide into "draft rounds" based on percentiles
- * - Round 1 = average of top ~6% of players (equivalent to first round picks)
- * - Round 2 = average of next ~6% of players
- * - And so on...
  */
 export async function calculateDraftPickValues(leagueId: string): Promise<void> {
   console.log(`[DraftPicks] Calculating dynamic draft pick values for league`);
   
-  // Get all player values in the league, sorted by score descending
   const playerValues = await prisma.playerValue.findMany({
     where: { leagueId },
     orderBy: { score: 'desc' },
@@ -282,9 +402,6 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
     return;
   }
   
-  console.log(`[DraftPicks] Found ${playerValues.length} player values to analyze`);
-  
-  // Calculate values for 16 rounds
   const totalPlayers = playerValues.length;
   const playersPerRound = Math.max(Math.floor(totalPlayers / 16), 1);
   
@@ -292,38 +409,69 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
     const startIdx = (round - 1) * playersPerRound;
     const endIdx = Math.min(round * playersPerRound, totalPlayers);
     
-    // Get players in this draft round range
     const roundPlayers = playerValues.slice(startIdx, endIdx);
     
     if (roundPlayers.length === 0) {
-      // For later rounds, use diminishing value
       const score = Math.max(5, 85 - (round * 5));
       await prisma.draftPickValue.upsert({
-        where: {
-          leagueId_round: { leagueId, round },
-        },
+        where: { leagueId_round: { leagueId, round } },
         update: { score },
         create: { leagueId, round, score },
       });
-      console.log(`[DraftPicks] Round ${round}: ${score.toFixed(1)} (no players, using fallback)`);
       continue;
     }
     
-    // Calculate average value for this round
     const avgValue = roundPlayers.reduce((sum, p) => sum + p.score, 0) / roundPlayers.length;
     
-    // Store the draft pick value
     await prisma.draftPickValue.upsert({
-      where: {
-        leagueId_round: { leagueId, round },
-      },
+      where: { leagueId_round: { leagueId, round } },
       update: { score: avgValue },
       create: { leagueId, round, score: avgValue },
     });
     
-    console.log(`[DraftPicks] Round ${round}: ${avgValue.toFixed(1)} (avg of ${roundPlayers.length} players, range: ${roundPlayers[0].score.toFixed(1)}-${roundPlayers[roundPlayers.length - 1].score.toFixed(1)})`);
+    console.log(`[DraftPicks] Round ${round}: ${avgValue.toFixed(1)}`);
   }
-  
-  console.log(`[DraftPicks] Draft pick values calculated successfully`);
 }
 
+/**
+ * Debug function: Print top players to verify rankings match Yahoo
+ */
+async function printTopPlayers(leagueId: string): Promise<void> {
+  console.log("\n===== TOP 15 SKATERS =====");
+  
+  const topSkaters = await prisma.playerValue.findMany({
+    where: {
+      leagueId,
+      player: { primaryPosition: { not: "G" } },
+    },
+    include: {
+      player: { select: { name: true, primaryPosition: true, teamAbbr: true } },
+    },
+    orderBy: { score: 'desc' },
+    take: 15,
+  });
+  
+  topSkaters.forEach((pv, i) => {
+    console.log(`${i + 1}. ${pv.player.name} (${pv.player.primaryPosition}, ${pv.player.teamAbbr}) - Value: ${pv.score.toFixed(1)}`);
+  });
+  
+  console.log("\n===== TOP 15 GOALIES =====");
+  
+  const topGoalies = await prisma.playerValue.findMany({
+    where: {
+      leagueId,
+      player: { primaryPosition: "G" },
+    },
+    include: {
+      player: { select: { name: true, teamAbbr: true } },
+    },
+    orderBy: { score: 'desc' },
+    take: 15,
+  });
+  
+  topGoalies.forEach((pv, i) => {
+    console.log(`${i + 1}. ${pv.player.name} (G, ${pv.player.teamAbbr}) - Value: ${pv.score.toFixed(1)}`);
+  });
+  
+  console.log("\n");
+}
