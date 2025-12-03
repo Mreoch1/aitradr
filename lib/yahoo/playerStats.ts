@@ -308,6 +308,7 @@ export async function syncLeaguePlayerStats(
         }
         
         const playersWithStatsList = Array.isArray(playersWithStatsArray) ? playersWithStatsArray : [playersWithStatsArray];
+        console.log(`[PlayerStats] Batch ${Math.floor(i / batchSize) + 1}: Found ${playersWithStatsList.length} players in response`);
         
         for (const playerNode of playersWithStatsList) {
           const player = normalizeYahooNode(playerNode);
@@ -326,10 +327,12 @@ export async function syncLeaguePlayerStats(
           
           if (!statsArray) {
             console.warn(`[PlayerStats] No stats in response for player ${playerKey}`);
+            console.warn(`[PlayerStats] Player node keys:`, Object.keys(player));
             continue;
           }
           
           const statsList = Array.isArray(statsArray) ? statsArray : [statsArray];
+          console.log(`[PlayerStats] Found ${statsList.length} stats for player ${playerKey}`);
           
           // Delete existing stats
           await prisma.playerStat.deleteMany({
@@ -337,15 +340,22 @@ export async function syncLeaguePlayerStats(
           });
           
           // Insert new stats
+          let playerStatsStored = 0;
           for (const statNode of statsList) {
             const stat = normalizeYahooNode(statNode);
             const statId = stat.stat_id?.toString() || stat["@_stat_id"]?.toString() || "";
             const value = parseFloat(stat.value?.toString() || stat["#text"]?.toString() || "0") || 0;
             
-            if (!statId) continue;
+            if (!statId) {
+              console.warn(`[PlayerStats] Missing stat_id for player ${playerKey}`);
+              continue;
+            }
             
             const statDef = statDefinitions.byId[statId];
-            if (!statDef) continue;
+            if (!statDef) {
+              console.warn(`[PlayerStats] No stat definition for stat_id ${statId} (player ${playerKey})`);
+              continue;
+            }
             
             const statName = statDef.name || statDef.display_name || `Stat ${statId}`;
             
@@ -353,6 +363,10 @@ export async function syncLeaguePlayerStats(
               data: { playerId, leagueId: league.id, statId, statName, value },
             });
             totalStatsStored++;
+            playerStatsStored++;
+          }
+          if (playerStatsStored > 0) {
+            console.log(`[PlayerStats] Stored ${playerStatsStored} stats for player ${playerKey}`);
           }
         }
       } catch (error) {
