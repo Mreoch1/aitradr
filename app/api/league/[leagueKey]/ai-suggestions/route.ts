@@ -118,6 +118,7 @@ export async function POST(
           nhlTeam: player.teamAbbr || "?",
           value: playerValue?.score || 0,
           stats: statsObj,
+          rawStats: stats.map(s => ({ statName: s.statName, value: s.value })), // Full stats for category analysis
           status: player.status || undefined,
         };
       });

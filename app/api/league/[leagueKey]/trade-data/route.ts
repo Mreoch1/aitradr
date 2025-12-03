@@ -162,13 +162,18 @@ export async function GET(
       }
 
       // Sync player stats
+      let statsSuccess = false;
       try {
         console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
         await syncLeaguePlayerStats(request, leagueKey);
         console.log("[Trade Data] Player stats sync completed");
+        statsSuccess = true;
       } catch (error) {
         console.error("[Trade Data] Error syncing player stats:", error);
-        // Continue even if stats sync fails - we'll use existing stats or defaults
+        if (error instanceof Error) {
+          console.error("[Trade Data] Stats sync error details:", error.message);
+        }
+        // Continue - we'll try to use existing stats
       }
       
       // Update the league's updatedAt timestamp
@@ -176,12 +181,38 @@ export async function GET(
         where: { id: league.id },
         data: { updatedAt: new Date() },
       });
+      
+      // Calculate player values (only if we have fresh stats or this is first run)
+      if (statsSuccess || forceRefresh) {
+        console.log("[Trade Data] Calculating player values...");
+        try {
+          await ensureLeaguePlayerValues(league.id);
+          console.log("[Trade Data] Player values calculated successfully");
+        } catch (error) {
+          console.error("[Trade Data] Error calculating player values:", error);
+          if (error instanceof Error) {
+            console.error("[Trade Data] Value calc error details:", error.message);
+          }
+        }
+      }
     } else {
       console.log("[Trade Data] Using cached data (last sync was recent)");
     }
     
-    // Ensure all players have calculated values
-    await ensureLeaguePlayerValues(league.id);
+    // Always try to ensure values exist (in case previous sync failed)
+    try {
+      const valueCount = await prisma.playerValue.count({
+        where: { leagueId: league.id }
+      });
+      console.log("[Trade Data] Found", valueCount, "player values in database");
+      
+      if (valueCount === 0) {
+        console.log("[Trade Data] No player values found, attempting calculation...");
+        await ensureLeaguePlayerValues(league.id);
+      }
+    } catch (error) {
+      console.error("[Trade Data] Error checking/ensuring player values:", error);
+    }
 
     // Fetch all teams in this league
     console.log("[Trade Data] Querying teams from database for league:", league.id);

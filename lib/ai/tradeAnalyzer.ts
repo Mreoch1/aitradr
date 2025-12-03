@@ -32,6 +32,7 @@ export interface PlayerForAI {
     savePct?: number;
     shutouts?: number;
   };
+  rawStats?: Array<{ statName: string; value: number }>; // Full stat array for category analysis
   status?: string; // IR, DTD, etc.
 }
 

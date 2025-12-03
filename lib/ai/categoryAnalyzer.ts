@@ -5,13 +5,29 @@
 
 import type { TeamForAI, PlayerForAI } from "./tradeAnalyzer";
 
-// Skater categories (11 total)
+// Skater categories (11 total) - MUST match Yahoo API stat names
 const SKATER_STATS = [
-  "goals", "assists", "plusMinus", "pim", "ppp", "shp", "gwg", "shots", "faceoffs", "hits", "blocks"
+  "goals",
+  "assists", 
+  "plus/minus",
+  "penalty minutes",
+  "powerplay points",
+  "shorthanded points",
+  "game winning goals",
+  "shots on goal",
+  "faceoffs won",
+  "hits",
+  "blocks"
 ] as const;
 
-// Goalie categories (5 total)
-const GOALIE_STATS = ["wins", "saves", "savePct", "shutouts", "gaa"] as const;
+// Goalie categories (5 total) - MUST match Yahoo API stat names
+const GOALIE_STATS = [
+  "wins",
+  "goals against average",
+  "saves",
+  "save percentage",
+  "shutouts"
+] as const;
 
 type SkaterStat = typeof SKATER_STATS[number];
 type GoalieStat = typeof GOALIE_STATS[number];
@@ -32,30 +48,20 @@ export interface PlayerCategoryContribution {
 }
 
 /**
- * Extract stat value from player stats object
+ * Extract stat value from player's raw stats array
+ * PlayerForAI.rawStats is Array<{ statName: string, value: number }>
  */
 function getStatValue(player: PlayerForAI, statKey: AnyStat): number {
-  const stats = player.stats;
-  
-  switch (statKey) {
-    case "goals": return stats.goals || 0;
-    case "assists": return stats.assists || 0;
-    case "plusMinus": return stats.plusMinus || 0;
-    case "pim": return stats.pim || 0;
-    case "ppp": return stats.ppp || 0;
-    case "shp": return 0; // Not in current stats object
-    case "gwg": return 0; // Not in current stats object
-    case "shots": return 0; // Not in current stats object
-    case "faceoffs": return 0; // Not in current stats object
-    case "hits": return 0; // Not in current stats object
-    case "blocks": return 0; // Not in current stats object
-    case "wins": return stats.wins || 0;
-    case "saves": return stats.saves || 0;
-    case "savePct": return stats.savePct || 0;
-    case "shutouts": return stats.shutouts || 0;
-    case "gaa": return 0; // Not in current stats object
-    default: return 0;
+  if (!player.rawStats || !Array.isArray(player.rawStats)) {
+    return 0;
   }
+  
+  // Find the stat by name (case-insensitive match)
+  const stat = player.rawStats.find(s => 
+    s.statName.toLowerCase() === statKey.toLowerCase()
+  );
+  
+  return stat?.value || 0;
 }
 
 /**
