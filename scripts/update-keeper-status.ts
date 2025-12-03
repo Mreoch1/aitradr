@@ -1,6 +1,6 @@
 import prisma from "../lib/prisma";
 import { KEEPERS_2024, KEEPERS_2025 } from "../lib/keeper/keeperData2025";
-import { calculateKeeperCost, calculateYearsRemaining } from "../lib/keeper/types";
+import { calculateYearsRemaining, calculateKeeperRound } from "../lib/keeper/types";
 
 async function main() {
   console.log("Updating keeper status for 2025 season...\n");
@@ -34,7 +34,10 @@ async function main() {
     const isSecondYear = keptInBothYears.has(keeper.player);
     const keeperYearIndex = isSecondYear ? 1 : 0; // 0 or 1 (could be higher if we had 2023 data)
     const yearsRemaining = calculateYearsRemaining(keeperYearIndex);
-    const keeperRoundCost = calculateKeeperCost(keeper.round, keeperYearIndex + 1);
+    
+    // For now, assume teams own all their picks (we'll update this when we have actual pick ownership data)
+    const allPicks = Array.from({ length: 16 }, (_, i) => i + 1);
+    const keeperRoundCost = calculateKeeperRound(keeper.round, allPicks) ?? keeper.round;
     
     // Find the player
     const player = await prisma.player.findFirst({
