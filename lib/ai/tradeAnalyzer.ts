@@ -1,10 +1,17 @@
 /**
  * AI-powered trade analysis using DeepSeek
- * All position analysis and trade logic is computed in TypeScript.
+ * All position and CATEGORY analysis computed in TypeScript.
  * DeepSeek is only used to format explanations based on facts we provide.
  */
 
 import { callDeepSeek } from "./deepseek";
+import {
+  calculateLeagueAverages,
+  buildCategoryProfile,
+  calculateCategoryGain,
+  calculateTradeScore,
+  type CategoryProfile,
+} from "./categoryAnalyzer";
 
 type Position = "C" | "LW" | "RW" | "D" | "G";
 
@@ -146,58 +153,65 @@ function buildTeamSummary(team: TeamForAI): TeamSummary {
 }
 
 /**
- * Generate potential trades using OUR logic (not DeepSeek's)
- * Strategy: Find fair value swaps between different positions
+ * Generate potential trades using category-aware logic
+ * Strategy: Find trades that improve weak categories while maintaining fair value
  */
 function generatePotentialTrades(
   myTeam: TeamForAI,
-  otherTeams: TeamForAI[]
-): Array<{ partner: TeamForAI; payload: TradePayload }> {
+  otherTeams: TeamForAI[],
+  allTeams: TeamForAI[]
+): Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number }> {
   const myTeamSummary = buildTeamSummary(myTeam);
-  const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload }> = [];
+  
+  // Calculate league averages and category profiles
+  const leagueAverages = calculateLeagueAverages(allTeams);
+  const myProfile = buildCategoryProfile(myTeam, leagueAverages);
   
   console.log("[Trade Gen] My team:", myTeamSummary.name);
-  console.log("[Trade Gen] Position counts:", myTeamSummary.positionCounts);
-  console.log("[Trade Gen] Weak positions:", myTeamSummary.weakPositions);
-  console.log("[Trade Gen] Surplus positions:", myTeamSummary.surplusPositions);
+  console.log("[Trade Gen] Category strengths:", myProfile.strengths.join(", ") || "None");
+  console.log("[Trade Gen] Category weaknesses:", myProfile.weaknesses.join(", ") || "None");
+  
+  const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number }> = [];
   
   for (const partnerTeam of otherTeams) {
     const partnerSummary = buildTeamSummary(partnerTeam);
+    const partnerProfile = buildCategoryProfile(partnerTeam, leagueAverages);
     
     console.log(`[Trade Gen] Checking ${partnerTeam.name}...`);
     
-    // Strategy: Try to find ANY fair 1-for-1 trade
-    // Sort my players by value (willing to trade lower/mid tier)
+    // Tradeable players (mid-tier, not injured long-term)
     const myTradeable = myTeam.roster
-      .filter(p => p.value > 50 && p.value < 150) // Mid-tier players
-      .filter(p => !p.status || p.status === "DTD") // Not on long-term IR
-      .sort((a, b) => b.value - a.value);
-    
-    // Sort their players by value
-    const theirTradeable = partnerTeam.roster
-      .filter(p => p.value > 50 && p.value < 150)
+      .filter(p => p.value > 50 && p.value < 180)
       .filter(p => !p.status || p.status === "DTD")
       .sort((a, b) => b.value - a.value);
     
-    console.log(`[Trade Gen]   My tradeable: ${myTradeable.length}, Their tradeable: ${theirTradeable.length}`);
+    const theirTradeable = partnerTeam.roster
+      .filter(p => p.value > 50 && p.value < 180)
+      .filter(p => !p.status || p.status === "DTD")
+      .sort((a, b) => b.value - a.value);
     
-    // Try to find a fair swap with different positions
-    for (const myPlayer of myTradeable.slice(0, 5)) { // Check top 5
+    // Try to find trades that improve categories
+    for (const myPlayer of myTradeable.slice(0, 5)) {
       for (const theirPlayer of theirTradeable.slice(0, 5)) {
-        const valueDiff = Math.abs(myPlayer.value - theirPlayer.value);
+        const valueDiff = theirPlayer.value - myPlayer.value;
         
-        // Fair value (within 20 points)
-        if (valueDiff > 20) continue;
+        // Fair value (within ±25 points)
+        if (Math.abs(valueDiff) > 25) continue;
         
-        // Different primary positions (makes it interesting)
-        const myPos = myPlayer.position.split("/")[0];
-        const theirPos = theirPlayer.position.split("/")[0];
+        // Calculate category gain
+        const { gain: categoryGain } = calculateCategoryGain(
+          myProfile,
+          [myPlayer],
+          [theirPlayer]
+        );
         
-        if (myPos === theirPos) continue; // Same position = boring
+        // Calculate combined trade score
+        const tradeScore = calculateTradeScore(valueDiff, categoryGain);
         
-        console.log(`[Trade Gen]   Found potential: ${myPlayer.name} (${myPos}, ${myPlayer.value.toFixed(0)}) <-> ${theirPlayer.name} (${theirPos}, ${theirPlayer.value.toFixed(0)})`);
+        // Only suggest if either value is decent OR category gain is significant
+        if (valueDiff < -15 && categoryGain < 5) continue; // Skip bad value with no category help
         
-        const netChange = theirPlayer.value - myPlayer.value;
+        console.log(`[Trade Gen]   ${myPlayer.name} <-> ${theirPlayer.name}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, score=${tradeScore.toFixed(1)}`);
         
         const payload: TradePayload = {
           userTeam: myTeamSummary,
@@ -219,33 +233,32 @@ function generatePotentialTrades(
                 status: theirPlayer.status,
               },
             ],
-            netChangeUser: netChange,
-            netChangePartner: -netChange,
+            netChangeUser: valueDiff,
+            netChangePartner: -valueDiff,
           },
         };
         
-        potentialTrades.push({ partner: partnerTeam, payload });
-        break; // Only one trade per partner for now
+        potentialTrades.push({ partner: partnerTeam, payload, categoryGain, tradeScore });
+        break; // One trade per partner
       }
       
       if (potentialTrades.some(t => t.partner.name === partnerTeam.name)) {
-        break; // Found a trade with this partner, move on
+        break;
       }
     }
   }
   
   console.log(`[Trade Gen] Generated ${potentialTrades.length} total trades`);
   
-  // Sort by absolute net change (closer to fair is better)
-  return potentialTrades.sort((a, b) => 
-    Math.abs(a.payload.trade.netChangeUser) - Math.abs(b.payload.trade.netChangeUser)
-  );
+  // Sort by trade score (value + category gain)
+  return potentialTrades.sort((a, b) => b.tradeScore - a.tradeScore);
 }
 
 /**
  * Ask DeepSeek to explain a trade based on the factual data we provide
+ * Includes category gain information for richer explanations
  */
-async function explainTrade(payload: TradePayload): Promise<{
+async function explainTrade(payload: TradePayload, categoryGain: number): Promise<{
   reasoning: string;
   confidence: number;
 }> {
@@ -292,10 +305,10 @@ TRADE:
 You Send: ${payload.trade.send.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
 You Receive: ${payload.trade.receive.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
 
-Net Value Change for You: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${payload.trade.netChangeUser.toFixed(1)}
-Net Value Change for Partner: ${payload.trade.netChangePartner >= 0 ? "+" : ""}${payload.trade.netChangePartner.toFixed(1)}
+Net Value Change: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${payload.trade.netChangeUser.toFixed(1)} points
+Category Improvement Score: ${categoryGain.toFixed(1)}${categoryGain > 5 ? " (significant)" : ""}
 
-Explain why this trade makes sense (or doesn't) based ONLY on the position counts and values above.`;
+Explain in 2-3 sentences why this trade makes sense based on position balance and value.`;
 
   const response = await callDeepSeek([
     { role: "system", content: systemPrompt },
@@ -344,6 +357,7 @@ Explain why this trade makes sense (or doesn't) based ONLY on the position count
 
 /**
  * Main entry point: analyze trades for the user's team
+ * Uses category-aware logic to find trades that address statistical weaknesses
  */
 export async function analyzeTrades(
   myTeam: TeamForAI,
@@ -356,23 +370,23 @@ export async function analyzeTrades(
     console.log("[AI] My team roster size:", myTeam.roster.length);
     console.log("[AI] Other teams count:", otherTeams.length);
     
-    // Step 1: Generate potential trades using OUR logic
-    const potentialTrades = generatePotentialTrades(myTeam, otherTeams);
+    // Step 1: Generate potential trades using category-aware logic
+    const potentialTrades = generatePotentialTrades(myTeam, otherTeams, allTeams);
     
     console.log(`[AI] Found ${potentialTrades.length} potential trades`);
     
     if (potentialTrades.length === 0) {
-      console.log("[AI] No complementary trade opportunities found");
+      console.log("[AI] No beneficial trade opportunities found");
       return [];
     }
   
-    // Step 2: Ask DeepSeek to explain the top 5 trades
+    // Step 2: Ask DeepSeek to explain the top 5 trades (already scored and ranked)
     const suggestions: TradeSuggestion[] = [];
     
-    for (const { partner, payload } of potentialTrades.slice(0, 5)) {
+    for (const { partner, payload, categoryGain, tradeScore } of potentialTrades.slice(0, 5)) {
       try {
-        console.log(`[AI] Explaining trade with ${partner.name}...`);
-        const { reasoning, confidence } = await explainTrade(payload);
+        console.log(`[AI] Explaining trade with ${partner.name} (score: ${tradeScore.toFixed(1)})...`);
+        const { reasoning, confidence } = await explainTrade(payload, categoryGain);
         
         suggestions.push({
           tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
