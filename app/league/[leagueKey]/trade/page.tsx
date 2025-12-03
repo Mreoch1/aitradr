@@ -614,11 +614,12 @@ export default function TradeBuilderPage() {
       <div className="min-h-screen theme-bg-secondary">
       <div className="container mx-auto px-4 py-6">
         {/* Retro Header with Branding */}
-        <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-6 py-4 shadow-lg" style={{ imageRendering: 'pixelated' }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-4 py-4 shadow-lg md:px-6" style={{ imageRendering: 'pixelated' }}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Left side - Mooninites branding */}
+            <div className="flex items-center gap-3">
               {/* Mooninites image */}
-              <div className="flex h-20 w-20 items-center justify-center rounded border-4 border-black bg-black shadow-lg overflow-hidden">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded border-4 border-black bg-black shadow-lg overflow-hidden md:h-20 md:w-20">
                 <img 
                   src="/mooninites.png" 
                   alt="Mooninites" 
@@ -626,37 +627,43 @@ export default function TradeBuilderPage() {
                   style={{ imageRendering: 'pixelated' }}
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold uppercase tracking-wider text-black" style={{ fontFamily: 'monospace', textShadow: '1px 1px 0px rgba(255,255,255,0.5)' }}>
                   Brought to you by
                 </div>
-                <h1 className="text-2xl font-bold uppercase text-white" style={{ fontFamily: 'monospace', textShadow: '3px 3px 0px rgba(0,0,0,0.5), 0 0 10px rgba(0,255,0,0.5)' }}>
+                <h1 className="text-lg font-bold uppercase text-white md:text-2xl" style={{ fontFamily: 'monospace', textShadow: '3px 3px 0px rgba(0,0,0,0.5), 0 0 10px rgba(0,255,0,0.5)' }}>
                   The Mooninites
           </h1>
               </div>
             </div>
-            <div className="text-right space-y-2">
-              <div className="text-sm font-bold uppercase text-black" style={{ fontFamily: 'monospace' }}>
-                Trade Builder
+            
+            {/* Right side - Trade Builder info */}
+            <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:text-right">
+              <div className="flex-1 md:flex-none">
+                <div className="text-xs font-bold uppercase text-black md:text-sm" style={{ fontFamily: 'monospace' }}>
+                  Trade Builder
+                </div>
+                <div className="text-sm font-bold text-white md:text-lg" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
+                  {normalizedTradeData.leagueName}
+                </div>
               </div>
-              <div className="text-lg font-bold text-white" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
-                {normalizedTradeData.leagueName}
-              </div>
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 <Link 
                   href={`/league/${leagueKey}/formula`}
-                  className="text-xs font-mono text-white hover:text-yellow-300 underline"
+                  className="text-xs font-mono text-white hover:text-yellow-300 underline whitespace-nowrap"
                 >
-                  📊 Formula
+                  📊
                 </Link>
-                <ThemeSwitcher />
+                <div className="scale-90 md:scale-100">
+                  <ThemeSwitcher />
+                </div>
               </div>
             </div>
           </div>
           {/* Retro pixel effect border */}
-          <div className="mt-2 flex gap-1">
-            {[...Array(50)].map((_, i) => (
-              <div key={i} className="h-1 w-1 bg-black"></div>
+          <div className="mt-2 flex gap-1 overflow-hidden">
+            {[...Array(80)].map((_, i) => (
+              <div key={i} className="h-1 w-1 flex-shrink-0 bg-black"></div>
             ))}
           </div>
         </div>
@@ -832,7 +839,7 @@ export default function TradeBuilderPage() {
                       <button
                         key={pick.round}
                         onClick={() => togglePick("A", pick.round)}
-                        className={`rounded border px-2 py-1 text-xs ${
+                        className={`rounded border px-2 py-1.5 text-xs font-mono whitespace-nowrap ${
                           isSelected
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
@@ -841,7 +848,10 @@ export default function TradeBuilderPage() {
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
-                        R{pick.round} ({pick.score.toFixed(1)})
+                        <div className="flex flex-col items-center leading-tight">
+                          <span className="text-[10px] font-bold">R{pick.round}</span>
+                          <span className="text-[9px]">{pick.score.toFixed(0)}</span>
+                        </div>
                       </button>
                     );
                   })}
@@ -981,7 +991,7 @@ export default function TradeBuilderPage() {
                       <button
                         key={pick.round}
                         onClick={() => togglePick("B", pick.round)}
-                        className={`rounded border px-2 py-1 text-xs ${
+                        className={`rounded border px-2 py-1.5 text-xs font-mono whitespace-nowrap ${
                           isSelected
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
@@ -990,7 +1000,10 @@ export default function TradeBuilderPage() {
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
-                        R{pick.round} ({pick.score.toFixed(1)})
+                        <div className="flex flex-col items-center leading-tight">
+                          <span className="text-[10px] font-bold">R{pick.round}</span>
+                          <span className="text-[9px]">{pick.score.toFixed(0)}</span>
+                        </div>
                       </button>
                     );
                   })}
