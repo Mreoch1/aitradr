@@ -656,6 +656,17 @@ export default function TradeBuilderPage() {
                 <div className="text-sm font-bold text-white md:text-lg" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
                   {normalizedTradeData.leagueName}
                 </div>
+                {normalizedTradeData.lastUpdated && (
+                  <div className="text-xs text-gray-200 mt-1" style={{ fontFamily: 'monospace' }}>
+                    Updated: {new Date(normalizedTradeData.lastUpdated).toLocaleString('en-US', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </div>
+                )}
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
                 <Link 
@@ -688,10 +699,16 @@ export default function TradeBuilderPage() {
               </p>
             </div>
             
-            {/* Warning if no values calculated */}
+            {/* Warning if no values calculated or data is stale */}
             {(() => {
               const allPlayers = normalizedTradeData.teams.flatMap(t => t.roster);
               const hasValues = allPlayers.some(p => p.valueScore > 0);
+              
+              // Check if data is stale (>12 hours old)
+              const lastUpdated = normalizedTradeData.lastUpdated ? new Date(normalizedTradeData.lastUpdated) : null;
+              const hoursOld = lastUpdated ? (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60) : 999;
+              const isStale = hoursOld > 12;
+              
               if (!hasValues && allPlayers.length > 0) {
                 return (
                   <div className="rounded-lg border-2 border-red-500 bg-red-50 px-6 py-4 shadow-md">
@@ -704,6 +721,20 @@ export default function TradeBuilderPage() {
                   </div>
                 );
               }
+              
+              if (isStale) {
+                return (
+                  <div className="rounded-lg border-2 border-yellow-500 bg-yellow-50 px-6 py-4 shadow-md">
+                    <p className="text-center text-base font-bold text-yellow-900">
+                      ⚠️ Stats are {Math.round(hoursOld)} hours old
+                    </p>
+                    <p className="text-center text-sm text-yellow-700 mt-2">
+                      Click <strong>"🔄 Refresh Teams"</strong> below to get the latest stats from Yahoo.
+                    </p>
+                  </div>
+                );
+              }
+              
               return null;
             })()}
             

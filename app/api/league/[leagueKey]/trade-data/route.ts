@@ -16,6 +16,7 @@ export type TradeData = {
   leagueName: string;
   myTeamId?: string; // ID of the user's team
   myTeamName?: string; // Name of the user's team
+  lastUpdated: string; // ISO timestamp of last data sync
   teams: {
     id: string;
     name: string;
@@ -126,7 +127,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const forceRefresh = searchParams.get("refresh") === "true";
     
-    const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours (more frequent updates)
     const lastSync = league.updatedAt;
     const timeSinceSync = Date.now() - lastSync.getTime();
     const needsSync = timeSinceSync > SYNC_INTERVAL_MS || forceRefresh;
@@ -317,6 +318,7 @@ export async function GET(
       leagueName: league.name,
       myTeamId: myTeam?.id,
       myTeamName: myTeam?.name,
+      lastUpdated: league.updatedAt.toISOString(),
       teams: teamsData,
       draftPickValues: draftPickValues,
     };
