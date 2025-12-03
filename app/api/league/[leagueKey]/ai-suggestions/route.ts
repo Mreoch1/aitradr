@@ -62,8 +62,21 @@ export async function POST(
 
     console.log("[AI Suggestions] Found", teams.length, "teams");
 
-    // Find user's team
-    const myTeam = teams.find(t => t.isOwner);
+    // Get current user's Yahoo ID to identify their team
+    const yahooAccount = await prisma.yahooAccount.findUnique({
+      where: { userId: session.userId },
+      select: { yahooUserId: true }
+    });
+    
+    if (!yahooAccount) {
+      return NextResponse.json(
+        { ok: false, error: "Yahoo account not linked" },
+        { status: 400 }
+      );
+    }
+
+    // Find user's team by matching Yahoo manager ID
+    const myTeam = teams.find(t => t.yahooManagerId === yahooAccount.yahooUserId);
     if (!myTeam) {
       return NextResponse.json(
         { ok: false, error: "Your team could not be identified. Try clicking 'Refresh Teams' first." },
@@ -71,10 +84,11 @@ export async function POST(
       );
     }
 
-    console.log("[AI Suggestions] User's team:", myTeam.name);
+    console.log("[AI Suggestions] User's team:", myTeam.name, "Yahoo ID:", yahooAccount.yahooUserId);
 
     // Transform data for AI
     const teamsForAI: TeamForAI[] = teams.map(team => {
+      const isCurrentUser = team.yahooManagerId === yahooAccount.yahooUserId;
       const roster: PlayerForAI[] = team.rosterEntries.map(entry => {
         const player = entry.player;
         const playerValue = player.playerValues[0];
@@ -130,7 +144,7 @@ export async function POST(
       return {
         name: team.name,
         managerName: team.managerName || undefined,
-        isOwner: team.isOwner,
+        isOwner: isCurrentUser,
         roster,
         draftPicks: team.draftPicks.map(dp => dp.round),
         totalValue,

@@ -237,6 +237,9 @@ export async function GET(
     }
 
     // Build team roster data with player values and stats
+    // Determine ownership dynamically based on current user's Yahoo ID
+    const currentUserYahooId = yahooAccount.yahooUserId;
+    
     const teamsData = await Promise.all(
       teams.map(async (team: any) => {
         const roster = await Promise.all(
@@ -290,11 +293,14 @@ export async function GET(
           },
         });
 
+        // Determine if this team belongs to the current user
+        const isOwner = team.yahooManagerId === currentUserYahooId;
+
         return {
           id: team.id,
           name: team.name,
           managerName: team.managerName,
-          isOwner: team.isOwner || false,
+          isOwner: isOwner,
           roster,
           draftPicks: teamDraftPicks.map((pick: { round: number }) => pick.round).sort((a: number, b: number) => a - b) || [],
         };
