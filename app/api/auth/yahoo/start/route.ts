@@ -4,7 +4,19 @@ import {
   getYahooClientId,
   getYahooRedirectUri,
 } from "@/lib/yahoo/config";
-import { generateStateToken } from "@/lib/auth/csrf";
+import { SignJWT } from "jose";
+import { randomBytes } from "crypto";
+
+function getSecretKey(): string {
+  const secretKey = process.env.AUTH_SECRET;
+  if (!secretKey) {
+    throw new Error("AUTH_SECRET environment variable is not set");
+  }
+  return secretKey;
+}
+
+const CSRF_COOKIE_NAME = "yahoo_oauth_state";
+const CSRF_COOKIE_MAX_AGE = 60 * 10; // 10 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,13 +55,21 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    try {
-      state = await generateStateToken(returnTo || undefined);
-      console.log("[Yahoo Start] State token generated, length:", state.length, returnTo ? `returnTo: ${returnTo}` : "");
-    } catch (error) {
-      console.error("[Yahoo Start] Failed to generate state token:", error);
-      throw error;
+    // Generate state token but don't set cookie yet (we'll set it in the response)
+    const stateRaw = randomBytes(32).toString("hex");
+    const payload: { state: string; returnTo?: string } = { state: stateRaw };
+    if (returnTo) {
+      payload.returnTo = returnTo;
     }
+    
+    const signedState = await new SignJWT(payload)
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("10m")
+      .sign(new TextEncoder().encode(getSecretKey()));
+    
+    state = stateRaw;
+    console.log("[Yahoo Start] State token generated, length:", state.length, returnTo ? `returnTo: ${returnTo}` : "");
 
     // Yahoo Fantasy Sports read-only scope
     // Note: profile scope may not be needed or may cause invalid_scope error
@@ -105,7 +125,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.redirect(finalUrl);
+    // Create redirect response and manually set the cookie
+    const response = NextResponse.redirect(finalUrl);
+    
+    // Set the state cookie manually in the response headers for better Vercel compatibility
+    const cookieValue = `${CSRF_COOKIE_NAME}=${signedState}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${CSRF_COOKIE_MAX_AGE}`;
+    response.headers.set("Set-Cookie", cookieValue);
+    console.log("[Yahoo Start] Setting state cookie manually in response headers");
+    
+    return response;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
