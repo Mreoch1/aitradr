@@ -159,7 +159,12 @@ export async function fetchLeagueRosters(
                        normalized.managers?.manager?.guid?.toString() ||
                        normalized.manager_id?.toString();
     
-    console.log(`[Yahoo Roster] Team ${teamName} - Manager: ${managerName}, GUID: ${managerGuid || "not found"}`);
+    // Debug: Log the full manager object to see what Yahoo returns
+    if (!managerGuid) {
+      console.log(`[Yahoo Roster] Team ${teamName} - Manager object:`, JSON.stringify(normalized.manager || normalized.managers, null, 2).substring(0, 300));
+    }
+    
+    console.log(`[Yahoo Roster] Team ${teamName} - Manager: ${managerName}, GUID: ${managerGuid || "NOT FOUND"}`);
     
     const teamData = flattenYahooRosterTeamNode(teamNode);
     if (!teamData) continue;
