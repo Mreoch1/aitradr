@@ -682,10 +682,15 @@ export default function TradeBuilderPage() {
             <p className="text-center text-sm text-yellow-900">
               ⚠️ Your team hasn't been identified yet. 
               <button 
-                onClick={() => {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('refresh', 'true');
-                  window.location.href = url.toString();
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`/api/league/${leagueKey}/force-sync`, { method: 'POST' });
+                    if (response.ok) {
+                      window.location.reload();
+                    }
+                  } catch (error) {
+                    console.error("Refresh failed:", error);
+                  }
                 }}
                 className="ml-2 rounded bg-yellow-600 px-3 py-1 text-xs font-semibold text-white hover:bg-yellow-700"
               >
