@@ -80,3 +80,51 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ leagueKey: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    }
+
+    const { leagueKey } = await params;
+    const url = new URL(_request.url);
+    const tradeId = url.searchParams.get("id");
+
+    if (!tradeId) {
+      return NextResponse.json({ ok: false, error: "Trade ID required" }, { status: 400 });
+    }
+
+    // Verify the trade belongs to this user
+    const trade = await prisma.savedTrade.findUnique({
+      where: { id: tradeId },
+    });
+
+    if (!trade) {
+      return NextResponse.json({ ok: false, error: "Trade not found" }, { status: 404 });
+    }
+
+    if (trade.userId !== session.userId) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Delete the trade
+    await prisma.savedTrade.delete({
+      where: { id: tradeId },
+    });
+
+    console.log("[Saved Trades] Deleted trade:", tradeId);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[Saved Trades] Delete error:", error);
+    return NextResponse.json(
+      { ok: false, error: "Failed to delete trade" },
+      { status: 500 }
+    );
+  }
+}
+

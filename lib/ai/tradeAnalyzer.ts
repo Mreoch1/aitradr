@@ -335,48 +335,57 @@ export async function analyzeTrades(
   myTeam: TeamForAI,
   allTeams: TeamForAI[]
 ): Promise<TradeSuggestion[]> {
-  const otherTeams = allTeams.filter(t => !t.isOwner);
-  
-  console.log("[AI] Computing trade opportunities for:", myTeam.name);
-  
-  // Step 1: Generate potential trades using OUR logic
-  const potentialTrades = generatePotentialTrades(myTeam, otherTeams);
-  
-  console.log(`[AI] Found ${potentialTrades.length} potential trades`);
-  
-  if (potentialTrades.length === 0) {
-    return [];
-  }
-  
-  // Step 2: Ask DeepSeek to explain the top 5 trades
-  const suggestions: TradeSuggestion[] = [];
-  
-  for (const { partner, payload } of potentialTrades.slice(0, 5)) {
-    try {
-      const { reasoning, confidence } = await explainTrade(payload);
-      
-      suggestions.push({
-        tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
-        youGive: payload.trade.send.map(p => ({
-          type: "player" as const,
-          name: p.name,
-          value: p.value,
-        })),
-        youGet: payload.trade.receive.map(p => ({
-          type: "player" as const,
-          name: p.name,
-          value: p.value,
-        })),
-        netGain: payload.trade.netChangeUser,
-        reasoning,
-        confidence,
-      });
-    } catch (error) {
-      console.error("[AI] Failed to explain trade with", partner.name, error);
+  try {
+    const otherTeams = allTeams.filter(t => !t.isOwner);
+    
+    console.log("[AI] Computing trade opportunities for:", myTeam.name);
+    console.log("[AI] My team roster size:", myTeam.roster.length);
+    console.log("[AI] Other teams count:", otherTeams.length);
+    
+    // Step 1: Generate potential trades using OUR logic
+    const potentialTrades = generatePotentialTrades(myTeam, otherTeams);
+    
+    console.log(`[AI] Found ${potentialTrades.length} potential trades`);
+    
+    if (potentialTrades.length === 0) {
+      console.log("[AI] No complementary trade opportunities found");
+      return [];
     }
+  
+    // Step 2: Ask DeepSeek to explain the top 5 trades
+    const suggestions: TradeSuggestion[] = [];
+    
+    for (const { partner, payload } of potentialTrades.slice(0, 5)) {
+      try {
+        console.log(`[AI] Explaining trade with ${partner.name}...`);
+        const { reasoning, confidence } = await explainTrade(payload);
+        
+        suggestions.push({
+          tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
+          youGive: payload.trade.send.map(p => ({
+            type: "player" as const,
+            name: p.name,
+            value: p.value,
+          })),
+          youGet: payload.trade.receive.map(p => ({
+            type: "player" as const,
+            name: p.name,
+            value: p.value,
+          })),
+          netGain: payload.trade.netChangeUser,
+          reasoning,
+          confidence,
+        });
+      } catch (error) {
+        console.error("[AI] Failed to explain trade with", partner.name, error);
+      }
+    }
+    
+    console.log(`[AI] Generated ${suggestions.length} trade suggestions`);
+    
+    return suggestions;
+  } catch (error) {
+    console.error("[AI] analyzeTrades error:", error);
+    throw error;
   }
-  
-  console.log(`[AI] Generated ${suggestions.length} trade suggestions`);
-  
-  return suggestions;
 }

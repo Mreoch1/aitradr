@@ -1439,6 +1439,24 @@ export default function TradeBuilderPage() {
           setShowSavedTradesModal(false);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
+        onDeleteTrade={async (tradeId) => {
+          try {
+            const response = await fetch(`/api/league/${leagueKey}/saved-trades?id=${tradeId}`, {
+              method: 'DELETE',
+            });
+            const data = await response.json();
+            if (data.ok) {
+              // Remove from local state
+              setSavedTrades(savedTrades.filter(t => t.id !== tradeId));
+              alert("✅ Trade deleted!");
+            } else {
+              alert("Failed to delete: " + data.error);
+            }
+          } catch (error) {
+            console.error("Delete error:", error);
+            alert("Failed to delete trade");
+          }
+        }}
       />
       
       {/* Easter Egg: Shakezulla Player */}

@@ -22,6 +22,7 @@ interface SavedTradesModalProps {
   onClose: () => void;
   trades: SavedTrade[];
   onLoadTrade: (trade: SavedTrade) => void;
+  onDeleteTrade: (tradeId: string) => void;
 }
 
 export function SavedTradesModal({
@@ -29,6 +30,7 @@ export function SavedTradesModal({
   onClose,
   trades,
   onLoadTrade,
+  onDeleteTrade,
 }: SavedTradesModalProps) {
   if (!isOpen) return null;
 
@@ -80,15 +82,27 @@ export function SavedTradesModal({
                           Saved: {new Date(trade.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          onLoadTrade(trade);
-                          onClose();
-                        }}
-                        className="rounded-lg bg-blue-600 px-4 py-2 font-mono text-sm font-bold text-white hover:bg-blue-700"
-                      >
-                        📂 LOAD
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            onLoadTrade(trade);
+                            onClose();
+                          }}
+                          className="rounded-lg bg-blue-600 px-4 py-2 font-mono text-sm font-bold text-white hover:bg-blue-700"
+                        >
+                          📂 LOAD
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete "${trade.tradeName || "Untitled Trade"}"?`)) {
+                              onDeleteTrade(trade.id);
+                            }
+                          }}
+                          className="rounded-lg bg-red-600 px-4 py-2 font-mono text-sm font-bold text-white hover:bg-red-700"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
 
                     {/* Trade Details */}
