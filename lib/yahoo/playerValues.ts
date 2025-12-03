@@ -247,6 +247,19 @@ export async function calculateSkaterValue(
   // CLAMP to prevent runaway values
   value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX, value));
   
+  // Reintroduce small spread after clamping to prevent ties
+  // Uses raw z-score sum to preserve ordering within elite tier
+  const spreadAdjustment = (finalWeightedZ * 0.35);
+  value += spreadAdjustment;
+  
+  // Add tiny deterministic jitter based on player stats to break remaining ties
+  // This prevents identical 165.0 values for different elite players
+  const jitterSeed = (goals * 3.7 + assists * 2.3 + ppp * 1.1) % 3.0;
+  value += (jitterSeed - 1.5); // Range: -1.5 to +1.5
+  
+  // Re-clamp after spread (but allow slight overflow for ordering)
+  value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX + 5, value));
+  
   return value;
 }
 
@@ -300,6 +313,19 @@ export async function calculateGoalieValue(
   
   // CLAMP goalie values to prevent runaway scores
   value = Math.max(GOALIE_VALUE_MIN, Math.min(GOALIE_VALUE_MAX, value));
+  
+  // Add small spread to prevent ties at the cap
+  const spreadAdjustment = (totalZScore * 0.35);
+  value += spreadAdjustment;
+  
+  // Tiny jitter based on wins/saves to break remaining ties
+  const wins = playerStats.stats.get("wins") || 0;
+  const saves = playerStats.stats.get("saves") || 0;
+  const jitterSeed = (wins * 2.7 + saves * 0.01) % 3.0;
+  value += (jitterSeed - 1.5);
+  
+  // Re-clamp after spread
+  value = Math.max(GOALIE_VALUE_MIN, Math.min(GOALIE_VALUE_MAX + 5, value));
   
   return value;
 }

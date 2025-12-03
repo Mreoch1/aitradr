@@ -212,8 +212,15 @@ function generatePotentialTrades(
         // Calculate combined trade score
         const tradeScore = calculateTradeScore(valueDiff, categoryGain);
         
-        // Only suggest if either value is decent OR category gain is significant
-        if (valueDiff < -15 && categoryGain < 5) continue; // Skip bad value with no category help
+        // Filter logic: skip trades that don't make strategic sense
+        // 1. Skip heavy value losses with no category help
+        if (valueDiff < -15 && categoryGain < 5) continue;
+        
+        // 2. Skip sidegrades (cosmetic swaps with no purpose)
+        if (Math.abs(valueDiff) < 6 && categoryGain < 10) continue;
+        
+        // 3. Only suggest if trade score is positive (net benefit)
+        if (tradeScore < 0) continue;
         
         console.log(`[Trade Gen]   ${myPlayer.name} <-> ${theirPlayer.name}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, score=${tradeScore.toFixed(1)}`);
         

@@ -212,12 +212,21 @@ export function calculateCategoryGain(
 
 /**
  * Calculate final trade score combining value and category gains
+ * Heavily weights category improvement over pure value (H2H reality)
  */
 export function calculateTradeScore(
   valueGain: number,
   categoryGain: number
 ): number {
-  // 60% value, 40% category improvement
-  return valueGain * 0.6 + categoryGain * 0.4;
+  // Base score: value delta + heavily weighted category gain
+  let score = (valueGain * 1.0) + (categoryGain * 2.5);
+  
+  // Sidegrade penalty: trades with minimal value difference are pointless
+  // unless they have strong category justification
+  if (Math.abs(valueGain) < 6 && categoryGain < 10) {
+    score -= 15; // Heavy penalty for cosmetic swaps
+  }
+  
+  return score;
 }
 
