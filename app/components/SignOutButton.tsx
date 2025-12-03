@@ -1,22 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { signout } from "@/lib/auth/client";
-
 export function SignOutButton() {
-  const router = useRouter();
-
   const handleSignOut = async () => {
-    await signout();
-    router.push("/login");
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
   return (
     <button
       onClick={handleSignOut}
-      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      className="rounded bg-red-600 px-2 py-1 text-xs font-mono text-white hover:bg-red-700"
+      title="Sign Out"
     >
-      Sign out
+      🚪 Out
     </button>
   );
 }

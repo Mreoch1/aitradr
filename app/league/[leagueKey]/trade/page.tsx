@@ -7,6 +7,7 @@ import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { ThemeSwitcher } from "@/app/components/ThemeSwitcher";
 import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
+import { SignOutButton } from "@/app/components/SignOutButton";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
 type TradeSide = {
@@ -657,6 +658,7 @@ export default function TradeBuilderPage() {
                 <div className="scale-90 md:scale-100">
                   <ThemeSwitcher />
                 </div>
+                <SignOutButton />
               </div>
             </div>
           </div>
