@@ -291,7 +291,7 @@ export default function TradeBuilderPage() {
     pickValueMap.set(pick.round, pick.score);
   });
 
-  // Helper: Calculate keeper-adjusted value
+  // Helper: Calculate keeper-adjusted value with expiration penalty
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
     const baseValue = player.valueScore;
     
@@ -306,7 +306,14 @@ export default function TradeBuilderPage() {
     const yearsRemainingFactor = (player.yearsRemaining ?? 0) / 3;
     const keeperBonus = surplus * yearsRemainingFactor;
     
-    return baseValue + keeperBonus;
+    let adjustedValue = baseValue + keeperBonus;
+    
+    // EXPIRATION PENALTY: Last year keepers lose 25% value
+    if (player.yearsRemaining === 1) {
+      adjustedValue *= 0.75;
+    }
+    
+    return adjustedValue;
   };
 
   const playerValueMap = new Map<string, number>();
@@ -535,10 +542,12 @@ export default function TradeBuilderPage() {
             )}
             {player.isKeeper && (
               <span 
-                className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-purple-600 rounded"
-                title={`Keeper: Year ${(player.keeperYearIndex ?? 0) + 1}, ${player.yearsRemaining ?? 0} years left, Cost R${player.keeperRoundCost ?? 0}`}
+                className={`inline-block px-1.5 py-0.5 text-xs font-bold text-white rounded ${
+                  player.yearsRemaining === 1 ? 'bg-orange-600' : 'bg-purple-600'
+                }`}
+                title={`Keeper: Year ${(player.keeperYearIndex ?? 0) + 1}, ${player.yearsRemaining ?? 0} year${player.yearsRemaining === 1 ? '' : 's'} left, Cost R${player.keeperRoundCost ?? 0}${player.yearsRemaining === 1 ? ' (EXPIRES AFTER SEASON)' : ''}`}
               >
-                K
+                K{player.yearsRemaining === 1 ? '!' : ''}
               </span>
             )}
           </div>

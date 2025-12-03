@@ -107,6 +107,44 @@ export function calculateYearsRemaining(keeperYearIndex: number): number {
 }
 
 /**
+ * Calculate keeper value multiplier based on value retention and time remaining
+ * @param originalRoundAvg - Average value in original draft round
+ * @param keeperRoundCost - Average value at keeper round cost
+ * @param yearsRemaining - Years left to keep (1, 2, or 3)
+ * @returns Multiplier between 1.0 and 1.9
+ */
+export function calculateKeeperMultiplier(
+  originalRoundAvg: number,
+  keeperRoundCost: number,
+  yearsRemaining: number
+): number {
+  if (keeperRoundCost <= 0 || originalRoundAvg <= 0) return 1.0;
+  
+  const valueRetention = originalRoundAvg / keeperRoundCost;
+  const timeFactor = yearsRemaining / KEEPER_RULES.MAX_KEEPER_YEARS;
+  
+  // Multiplier = 1.0 + (retention - 1) × time factor
+  const multiplier = 1.0 + ((valueRetention - 1) * timeFactor);
+  
+  // Clamp between 1.0 and 1.9 (max 90% bonus)
+  return Math.max(1.0, Math.min(1.9, multiplier));
+}
+
+/**
+ * Apply expiration penalty for final-year keepers
+ * @param value - Current keeper-adjusted value
+ * @param yearsRemaining - Years left after this season
+ * @returns Adjusted value with decay if expiring
+ */
+export function applyExpirationPenalty(value: number, yearsRemaining: number): number {
+  if (yearsRemaining === 1) {
+    // Last year - heavy decay (25% off)
+    return value * 0.75;
+  }
+  return value;
+}
+
+/**
  * Calculate keeper surplus value (bonus for late-round steals)
  * @param playerValue - Current player value
  * @param draftRoundAvg - Average value of players drafted in that round

@@ -205,7 +205,15 @@ function generatePotentialTrades(
       for (const theirPlayer of theirTradeable.slice(0, 5)) {
         const valueDiff = theirPlayer.value - myPlayer.value;
         
-        // Fair value (within ±25 points)
+        // ELITE PLAYER PROTECTION: Never suggest trading elite for >10% downgrade
+        // Elite tier = 155+ value (MacKinnon, Celebrini, McDavid, Kucherov, etc.)
+        const isMyPlayerElite = myPlayer.value >= 155;
+        if (isMyPlayerElite && valueDiff < -15) {
+          // Losing >10% value on elite player - REJECT
+          continue;
+        }
+        
+        // Fair value (within ±25 points for non-elite)
         if (Math.abs(valueDiff) > 25) continue;
         
         // Calculate category gain
@@ -243,7 +251,18 @@ function generatePotentialTrades(
         // 2. Skip sidegrades (cosmetic swaps with no purpose)
         if (Math.abs(valueDiff) < 6 && categoryGain < 10 && keeperImpact < 5) continue;
         
-        // 3. Only suggest if trade score is positive (net benefit)
+        // 3. BAD TRADE BLOCKER: Net loss >10 requires major category gains
+        if (valueDiff < -10) {
+          // Losing 10+ value requires significant category improvement
+          if (categoryGain < 15) continue; // Need strong category justification
+          
+          // Cannot trade away elite keeper with years remaining for value loss
+          if (myPlayer.isKeeper && (myPlayer.yearsRemaining ?? 0) > 1 && myPlayer.keeperBonus && myPlayer.keeperBonus > 25) {
+            continue; // Protect valuable keepers
+          }
+        }
+        
+        // 4. Only suggest if trade score is positive (net benefit)
         if (tradeScore < 0) continue;
         
         console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, keeperImpact=${keeperImpact.toFixed(1)}, finalScore=${tradeScore.toFixed(1)}`);
