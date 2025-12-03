@@ -122,13 +122,17 @@ export async function GET(
       );
     }
 
-    // Check if we need to sync (only sync if data is older than 24 hours)
+    // Check if we need to sync (only sync if data is older than 24 hours OR if refresh param is set)
+    const searchParams = request.nextUrl.searchParams;
+    const forceRefresh = searchParams.get("refresh") === "true";
+    
     const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
     const lastSync = league.updatedAt;
     const timeSinceSync = Date.now() - lastSync.getTime();
-    const needsSync = timeSinceSync > SYNC_INTERVAL_MS;
+    const needsSync = timeSinceSync > SYNC_INTERVAL_MS || forceRefresh;
     
     console.log("[Trade Data] Last sync:", lastSync.toISOString(), "Time since:", Math.round(timeSinceSync / 1000 / 60), "minutes");
+    console.log("[Trade Data] Force refresh:", forceRefresh);
     console.log("[Trade Data] Needs sync:", needsSync);
 
     if (needsSync) {
