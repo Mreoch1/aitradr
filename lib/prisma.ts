@@ -33,4 +33,5 @@ function getPrismaClient() {
 
 const prisma = getPrismaClient();
 
+export { prisma };
 export default prisma;
