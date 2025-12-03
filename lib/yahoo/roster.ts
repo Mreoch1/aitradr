@@ -271,14 +271,29 @@ export async function syncLeagueRosters(
   }> = [];
 
   for (const roster of rosters) {
-    const team = await prisma.team.findFirst({
+    // Create or update the team
+    const team = await prisma.team.upsert({
       where: {
+        leagueId_teamKey: {
+          leagueId: league.id,
+          teamKey: roster.teamKey,
+        },
+      },
+      update: {
+        name: roster.teamName,
+        managerName: roster.managerName,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: session.userId,
         leagueId: league.id,
         teamKey: roster.teamKey,
+        name: roster.teamName,
+        managerName: roster.managerName,
       },
     });
-
-    if (!team) continue;
+    
+    console.log(`[Yahoo Roster] Team upserted: ${team.name} (${team.teamKey})`);
 
     const entries: Array<{
       playerKey: string;
