@@ -470,7 +470,7 @@ export default function TradeBuilderPage() {
     const isGoalie = player.position === "G";
     const stats = player.stats || [];
     
-    const rowBgColor = index % 2 === 0 ? "bg-white" : "bg-gray-50";
+    const rowBgColor = index % 2 === 0 ? "theme-bg-primary" : "bg-gray-50";
     const hoverColor = "hover:bg-blue-50";
     const selectedColor = isConfirmed ? "bg-green-50" : "";
 
@@ -493,7 +493,7 @@ export default function TradeBuilderPage() {
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
           {player.valueScore.toFixed(1)}
         </td>
-        <td className="px-2 py-2 text-sm font-medium text-gray-900">
+        <td className="px-2 py-2 text-sm font-medium theme-text-primary">
           <div className="flex items-center gap-2">
             <span>{player.name}</span>
             {player.status && (player.status === "IR" || player.status === "IR+" || player.status === "O") && (
@@ -503,7 +503,7 @@ export default function TradeBuilderPage() {
             )}
           </div>
         </td>
-        <td className="px-2 py-2 text-sm text-gray-600">
+        <td className="px-2 py-2 text-sm theme-text-secondary">
           {(() => {
             if (!player.positions && !player.position) return "-";
             
@@ -526,7 +526,7 @@ export default function TradeBuilderPage() {
             return [...new Set(validPositions)].join('/') || (player.position || "-");
           })()}
         </td>
-        <td className="px-2 py-2 text-sm text-gray-600">{player.nhlTeam || "-"}</td>
+        <td className="px-2 py-2 text-sm theme-text-secondary">{player.nhlTeam || "-"}</td>
         {isGoalieTable ? (
           // Goalie stats
           <>
@@ -610,7 +610,7 @@ export default function TradeBuilderPage() {
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen theme-bg-secondary">
         <div className="container mx-auto px-4 py-6">
         {/* Retro Header with Branding */}
         <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-6 py-4 shadow-lg" style={{ imageRendering: 'pixelated' }}>
@@ -669,7 +669,7 @@ export default function TradeBuilderPage() {
               onChange={(e) =>
                 setSideA({ teamId: e.target.value || null, playerIds: [], picks: [] })
               }
-              className="w-full rounded border border-gray-300 bg-white px-4 py-2"
+              className="w-full rounded border border-gray-300 theme-bg-primary px-4 py-2"
             >
               <option value="">Select Team A</option>
               {normalizedTradeData.teams.map((team) => (
@@ -686,7 +686,7 @@ export default function TradeBuilderPage() {
               onChange={(e) =>
                 setSideB({ teamId: e.target.value || null, playerIds: [], picks: [] })
               }
-              className="w-full rounded border border-gray-300 bg-white px-4 py-2"
+              className="w-full rounded border border-gray-300 theme-bg-primary px-4 py-2"
             >
               <option value="">Select Team B</option>
               {normalizedTradeData.teams.map((team) => (
@@ -701,9 +701,9 @@ export default function TradeBuilderPage() {
         {/* Roster Tables */}
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Team A */}
-          <div className="bg-white">
+          <div className="theme-bg-primary">
             <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold theme-text-primary">
                 Team A {teamA && `- ${teamA.name}`}
               </h2>
             </div>
@@ -814,7 +814,7 @@ export default function TradeBuilderPage() {
                 )}
               </>
             ) : (
-              <div className="p-4 text-gray-600">Select Team A to view roster</div>
+              <div className="p-4 theme-text-secondary">Select Team A to view roster</div>
             )}
 
             {/* Draft Picks for Team A */}
@@ -836,7 +836,7 @@ export default function TradeBuilderPage() {
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
                             ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
-                            : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:bg-gray-50"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
@@ -850,9 +850,9 @@ export default function TradeBuilderPage() {
           </div>
 
           {/* Team B */}
-          <div className="bg-white">
+          <div className="theme-bg-primary">
             <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold theme-text-primary">
                 Team B {teamB && `- ${teamB.name}`}
               </h2>
             </div>
@@ -963,7 +963,7 @@ export default function TradeBuilderPage() {
                 )}
               </>
             ) : (
-              <div className="p-4 text-gray-600">Select Team B to view roster</div>
+              <div className="p-4 theme-text-secondary">Select Team B to view roster</div>
             )}
 
             {/* Draft Picks for Team B */}
@@ -985,7 +985,7 @@ export default function TradeBuilderPage() {
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
                             ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
-                            : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:bg-gray-50"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
@@ -1001,8 +1001,8 @@ export default function TradeBuilderPage() {
 
 
         {/* Trade Summary */}
-        <div className="rounded border border-gray-300 bg-white p-6">
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">Trade Summary</h2>
+        <div className="rounded border border-gray-300 theme-bg-primary p-6">
+          <h2 className="mb-4 text-xl font-semibold theme-text-primary">Trade Summary</h2>
           {(() => {
             const teamASendTotal = teamASends.reduce((sum, item) => sum + item.value, 0);
             const teamBSendTotal = teamBSends.reduce((sum, item) => sum + item.value, 0);
@@ -1022,14 +1022,14 @@ export default function TradeBuilderPage() {
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
                           <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
-                          <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                          <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                            <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                           </div>
                         );
                       }
@@ -1038,8 +1038,8 @@ export default function TradeBuilderPage() {
                 {teamASends.length > 0 && (
                   <div className="mt-2 border-t border-gray-200 pt-2">
                     <div className="flex justify-between font-semibold">
-                      <span className="text-gray-900">Total</span>
-                      <span className="text-gray-900">
+                      <span className="theme-text-primary">Total</span>
+                      <span className="theme-text-primary">
                         {teamASends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
                       </span>
                     </div>
@@ -1059,14 +1059,14 @@ export default function TradeBuilderPage() {
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
                           <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
-                          <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                          <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="text-gray-600">{item.value.toFixed(1)}</span>
+                            <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                           </div>
                         );
                       }
@@ -1075,8 +1075,8 @@ export default function TradeBuilderPage() {
                 {teamBSends.length > 0 && (
                   <div className="mt-2 border-t border-gray-200 pt-2">
                     <div className="flex justify-between font-semibold">
-                      <span className="text-gray-900">Total</span>
-                      <span className="text-gray-900">
+                      <span className="theme-text-primary">Total</span>
+                      <span className="theme-text-primary">
                         {teamBSends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
                       </span>
                     </div>
@@ -1087,28 +1087,28 @@ export default function TradeBuilderPage() {
           </div>
           {/* Improved Trade Analysis */}
           <div className="mt-6 rounded-lg border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 p-6 shadow-md">
-            <h3 className="mb-4 text-center text-lg font-bold text-gray-900">📊 Trade Analysis</h3>
+            <h3 className="mb-4 text-center text-lg font-bold theme-text-primary">📊 Trade Analysis</h3>
             
             <div className="grid grid-cols-2 gap-6">
               {/* Team A Analysis */}
-              <div className="rounded-lg bg-white p-4 shadow">
+              <div className="rounded-lg theme-bg-primary p-4 shadow">
                 <div className="mb-3 text-center">
                   <h4 className="text-sm font-semibold text-gray-700">{teamA?.name || "Team A"}</h4>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Gives Away:</span>
+                    <span className="theme-text-secondary">Gives Away:</span>
                     <span className="font-semibold text-red-600">-{teamASendTotal.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Gets Back:</span>
+                    <span className="theme-text-secondary">Gets Back:</span>
                     <span className="font-semibold text-green-600">+{teamAReceiveTotal.toFixed(1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
-                      <span className="font-bold text-gray-900">Net Change:</span>
+                      <span className="font-bold theme-text-primary">Net Change:</span>
                       <span className={`font-bold text-lg ${
-                        diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-600"
+                        diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "theme-text-secondary"
                       }`}>
                         {diff > 0 ? "+" : ""}{diff.toFixed(1)}
                       </span>
@@ -1118,24 +1118,24 @@ export default function TradeBuilderPage() {
               </div>
               
               {/* Team B Analysis */}
-              <div className="rounded-lg bg-white p-4 shadow">
+              <div className="rounded-lg theme-bg-primary p-4 shadow">
                 <div className="mb-3 text-center">
                   <h4 className="text-sm font-semibold text-gray-700">{teamB?.name || "Team B"}</h4>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Gives Away:</span>
+                    <span className="theme-text-secondary">Gives Away:</span>
                     <span className="font-semibold text-red-600">-{teamBSendTotal.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Gets Back:</span>
+                    <span className="theme-text-secondary">Gets Back:</span>
                     <span className="font-semibold text-green-600">+{teamASendTotal.toFixed(1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
-                      <span className="font-bold text-gray-900">Net Change:</span>
+                      <span className="font-bold theme-text-primary">Net Change:</span>
                       <span className={`font-bold text-lg ${
-                        diff < 0 ? "text-green-600" : diff > 0 ? "text-red-600" : "text-gray-600"
+                        diff < 0 ? "text-green-600" : diff > 0 ? "text-red-600" : "theme-text-secondary"
                       }`}>
                         {diff < 0 ? "+" : ""}{(-diff).toFixed(1)}
                       </span>
