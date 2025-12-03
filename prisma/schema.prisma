@@ -115,20 +115,28 @@ model Player {
 }
 
 model RosterEntry {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leagueId      String
-  league        League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  teamId        String
-  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  playerId      String
-  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  yahooPosition String?
-  isBench       Boolean  @default(false)
-  isInjuredList Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId           String
+  league             League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamId             String
+  team               Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId           String
+  player             Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  yahooPosition      String?
+  isBench            Boolean  @default(false)
+  isInjuredList      Boolean  @default(false)
+  
+  // Keeper tracking
+  isKeeper           Boolean  @default(false)
+  originalDraftRound Int?     // Round they were first drafted
+  keeperYearIndex    Int?     // How many years they've been kept (0 = first year kept)
+  yearsRemaining     Int?     // How many more years can be kept
+  keeperRoundCost    Int?     // What round pick is forfeited to keep them
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([teamId, playerId])
   @@map("roster_entries")

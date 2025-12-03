@@ -35,6 +35,11 @@ export type TradeData = {
         statName: string;
         value: number;
       }[];
+      // Keeper tracking
+      isKeeper?: boolean;
+      keeperYearIndex?: number;
+      yearsRemaining?: number;
+      keeperRoundCost?: number;
     }[];
     draftPicks: number[]; // Array of round numbers (1-16) that this team owns
   }[];
@@ -278,6 +283,11 @@ export async function GET(
               status: entry.player.status, // Injury status (IR, IR+, DTD, etc.)
               valueScore: playerValue?.score ?? 0,
               stats: playerStats,
+              // Keeper data
+              isKeeper: entry.isKeeper || false,
+              keeperYearIndex: entry.keeperYearIndex ?? undefined,
+              yearsRemaining: entry.yearsRemaining ?? undefined,
+              keeperRoundCost: entry.keeperRoundCost ?? undefined,
             };
           })
         );
