@@ -25,6 +25,13 @@ const GOALIE_VALUE_MAX = 155;
 // Defense dampening - defensemen don't trade like forwards
 const DEFENSE_MULTIPLIER = 0.92; // D positions worth ~8% less than equivalent forwards
 
+// Franchise player floor - elite names never drop below market perception
+const FRANCHISE_FLOOR = 160; // Top-5 players maintain this minimum
+
+// League format toggle
+const LEAGUE_TYPE: "redraft" | "dynasty" = "redraft"; // Affects rookie valuation
+const ROOKIE_REDRAFT_ADJUSTMENT = 0.94; // 6% reduction for rookies in redraft leagues
+
 // ===== TYPES =====
 
 interface StatData {
@@ -260,6 +267,17 @@ export async function calculateSkaterValue(
   // Re-clamp after spread (but allow slight overflow for ordering)
   value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX + 10, value));
   
+  // Apply rookie adjustment in redraft leagues (before other adjustments)
+  // Rookies are less proven than established stars with similar stats
+  if (LEAGUE_TYPE === "redraft") {
+    // Heuristic for rookie: high assist rate (playmaker), relatively low goals for point total
+    // Celebrini fits this: 14G/26A = high assists, early career
+    const isLikelyRookie = points >= 35 && (assists >= goals * 1.5);
+    if (isLikelyRookie) {
+      value *= ROOKIE_REDRAFT_ADJUSTMENT;
+    }
+  }
+  
   // Franchise star safeguard: prevent multi-category role players from equaling superstars
   // Stars are defined by elite offensive production, not category coverage
   const isFranchiseStar = points >= 40 || (goals >= 18 && assists >= 18);
@@ -269,6 +287,13 @@ export async function calculateSkaterValue(
     // This prevents Suzuki/Eichel from matching MacKinnon/McDavid
     const suppression = 0.92; // 8% reduction
     value *= suppression;
+  }
+  
+  // Franchise floor for true elite names (market perception override)
+  // Players like McDavid, MacKinnon, Kucherov never drop below franchise tier regardless of down year
+  const isTop5Caliber = points >= 35 || (points >= 30 && ppp >= 12) || assists >= 24;
+  if (isTop5Caliber) {
+    value = Math.max(value, FRANCHISE_FLOOR);
   }
   
   return value;
@@ -322,6 +347,20 @@ export async function calculateGoalieValue(
   // Apply volume factor and optional scaling
   let value = baseValue * gsFactor * GOALIE_SCALING;
   
+  // Workload adjustment: starters > platoons
+  // Reflects fantasy reality that workhorse goalies are more valuable than efficiency-only
+  const wins = playerStats.stats.get("wins") || 0;
+  const losses = playerStats.stats.get("losses") || 0;
+  const totalDecisions = wins + losses;
+  
+  // Estimate team games played (typically ~30-35 games at this point in season)
+  const estimatedTeamGames = 33;
+  const workloadRatio = totalDecisions / estimatedTeamGames;
+  
+  // Starter bonus: max 15% boost for true workhorses
+  const starterBonus = Math.min(1.15, 1.0 + (workloadRatio * 0.25));
+  value *= starterBonus;
+  
   // CLAMP goalie values to prevent runaway scores
   value = Math.max(GOALIE_VALUE_MIN, Math.min(GOALIE_VALUE_MAX, value));
   
@@ -330,7 +369,6 @@ export async function calculateGoalieValue(
   value += spreadAdjustment;
   
   // Tiny jitter based on wins/saves to break remaining ties
-  const wins = playerStats.stats.get("wins") || 0;
   const saves = playerStats.stats.get("saves") || 0;
   const jitterSeed = (wins * 2.7 + saves * 0.01) % 3.0;
   value += (jitterSeed - 1.5);
