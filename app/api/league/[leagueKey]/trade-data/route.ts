@@ -8,7 +8,7 @@ import {
 } from "@/lib/yahoo/fantasyClient";
 import { ensureLeaguePlayerValues } from "@/lib/yahoo/playerValues";
 import { syncLeaguePlayerStats } from "@/lib/yahoo/playerStats";
-import { syncLeagueRoster } from "@/lib/yahoo/roster";
+import { syncLeagueRosters } from "@/lib/yahoo/roster";
 import { getYahooAuthRedirectUrl } from "@/lib/yahoo/tokenExpiration";
 
 export type TradeData = {
@@ -101,7 +101,7 @@ export async function GET(
     // Sync rosters (teams and players) first
     try {
       console.log("[Trade Data] Starting roster sync for league:", leagueKey);
-      await syncLeagueRoster(request, leagueKey);
+      await syncLeagueRosters(request, leagueKey);
       console.log("[Trade Data] Roster sync completed");
     } catch (error) {
       console.error("[Trade Data] Error syncing rosters:", error);
