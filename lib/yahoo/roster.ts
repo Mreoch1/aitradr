@@ -116,7 +116,7 @@ function flattenYahooRosterTeamNode(teamNode: any): { teamKey: string; entries: 
 export async function fetchLeagueRosters(
   request: NextRequest,
   leagueKey: string
-): Promise<Array<{ teamKey: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }>> {
+): Promise<Array<{ teamKey: string; teamName: string; managerName?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }>> {
   const client = await getYahooFantasyClientForRequest(request);
   
   let endpoint = `league/${leagueKey}/teams;out=roster`;
@@ -144,9 +144,16 @@ export async function fetchLeagueRosters(
   }
 
   const teamsList = Array.isArray(teamsArray) ? teamsArray : [teamsArray];
-  const result: Array<{ teamKey: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }> = [];
+  const result: Array<{ teamKey: string; teamName: string; managerName?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }> = [];
 
   for (const teamNode of teamsList) {
+    const normalized = normalizeYahooNode(teamNode);
+    const teamKey = normalized.team_key?.toString() || normalized["@_team_key"]?.toString() || "";
+    const teamName = normalized.name?.toString() || "";
+    const managerName = normalized.manager?.nickname?.toString() || 
+                       normalized.managers?.manager?.nickname?.toString() ||
+                       normalized.manager?.toString();
+    
     const teamData = flattenYahooRosterTeamNode(teamNode);
     if (!teamData) continue;
 
@@ -165,6 +172,8 @@ export async function fetchLeagueRosters(
     if (teamData.entries.length > 0 || players.length > 0) {
       result.push({
         teamKey: teamData.teamKey,
+        teamName,
+        managerName,
         entries: teamData.entries,
         players,
       });
