@@ -34,6 +34,12 @@ export interface PlayerForAI {
   };
   rawStats?: Array<{ statName: string; value: number }>; // Full stat array for category analysis
   status?: string; // IR, DTD, etc.
+  // Keeper data
+  isKeeper?: boolean;
+  keeperYearIndex?: number;
+  yearsRemaining?: number;
+  keeperRoundCost?: number;
+  keeperBonus?: number; // Calculated keeper surplus value
 }
 
 export interface TeamForAI {
@@ -209,20 +215,38 @@ function generatePotentialTrades(
           [theirPlayer]
         );
         
+        // Calculate keeper economics impact
+        let keeperImpact = 0;
+        
+        // Losing a high-keeper-bonus player is costly
+        const myKeeperBonus = myPlayer.keeperBonus || 0;
+        const theirKeeperBonus = theirPlayer.keeperBonus || 0;
+        keeperImpact = theirKeeperBonus - myKeeperBonus;
+        
+        // Prefer moving expiring keepers (low years remaining)
+        if (myPlayer.isKeeper && (myPlayer.yearsRemaining ?? 3) <= 1) {
+          keeperImpact += 8; // Bonus for moving expiring keeper
+        }
+        
+        // Protect fresh late-round elite keepers
+        if (myPlayer.isKeeper && myPlayer.keeperBonus && myPlayer.keeperBonus > 30) {
+          keeperImpact -= 12; // Penalty for trading away elite keeper bargain
+        }
+        
         // Calculate combined trade score
-        const tradeScore = calculateTradeScore(valueDiff, categoryGain);
+        const tradeScore = calculateTradeScore(valueDiff, categoryGain) + keeperImpact;
         
         // Filter logic: skip trades that don't make strategic sense
         // 1. Skip heavy value losses with no category help
-        if (valueDiff < -15 && categoryGain < 5) continue;
+        if (valueDiff < -15 && categoryGain < 5 && keeperImpact < 5) continue;
         
         // 2. Skip sidegrades (cosmetic swaps with no purpose)
-        if (Math.abs(valueDiff) < 6 && categoryGain < 10) continue;
+        if (Math.abs(valueDiff) < 6 && categoryGain < 10 && keeperImpact < 5) continue;
         
         // 3. Only suggest if trade score is positive (net benefit)
         if (tradeScore < 0) continue;
         
-        console.log(`[Trade Gen]   ${myPlayer.name} <-> ${theirPlayer.name}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, score=${tradeScore.toFixed(1)}`);
+        console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, keeperImpact=${keeperImpact.toFixed(1)}, finalScore=${tradeScore.toFixed(1)}`);
         
         const payload: TradePayload = {
           userTeam: myTeamSummary,

@@ -86,6 +86,13 @@ export async function POST(
 
     console.log("[AI Suggestions] User's team:", myTeam.name, "Yahoo ID:", yahooAccount.yahooUserId);
 
+    // Get draft pick values for keeper bonus calculation
+    const draftPickValues = await prisma.draftPickValue.findMany({
+      where: { leagueId: league.id },
+      orderBy: { round: 'asc' }
+    });
+    const pickValueMap = new Map(draftPickValues.map(pv => [pv.round, pv.score]));
+
     // Transform data for AI
     const teamsForAI: TeamForAI[] = teams.map(team => {
       const isCurrentUser = team.yahooManagerId === yahooAccount.yahooUserId;
@@ -128,6 +135,14 @@ export async function POST(
           ? positionsArray.join("/")
           : (player.primaryPosition || "?");
         
+        // Calculate keeper bonus if applicable
+        let keeperBonus = 0;
+        if (entry.isKeeper && entry.keeperRoundCost && entry.yearsRemaining) {
+          const draftRoundAvg = pickValueMap.get(entry.keeperRoundCost) ?? 100;
+          const surplus = Math.max(0, (playerValue?.score || 0) - draftRoundAvg);
+          keeperBonus = surplus * (entry.yearsRemaining / 3);
+        }
+        
         return {
           name: player.name,
           position: positionString,
@@ -136,6 +151,12 @@ export async function POST(
           stats: statsObj,
           rawStats: stats.map(s => ({ statName: s.statName, value: s.value })), // Full stats for category analysis
           status: player.status || undefined,
+          // Keeper data
+          isKeeper: entry.isKeeper || false,
+          keeperYearIndex: entry.keeperYearIndex ?? undefined,
+          yearsRemaining: entry.yearsRemaining ?? undefined,
+          keeperRoundCost: entry.keeperRoundCost ?? undefined,
+          keeperBonus: keeperBonus,
         };
       });
       

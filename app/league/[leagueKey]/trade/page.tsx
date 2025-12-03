@@ -313,7 +313,9 @@ export default function TradeBuilderPage() {
   const playerValueMap = new Map<string, number>();
   normalizedTradeData.teams.forEach((team) => {
     team.roster.forEach((player) => {
-      playerValueMap.set(player.playerId, player.valueScore);
+      // Use keeper-adjusted value for trade calculations
+      const tradeValue = getPlayerTradeValue(player);
+      playerValueMap.set(player.playerId, tradeValue);
     });
   });
 
