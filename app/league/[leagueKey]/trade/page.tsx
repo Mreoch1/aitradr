@@ -723,16 +723,15 @@ export default function TradeBuilderPage() {
               )}
               {aiLoading && (
                 <div className="mt-4 rounded-lg border-4 border-red-600 bg-yellow-300 p-6">
-                  {/* ATHF Characters Animation */}
-                  <div className="mb-4 flex items-center justify-center gap-4">
-                    <div className="animate-bounce" style={{ animationDelay: "0ms" }}>
-                      <div className="text-6xl">🍔</div>
-                    </div>
-                    <div className="animate-bounce" style={{ animationDelay: "200ms" }}>
-                      <div className="text-6xl">🍟</div>
-                    </div>
-                    <div className="animate-bounce" style={{ animationDelay: "400ms" }}>
-                      <div className="text-6xl">🥤</div>
+                  {/* ATHF Gang Animation */}
+                  <div className="mb-4 flex items-center justify-center">
+                    <div className="animate-pulse">
+                      <img 
+                        src="/ATHFgang.png" 
+                        alt="ATHF Gang" 
+                        className="h-32 w-auto object-contain"
+                        style={{ imageRendering: "pixelated" }}
+                      />
                     </div>
                   </div>
                   <p className="text-center font-mono text-lg font-bold text-red-700 animate-pulse">
