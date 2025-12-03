@@ -14,10 +14,13 @@ import { getYahooAuthRedirectUrl } from "@/lib/yahoo/tokenExpiration";
 export type TradeData = {
   leagueKey: string;
   leagueName: string;
+  myTeamId?: string; // ID of the user's team
+  myTeamName?: string; // Name of the user's team
   teams: {
     id: string;
     name: string;
     managerName: string | null;
+    isOwner: boolean; // True if this is the logged-in user's team
     roster: {
       playerId: string;
       yahooPlayerId: string;
@@ -254,6 +257,7 @@ export async function GET(
           id: team.id,
           name: team.name,
           managerName: team.managerName,
+          isOwner: team.isOwner || false,
           roster,
           draftPicks: teamDraftPicks.map((pick: { round: number }) => pick.round).sort((a: number, b: number) => a - b) || [],
         };
@@ -270,12 +274,19 @@ export async function GET(
       },
     });
 
+    // Identify the user's team
+    const myTeam = teamsData.find(t => t.isOwner);
+    
     const tradeData: TradeData = {
       leagueKey: league.leagueKey,
       leagueName: league.name,
+      myTeamId: myTeam?.id,
+      myTeamName: myTeam?.name,
       teams: teamsData,
       draftPickValues: draftPickValues,
     };
+
+    console.log("[Trade Data] User's team:", myTeam ? `${myTeam.name} (${myTeam.id})` : "Not identified");
 
     return NextResponse.json({
       ok: true,

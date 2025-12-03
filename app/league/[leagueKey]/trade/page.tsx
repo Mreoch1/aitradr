@@ -670,6 +670,15 @@ export default function TradeBuilderPage() {
           </div>
         </div>
 
+        {/* Welcome Message */}
+        {normalizedTradeData.myTeamName && (
+          <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 px-6 py-4 shadow-md">
+            <p className="text-center text-lg font-bold text-green-900">
+              🏒 Welcome, <span className="text-green-600">{normalizedTradeData.myTeamName}</span>!
+            </p>
+          </div>
+        )}
+
         {/* Team Selectors */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>

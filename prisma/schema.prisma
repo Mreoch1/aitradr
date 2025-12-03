@@ -61,19 +61,21 @@ model League {
 }
 
 model Team {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leagueId    String
-  league      League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  teamKey     String
-  name        String
-  managerName String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  standing    TeamStanding?
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId      String
+  league        League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamKey       String
+  name          String
+  managerName   String?
+  yahooManagerId String?      // Yahoo GUID of the team manager
+  isOwner       Boolean       @default(false) // True if this team belongs to the logged-in user
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  standing      TeamStanding?
   rosterEntries RosterEntry[]
-  draftPicks  TeamDraftPick[]
+  draftPicks    TeamDraftPick[]
 
   @@unique([leagueId, teamKey])
   @@map("teams")

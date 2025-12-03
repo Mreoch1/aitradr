@@ -116,7 +116,7 @@ function flattenYahooRosterTeamNode(teamNode: any): { teamKey: string; entries: 
 export async function fetchLeagueRosters(
   request: NextRequest,
   leagueKey: string
-): Promise<Array<{ teamKey: string; teamName: string; managerName?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }>> {
+): Promise<Array<{ teamKey: string; teamName: string; managerName?: string; managerGuid?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }>> {
   const client = await getYahooFantasyClientForRequest(request);
   
   let endpoint = `league/${leagueKey}/teams;out=roster`;
@@ -144,7 +144,7 @@ export async function fetchLeagueRosters(
   }
 
   const teamsList = Array.isArray(teamsArray) ? teamsArray : [teamsArray];
-  const result: Array<{ teamKey: string; teamName: string; managerName?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }> = [];
+  const result: Array<{ teamKey: string; teamName: string; managerName?: string; managerGuid?: string; entries: YahooRosterEntry[]; players: YahooPlayer[] }> = [];
 
   for (const teamNode of teamsList) {
     const normalized = normalizeYahooNode(teamNode);
@@ -153,6 +153,13 @@ export async function fetchLeagueRosters(
     const managerName = normalized.manager?.nickname?.toString() || 
                        normalized.managers?.manager?.nickname?.toString() ||
                        normalized.manager?.toString();
+    
+    // Extract manager GUID for team ownership tracking
+    const managerGuid = normalized.manager?.guid?.toString() || 
+                       normalized.managers?.manager?.guid?.toString() ||
+                       normalized.manager_id?.toString();
+    
+    console.log(`[Yahoo Roster] Team ${teamName} - Manager: ${managerName}, GUID: ${managerGuid || "not found"}`);
     
     const teamData = flattenYahooRosterTeamNode(teamNode);
     if (!teamData) continue;
@@ -174,6 +181,7 @@ export async function fetchLeagueRosters(
         teamKey: teamData.teamKey,
         teamName,
         managerName,
+        managerGuid,
         entries: teamData.entries,
         players,
       });
@@ -279,7 +287,21 @@ export async function syncLeagueRosters(
     }>;
   }> = [];
 
+  // Get user's Yahoo GUID for ownership matching
+  const yahooAccount = await prisma.yahooAccount.findUnique({
+    where: { userId: session.userId },
+    select: { yahooUserId: true },
+  });
+  
+  const userYahooGuid = yahooAccount?.yahooUserId;
+  console.log(`[Yahoo Roster] User's Yahoo GUID: ${userYahooGuid}`);
+
   for (const roster of rosters) {
+    // Check if this team belongs to the logged-in user
+    const isOwner = roster.managerGuid === userYahooGuid;
+    
+    console.log(`[Yahoo Roster] Team ${roster.teamName} - Manager GUID: ${roster.managerGuid}, Is Owner: ${isOwner}`);
+    
     // Create or update the team
     const team = await prisma.team.upsert({
       where: {
@@ -291,6 +313,8 @@ export async function syncLeagueRosters(
       update: {
         name: roster.teamName,
         managerName: roster.managerName,
+        yahooManagerId: roster.managerGuid,
+        isOwner: isOwner,
         updatedAt: new Date(),
       },
       create: {
@@ -299,10 +323,12 @@ export async function syncLeagueRosters(
         teamKey: roster.teamKey,
         name: roster.teamName,
         managerName: roster.managerName,
+        yahooManagerId: roster.managerGuid,
+        isOwner: isOwner,
       },
     });
     
-    console.log(`[Yahoo Roster] Team upserted: ${team.name} (${team.teamKey})`);
+    console.log(`[Yahoo Roster] Team upserted: ${team.name} (${team.teamKey}), Owner: ${team.isOwner}`);
 
     const entries: Array<{
       playerKey: string;
