@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ leagueKey: string }> }
 ) {
   try {
-    const session = await getSession(request);
+    const session = await getSession();
     if (!session) {
       return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
     }
