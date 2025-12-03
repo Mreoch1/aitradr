@@ -185,3 +185,13 @@ model PlayerStat {
   @@unique([playerId, leagueId, statId])
   @@map("player_stats")
 }
+
+model OAuthState {
+  id        String   @id @default(cuid())
+  state     String   @unique
+  returnTo  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("oauth_states")
+}
