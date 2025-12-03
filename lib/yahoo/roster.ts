@@ -367,8 +367,20 @@ export async function syncLeagueRosters(
 
       const entry = roster.entries.find((e) => e.playerKey === player.playerKey);
       if (entry) {
-        await prisma.rosterEntry.create({
-          data: {
+        await prisma.rosterEntry.upsert({
+          where: {
+            teamId_playerId: {
+              teamId: team.id,
+              playerId: playerRecord.id,
+            },
+          },
+          update: {
+            yahooPosition: entry.yahooPosition,
+            isBench: entry.isBench,
+            isInjuredList: entry.isInjuredList,
+            updatedAt: new Date(),
+          },
+          create: {
             userId: session.userId,
             leagueId: league.id,
             teamId: team.id,

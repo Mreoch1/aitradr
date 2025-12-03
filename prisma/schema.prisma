@@ -130,6 +130,7 @@ model RosterEntry {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@unique([teamId, playerId])
   @@map("roster_entries")
 }
 
