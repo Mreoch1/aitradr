@@ -101,39 +101,58 @@ export async function GET(
       );
     }
 
-    // Sync rosters (teams and players) first
-    try {
-      console.log("[Trade Data] Starting roster sync for league:", leagueKey);
-      await syncLeagueRosters(request, leagueKey);
-      console.log("[Trade Data] Roster sync completed");
-    } catch (error) {
-      console.error("[Trade Data] Error syncing rosters:", error);
-      if (error instanceof Error) {
-        console.error("[Trade Data] Error message:", error.message);
-        
-        // If Yahoo is blocking with 999, throw a proper error
-        if (error.message.includes("status 999") || error.message.includes("Request denied")) {
-          return NextResponse.json(
-            { 
-              ok: false, 
-              error: "Yahoo API access blocked. Your access token may have expired or been revoked. Please re-authenticate.",
-              reauth: true,
-              reauthUrl: `/api/auth/yahoo/start?returnTo=${encodeURIComponent(`/league/${leagueKey}/trade`)}`,
-            },
-            { status: 401 }
-          );
+    // Check if we need to sync (only sync if data is older than 24 hours)
+    const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const lastSync = league.updatedAt;
+    const timeSinceSync = Date.now() - lastSync.getTime();
+    const needsSync = timeSinceSync > SYNC_INTERVAL_MS;
+    
+    console.log("[Trade Data] Last sync:", lastSync.toISOString(), "Time since:", Math.round(timeSinceSync / 1000 / 60), "minutes");
+    console.log("[Trade Data] Needs sync:", needsSync);
+
+    if (needsSync) {
+      // Sync rosters (teams and players)
+      try {
+        console.log("[Trade Data] Starting roster sync for league:", leagueKey);
+        await syncLeagueRosters(request, leagueKey);
+        console.log("[Trade Data] Roster sync completed");
+      } catch (error) {
+        console.error("[Trade Data] Error syncing rosters:", error);
+        if (error instanceof Error) {
+          console.error("[Trade Data] Error message:", error.message);
+          
+          // If Yahoo is blocking with 999, throw a proper error
+          if (error.message.includes("status 999") || error.message.includes("Request denied")) {
+            return NextResponse.json(
+              { 
+                ok: false, 
+                error: "Yahoo API access blocked. Your access token may have expired or been revoked. Please re-authenticate.",
+                reauth: true,
+                reauthUrl: `/api/auth/yahoo/start?returnTo=${encodeURIComponent(`/league/${leagueKey}/trade`)}`,
+              },
+              { status: 401 }
+            );
+          }
         }
       }
-    }
 
-    // Sync player stats
-    try {
-      console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
-      await syncLeaguePlayerStats(request, leagueKey);
-      console.log("[Trade Data] Player stats sync completed");
-    } catch (error) {
-      console.error("[Trade Data] Error syncing player stats:", error);
-      // Continue even if stats sync fails - we'll use existing stats or defaults
+      // Sync player stats
+      try {
+        console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
+        await syncLeaguePlayerStats(request, leagueKey);
+        console.log("[Trade Data] Player stats sync completed");
+      } catch (error) {
+        console.error("[Trade Data] Error syncing player stats:", error);
+        // Continue even if stats sync fails - we'll use existing stats or defaults
+      }
+      
+      // Update the league's updatedAt timestamp
+      await prisma.league.update({
+        where: { id: league.id },
+        data: { updatedAt: new Date() },
+      });
+    } else {
+      console.log("[Trade Data] Using cached data (last sync was recent)");
     }
     
     // Ensure all players have calculated values

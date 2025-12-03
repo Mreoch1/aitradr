@@ -250,8 +250,8 @@ export default function TradeBuilderPage() {
               </div>
             </div>
             
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">Loading Trade Data</h2>
-            <p className="text-gray-600">Fetching player stats and rosters...</p>
+            <h2 className="mb-2 font-mono text-2xl font-bold text-gray-900">🏒 LOADING ROSTERS 🏒</h2>
+            <p className="font-mono text-sm text-gray-600">Building your trade lineup...</p>
             
             <style jsx>{`
               @keyframes puckShot {
