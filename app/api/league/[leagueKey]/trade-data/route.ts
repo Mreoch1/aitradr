@@ -37,6 +37,7 @@ export type TradeData = {
       }[];
       // Keeper tracking
       isKeeper?: boolean;
+      originalDraftRound?: number; // Round they were first drafted (for keeper bonus calculation)
       keeperYearIndex?: number;
       yearsRemaining?: number;
       keeperRoundCost?: number;
