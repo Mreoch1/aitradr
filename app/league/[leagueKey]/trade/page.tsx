@@ -9,6 +9,7 @@ import { ThemeSwitcher } from "@/app/components/ThemeSwitcher";
 import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
 import { SignOutButton } from "@/app/components/SignOutButton";
 import { AISuggestionsModal } from "@/app/components/AISuggestionsModal";
+import { SavedTradesModal } from "@/app/components/SavedTradesModal";
 import type { TradeSuggestion } from "@/lib/ai/tradeAnalyzer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
@@ -116,6 +117,8 @@ export default function TradeBuilderPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<TradeSuggestion[]>([]);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [savedTrades, setSavedTrades] = useState<any[]>([]);
+  const [showSavedTradesModal, setShowSavedTradesModal] = useState(false);
   const [sideB, setSideB] = useState<TradeSide>({
     teamId: null,
     playerIds: [],
@@ -721,15 +724,36 @@ export default function TradeBuilderPage() {
                   📋 VIEW LAST SUGGESTIONS ({aiSuggestions.length})
                 </button>
               )}
+              
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`/api/league/${leagueKey}/saved-trades`);
+                    const data = await response.json();
+                    if (data.ok) {
+                      setSavedTrades(data.trades);
+                      setShowSavedTradesModal(true);
+                    } else {
+                      alert("Failed to load saved trades: " + data.error);
+                    }
+                  } catch (error) {
+                    console.error("Error loading saved trades:", error);
+                    alert("Failed to load saved trades");
+                  }
+                }}
+                className="rounded-lg bg-green-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-green-700"
+              >
+                💾 VIEW SAVED TRADES
+              </button>
               {aiLoading && (
                 <div className="mt-4 rounded-lg border-4 border-red-600 bg-yellow-300 p-6">
                   {/* ATHF Gang Animation */}
                   <div className="mb-4 flex items-center justify-center">
                     <div className="animate-pulse">
                       <img 
-                        src="/ATHFgang.png" 
+                        src="/TheATHFgang.png" 
                         alt="ATHF Gang" 
-                        className="h-32 w-auto object-contain"
+                        className="h-40 w-auto object-contain"
                         style={{ imageRendering: "pixelated" }}
                       />
                     </div>
@@ -1381,6 +1405,39 @@ export default function TradeBuilderPage() {
           // Set teams and players
           setSideA({ teamId: myTeam.id, playerIds: myPlayerIds, picks: myPicks });
           setSideB({ teamId: targetTeam.id, playerIds: theirPlayerIds, picks: theirPicks });
+        }}
+      />
+      
+      {/* Saved Trades Modal */}
+      <SavedTradesModal
+        isOpen={showSavedTradesModal}
+        onClose={() => setShowSavedTradesModal(false)}
+        trades={savedTrades}
+        onLoadTrade={(trade) => {
+          // Find teams by name
+          const teamA = normalizedTradeData.teams.find(t => t.name === trade.teamAName);
+          const teamB = normalizedTradeData.teams.find(t => t.name === trade.teamBName);
+          
+          if (!teamA || !teamB) {
+            alert("Could not find teams for this saved trade");
+            return;
+          }
+          
+          // Set the trade sides
+          setSideA({
+            teamId: teamA.id,
+            playerIds: trade.teamAPlayers,
+            picks: trade.teamAPicks,
+          });
+          setSideB({
+            teamId: teamB.id,
+            playerIds: trade.teamBPlayers,
+            picks: trade.teamBPicks,
+          });
+          
+          // Close modal and scroll to top
+          setShowSavedTradesModal(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }}
       />
       
