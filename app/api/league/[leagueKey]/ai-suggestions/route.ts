@@ -143,12 +143,7 @@ export async function POST(
           const draftRoundAvg = pickValueMap.get(entry.keeperRoundCost) ?? 100;
           const surplus = Math.max(0, adjustedValue - draftRoundAvg);
           keeperBonus = surplus * (entry.yearsRemaining / 3);
-          
-          // Optional small discount on bonus only for last year
-          if (entry.yearsRemaining === 1) {
-            keeperBonus *= 0.85; // 15% haircut on keeper surplus only
-          }
-          
+          // No expiration penalty - yearsRemaining/3 already handles decay naturally
           adjustedValue += keeperBonus;
         }
         
@@ -156,7 +151,7 @@ export async function POST(
           name: player.name,
           position: positionString,
           nhlTeam: player.teamAbbr || "?",
-          value: adjustedValue, // Use keeper-adjusted and expiration-penalized value
+          value: adjustedValue, // Use keeper-adjusted value
           stats: statsObj,
           rawStats: stats.map(s => ({ statName: s.statName, value: s.value })), // Full stats for category analysis
           status: player.status || undefined,

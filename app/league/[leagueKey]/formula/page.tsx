@@ -182,7 +182,7 @@ export default async function FormulaPage({
           <h3 className="mb-4 text-xl font-semibold text-gray-800">Keeper Economics (3-Year System)</h3>
           <div className="space-y-3 rounded-lg bg-purple-50 border-2 border-purple-500 p-4">
             <div className="font-mono text-sm text-gray-700">
-              <span className="font-semibold">Keeper Value = Base Value + Keeper Bonus (with Expiration Penalty)</span>
+              <span className="font-semibold">Keeper Value = Base Value + Keeper Bonus</span>
             </div>
             <div className="space-y-2 text-sm text-purple-800">
               <div className="rounded bg-white p-3">
@@ -197,13 +197,13 @@ export default async function FormulaPage({
                 </div>
               </div>
               <div className="rounded bg-white p-3">
-                <strong className="text-orange-700">Expiration Penalty (Critical):</strong>
+                <strong className="text-blue-700">Natural Decay (No Additional Penalty):</strong>
                 <div className="mt-2 font-mono text-xs text-gray-700">
-                  if yearsRemaining = 1:<br />
-                  &nbsp;&nbsp;finalValue × 0.75  (25% decay)
+                  keeperValue = baseValue + keeperBonus<br />
+                  (no × 0.75 multiplier)
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
-                  Last-year keepers lose significant value. They're not dynasty assets.
+                  The yearsRemaining/3 factor already handles decay. Last-year keepers are still premium assets.
                 </div>
               </div>
               <div className="rounded bg-white p-3">
@@ -218,7 +218,7 @@ export default async function FormulaPage({
             </div>
             <div className="mt-3 text-sm text-purple-900">
               <strong>Example:</strong> Celebrini (R14, Year 2, 1 yr left):
-              <br />Base 168 + Bonus 36 = 204 → ×0.75 expiration penalty = <strong>153 final</strong>
+              <br />Base 168 + Bonus 36 = <strong>204 final</strong> (no expiration penalty)
             </div>
           </div>
         </div>

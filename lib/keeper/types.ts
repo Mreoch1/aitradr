@@ -131,16 +131,12 @@ export function calculateKeeperMultiplier(
 }
 
 /**
- * Apply expiration penalty for final-year keepers
- * @param value - Current keeper-adjusted value
- * @param yearsRemaining - Years left after this season
- * @returns Adjusted value with decay if expiring
+ * DEPRECATED: Expiration penalty removed
+ * Keeper decay is already handled via bonus scaling: keeperBonus = surplus × (yearsRemaining / 3)
+ * No additional penalty needed - last year keepers are still valuable assets
  */
 export function applyExpirationPenalty(value: number, yearsRemaining: number): number {
-  if (yearsRemaining === 1) {
-    // Last year - heavy decay (25% off)
-    return value * 0.75;
-  }
+  // No expiration penalty - return value as-is
   return value;
 }
 

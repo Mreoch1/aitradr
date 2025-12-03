@@ -301,15 +301,11 @@ export default function TradeBuilderPage() {
     }
     
     // Calculate keeper bonus (surplus value × years remaining factor)
-    // The yearsRemaining/3 factor already handles expiration scaling
+    // The yearsRemaining/3 factor already handles expiration scaling naturally
+    // No additional penalty - last year keepers are still premium assets
     const draftRoundAvg = pickValueMap.get(player.keeperRoundCost) ?? 100;
     const surplus = Math.max(0, baseValue - draftRoundAvg);
-    let keeperBonus = surplus * ((player.yearsRemaining ?? 0) / 3);
-    
-    // Optional small discount on bonus only for last year (not full value)
-    if (player.yearsRemaining === 1) {
-      keeperBonus *= 0.85; // 15% haircut on keeper surplus only (not the whole value)
-    }
+    const keeperBonus = surplus * ((player.yearsRemaining ?? 0) / 3);
     
     return baseValue + keeperBonus;
   };
