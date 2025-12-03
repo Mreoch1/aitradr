@@ -8,6 +8,8 @@ import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { ThemeSwitcher } from "@/app/components/ThemeSwitcher";
 import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
 import { SignOutButton } from "@/app/components/SignOutButton";
+import { AISuggestionsModal } from "@/app/components/AISuggestionsModal";
+import type { TradeSuggestion } from "@/lib/ai/tradeAnalyzer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
 type TradeSide = {
@@ -111,6 +113,9 @@ export default function TradeBuilderPage() {
     playerIds: [],
     picks: [],
   });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<TradeSuggestion[]>([]);
+  const [showAiModal, setShowAiModal] = useState(false);
   const [sideB, setSideB] = useState<TradeSide>({
     teamId: null,
     playerIds: [],
@@ -670,12 +675,49 @@ export default function TradeBuilderPage() {
           </div>
         </div>
 
-        {/* Welcome Message */}
+        {/* Welcome Message with AI Button */}
         {normalizedTradeData.myTeamName ? (
-          <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 px-6 py-4 shadow-md">
-            <p className="text-center text-lg font-bold text-green-900">
-              🏒 Welcome, <span className="text-green-600">{normalizedTradeData.myTeamName}</span>!
-            </p>
+          <div className="mb-6 space-y-4">
+            <div className="rounded-lg border-2 border-green-500 bg-green-50 px-6 py-4 shadow-md">
+              <p className="text-center text-lg font-bold text-green-900">
+                🏒 Welcome, <span className="text-green-600">{normalizedTradeData.myTeamName}</span>!
+              </p>
+            </div>
+            
+            {/* AI Suggestions Button */}
+            <div className="text-center">
+              <button
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const response = await fetch(`/api/league/${leagueKey}/ai-suggestions`, { 
+                      method: 'POST' 
+                    });
+                    const data = await response.json();
+                    if (data.ok && data.suggestions) {
+                      setAiSuggestions(data.suggestions);
+                      setShowAiModal(true);
+                    } else {
+                      alert(data.error || "AI analysis failed");
+                    }
+                  } catch (error) {
+                    console.error("AI error:", error);
+                    alert("Failed to get AI suggestions");
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                disabled={aiLoading}
+                className="rounded-lg bg-gradient-to-r from-purple-600 to-green-500 px-8 py-3 font-mono text-lg font-bold text-white shadow-lg hover:from-purple-700 hover:to-green-600 disabled:opacity-50"
+              >
+                {aiLoading ? "🤖 ANALYZING..." : "🤖 GET AI TRADE SUGGESTIONS"}
+              </button>
+              {aiLoading && (
+                <p className="mt-2 font-mono text-xs theme-text-secondary">
+                  Analyzing 174 players across 10 teams...
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="mb-6 rounded-lg border-2 border-yellow-500 bg-yellow-50 px-6 py-4 shadow-md">
@@ -1212,6 +1254,54 @@ export default function TradeBuilderPage() {
           })()}
         </div>
       </div>
+      
+      {/* AI Suggestions Modal */}
+      <AISuggestionsModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        suggestions={aiSuggestions}
+        myTeamName={normalizedTradeData.myTeamName || "Your Team"}
+        onPreviewTrade={(suggestion) => {
+          // Find teams by name
+          const targetTeam = normalizedTradeData.teams.find(t => t.name === suggestion.tradeWithTeam);
+          const myTeam = normalizedTradeData.teams.find(t => t.isOwner);
+          
+          if (!targetTeam || !myTeam) return;
+          
+          // Set Team A to user's team, Team B to trade partner
+          setSideA({ teamId: myTeam.id, playerIds: [], picks: [] });
+          setSideB({ teamId: targetTeam.id, playerIds: [], picks: [] });
+          
+          // Auto-select suggested players/picks
+          setTimeout(() => {
+            const myPlayerIds: string[] = [];
+            const theirPlayerIds: string[] = [];
+            const myPicks: number[] = [];
+            const theirPicks: number[] = [];
+            
+            suggestion.youGive.forEach(item => {
+              if (item.type === "player") {
+                const player = myTeam.roster.find(p => p.name === item.name);
+                if (player) myPlayerIds.push(player.playerId);
+              } else {
+                theirPicks.push(parseInt(item.name)); // Round number
+              }
+            });
+            
+            suggestion.youGet.forEach(item => {
+              if (item.type === "player") {
+                const player = targetTeam.roster.find(p => p.name === item.name);
+                if (player) theirPlayerIds.push(player.playerId);
+              } else {
+                myPicks.push(parseInt(item.name)); // Round number
+              }
+            });
+            
+            setSideA({ teamId: myTeam.id, playerIds: myPlayerIds, picks: theirPicks });
+            setSideB({ teamId: targetTeam.id, playerIds: theirPlayerIds, picks: myPicks });
+          }, 100);
+        }}
+      />
       
       {/* Easter Egg: Shakezulla Player */}
       <ShakezullaPlayer />
