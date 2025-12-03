@@ -16,6 +16,15 @@ const BASELINE_GS = 5;
 // Optional scaling factor to balance goalies vs skaters
 const GOALIE_SCALING = 1.0; // Adjust if goalies still seem over/undervalued
 
+// Value range constraints - prevent runaway scores
+const SKATER_VALUE_MIN = 45;
+const SKATER_VALUE_MAX = 165;
+const GOALIE_VALUE_MIN = 50;
+const GOALIE_VALUE_MAX = 155;
+
+// Defense dampening - defensemen don't trade like forwards
+const DEFENSE_MULTIPLIER = 0.92; // D positions worth ~8% less than equivalent forwards
+
 // ===== TYPES =====
 
 interface StatData {
@@ -185,27 +194,58 @@ export async function calculateSkaterValue(
     }
   }
   
-  // Base value from weighted z-scores
-  let value = finalWeightedZ * 10 + 100;
+  // Base value from weighted z-scores (scaled down to prevent runaway scores)
+  let value = finalWeightedZ * 8 + 100; // Reduced from 10 to 8 for tighter scaling
   
-  // Position scarcity multiplier
+  // Get player stats for market correction rules
+  const goals = playerStats.stats.get("goals") || 0;
+  const assists = playerStats.stats.get("assists") || 0;
+  const points = goals + assists;
+  const ppp = playerStats.stats.get("powerplay points") || 0;
+  
+  // Position scarcity multiplier (before defense dampening)
   if (player?.primaryPosition) {
     const pos = player.primaryPosition as keyof typeof POSITION_MULTIPLIERS;
     const multiplier = POSITION_MULTIPLIERS[pos] || 1.0;
     value *= multiplier;
   }
   
-  // Superstar floor: Elite scorers cannot rank below depth players
-  const goals = playerStats.stats.get("goals") || 0;
-  const assists = playerStats.stats.get("assists") || 0;
-  const points = goals + assists;
-  const ppp = playerStats.stats.get("powerplay points") || 0;
-  
-  // Top-tier offensive production gets a floor
-  const isEliteScorer = points >= 25 || goals >= 12 || ppp >= 12;
-  if (isEliteScorer) {
-    value = Math.max(value, 135);
+  // Defense dampening: D positions don't trade like forwards
+  if (player?.primaryPosition === 'D') {
+    // Only apply dampening to non-elite defensemen
+    // Elite D (30+ points) maintain value
+    if (points < 30) {
+      value *= DEFENSE_MULTIPLIER;
+    }
   }
+  
+  // Market gravity multiplier based on scoring production
+  // Reflects Yahoo trade reality: elite scorers command premium
+  if (points >= 40 || goals >= 20) {
+    // Top 10 tier - absolute elite
+    value *= 1.12;
+  } else if (points >= 30 || goals >= 15) {
+    // Top 30 tier - star players
+    value *= 1.08;
+  } else if (points >= 22 || goals >= 10) {
+    // Top 60 tier - solid contributors
+    value *= 1.04;
+  }
+  
+  // Superstar floor: Elite scorers cannot rank below depth players
+  const isEliteScorer = points >= 30 || goals >= 15 || ppp >= 15;
+  if (isEliteScorer) {
+    value = Math.max(value, 145); // Raised from 135 to 145
+  }
+  
+  // Hard floor for any scoring threat
+  const isScorer = points >= 20 || goals >= 10;
+  if (isScorer) {
+    value = Math.max(value, 115);
+  }
+  
+  // CLAMP to prevent runaway values
+  value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX, value));
   
   return value;
 }
@@ -252,11 +292,16 @@ export async function calculateGoalieValue(
   const gamesStarted = playerStats.stats.get("games started") || 0;
   const gsFactor = Math.sqrt(Math.min(1.0, gamesStarted / BASELINE_GS));
   
-  // Scale to make values positive and easier to read
-  const baseValue = totalZScore * 10 + 100;
+  // Scale to make values positive and easier to read (reduced scaling)
+  const baseValue = totalZScore * 8 + 100; // Reduced from 10 to 8
   
   // Apply volume factor and optional scaling
-  return baseValue * gsFactor * GOALIE_SCALING;
+  let value = baseValue * gsFactor * GOALIE_SCALING;
+  
+  // CLAMP goalie values to prevent runaway scores
+  value = Math.max(GOALIE_VALUE_MIN, Math.min(GOALIE_VALUE_MAX, value));
+  
+  return value;
 }
 
 // ===== HELPER FUNCTIONS =====
