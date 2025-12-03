@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
 
+// Hardcoded league key for atfh2
+const ATFH2_LEAGUE_KEY = "465.l.9080";
+
 export default async function DashboardPage() {
   const session = await getSession();
 
@@ -19,7 +22,7 @@ export default async function DashboardPage() {
     redirect("/api/auth/yahoo/start");
   }
 
-  // Redirect directly to leagues page
-  redirect("/leagues");
+  // Redirect directly to atfh2 trade builder
+  redirect(`/league/${ATFH2_LEAGUE_KEY}/trade`);
 }
 
