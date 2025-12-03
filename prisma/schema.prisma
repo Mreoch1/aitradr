@@ -197,3 +197,23 @@ model OAuthState {
 
   @@map("oauth_states")
 }
+
+model SavedTrade {
+  id          String   @id @default(cuid())
+  userId      String
+  leagueId    String
+  tradeName   String?  // Optional user-given name
+  teamAId     String
+  teamBId     String
+  teamAPlayers String  // JSON array of player IDs
+  teamBPlayers String  // JSON array of player IDs
+  teamAPicks  String   // JSON array of pick rounds
+  teamBPicks  String   // JSON array of pick rounds
+  teamAValue  Float
+  teamBValue  Float
+  netDiff     Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("saved_trades")
+}
