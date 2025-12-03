@@ -19,56 +19,49 @@ type TradeSide = {
   picks: number[]; // rounds
 };
 
-// Helper to get stat value by name - more robust matching
+// Helper to get stat value by name - exact matching based on Yahoo's actual stat names
 function getStatValue(stats: { statName: string; value: number }[] | null | undefined, statName: string): number {
   if (!stats || stats.length === 0) return 0;
   
   const lowerStatName = statName.toLowerCase().trim();
-  const statMap: Record<string, string[]> = {
-    "goals": ["goal", "g"],
-    "assists": ["assist", "a"],
-    "points": ["point", "p"],
-    "plus/minus": ["plus/minus", "+/-", "plus minus", "plusminus"],
-    "penalty minutes": ["penalty minute", "pim", "pen min"],
-    "power play points": ["power play point", "ppp", "pp point"],
-    "short handed points": ["short handed point", "shp", "sh point"],
-    "game winning goals": ["game winning goal", "gwg", "gw goal"],
-    "shots on goal": ["shot on goal", "sog", "shot"],
-    "faceoffs won": ["faceoff won", "fw", "face off won", "fo won"],
-    "hits": ["hit"],
-    "blocked shots": ["blocked shot", "blk", "block"],
-    "wins": ["win", "w"],
-    "losses": ["loss", "l"],
-    "goals against": ["goal against", "ga", "goals allowed"],
-    "goals against average": ["goal against average", "gaa", "goals against avg"],
-    "saves": ["save", "sv"],
-    "save percentage": ["save percentage", "sv%", "save pct", "save %"],
-    "shutouts": ["shutout", "sho"],
+  
+  // Map our internal stat names to Yahoo's actual stat names (case-sensitive as stored in DB)
+  const yahooStatNameMap: Record<string, string[]> = {
+    "goals": ["Goals"],
+    "assists": ["Assists"],
+    "points": ["Points"],
+    "plus/minus": ["Plus/Minus"],
+    "penalty minutes": ["Penalty Minutes"],
+    "power play points": ["Powerplay Points", "Power Play Points", "PowerPlay Points"],
+    "short handed points": ["Shorthanded Points", "Short Handed Points", "ShortHanded Points"],
+    "game winning goals": ["Game-Winning Goals", "Game Winning Goals"],
+    "shots on goal": ["Shots on Goal", "Shots On Goal"],
+    "faceoffs won": ["Faceoffs Won", "FaceOffs Won"],
+    "hits": ["Hits"],
+    "blocked shots": ["Blocks", "Blocked Shots"],
+    "wins": ["Wins"],
+    "losses": ["Losses"],
+    "goals against": ["Goals Against"],
+    "goals against average": ["Goals Against Average"],
+    "saves": ["Saves"],
+    "save percentage": ["Save Percentage", "Save %"],
+    "shutouts": ["Shutouts"],
   };
   
-  // Try exact match first
-  const exactMatch = stats.find((s) => 
-    s.statName.toLowerCase().trim() === lowerStatName
-  );
-  if (exactMatch) return exactMatch.value;
+  // Get possible Yahoo stat names
+  const possibleNames = yahooStatNameMap[lowerStatName];
+  if (!possibleNames) {
+    console.warn(`Unknown stat name: ${statName}`);
+    return 0;
+  }
   
-  // Try keyword matching
-  const keywords = statMap[lowerStatName] || [lowerStatName];
-  for (const keyword of keywords) {
-    const match = stats.find((s) => 
-      s.statName.toLowerCase().includes(keyword) || 
-      keyword.includes(s.statName.toLowerCase())
-    );
+  // Find exact match from list of possible names
+  for (const yahooName of possibleNames) {
+    const match = stats.find((s) => s.statName === yahooName);
     if (match) return match.value;
   }
   
-  // Try partial match as last resort
-  const partialMatch = stats.find((s) => 
-    s.statName.toLowerCase().includes(lowerStatName) ||
-    lowerStatName.includes(s.statName.toLowerCase())
-  );
-  
-  return partialMatch?.value ?? 0;
+  return 0;
 }
 
 // Helper to format stat name for display

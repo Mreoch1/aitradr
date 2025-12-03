@@ -32,8 +32,9 @@ interface ZScoreStats {
 // ===== STAT CATEGORIES =====
 
 // Weighted buckets - reflects fantasy trade reality, not pure math equality
+// MUST match Yahoo's stat names after normalization
 const SCORING_CORE = ["goals", "assists", "powerplay points", "shots on goal"] as const;
-const SUPPORT_STATS = ["plus/minus", "shorthanded points", "game winning goals"] as const;
+const SUPPORT_STATS = ["plus/minus", "shorthanded points", "game-winning goals"] as const;
 const GRIND_STATS = ["penalty minutes", "faceoffs won", "hits", "blocks"] as const;
 
 // All skater categories for z-score calculation

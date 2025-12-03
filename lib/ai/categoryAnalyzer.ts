@@ -5,19 +5,19 @@
 
 import type { TeamForAI, PlayerForAI } from "./tradeAnalyzer";
 
-// Skater categories (11 total) - MUST match Yahoo API stat names
+// Skater categories (11 total) - MUST match Yahoo API stat names (normalized)
 const SKATER_STATS = [
   "goals",
   "assists", 
   "plus/minus",
   "penalty minutes",
-  "powerplay points",
-  "shorthanded points",
-  "game winning goals",
+  "powerplay points",      // Yahoo: "Powerplay Points"
+  "shorthanded points",    // Yahoo: "Shorthanded Points"
+  "game-winning goals",    // Yahoo: "Game-Winning Goals"
   "shots on goal",
   "faceoffs won",
   "hits",
-  "blocks"
+  "blocks"                 // Yahoo: "Blocks"
 ] as const;
 
 // Goalie categories (5 total) - MUST match Yahoo API stat names
@@ -48,6 +48,13 @@ export interface PlayerCategoryContribution {
 }
 
 /**
+ * Normalize stat name for consistent matching (same as playerValues.ts)
+ */
+function normalizeStatName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ").replace(/\./g, "");
+}
+
+/**
  * Extract stat value from player's raw stats array
  * PlayerForAI.rawStats is Array<{ statName: string, value: number }>
  */
@@ -56,9 +63,12 @@ function getStatValue(player: PlayerForAI, statKey: AnyStat): number {
     return 0;
   }
   
-  // Find the stat by name (case-insensitive match)
+  // Normalize both the search key and stat names for matching
+  const normalizedKey = normalizeStatName(statKey);
+  
+  // Find the stat by normalized name
   const stat = player.rawStats.find(s => 
-    s.statName.toLowerCase() === statKey.toLowerCase()
+    normalizeStatName(s.statName) === normalizedKey
   );
   
   return stat?.value || 0;
