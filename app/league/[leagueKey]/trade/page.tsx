@@ -185,103 +185,65 @@ export default function TradeBuilderPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center py-20">
-            {/* Hockey Player Shooting Animation */}
-            <div className="relative mb-8" style={{ width: '400px', height: '200px' }}>
-              {/* Ice Rink Background */}
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-200">
-                {/* Center Line */}
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-blue-300"></div>
-                {/* Face-off Circles */}
-                <div className="absolute top-1/4 left-1/4 w-16 h-16 rounded-full border-2 border-blue-300"></div>
-                <div className="absolute top-1/4 right-1/4 w-16 h-16 rounded-full border-2 border-blue-300"></div>
-              </div>
-              
-              {/* Hockey Player (Left Side) */}
-              <div className="absolute left-8 top-1/2 -translate-y-1/2">
-                {/* Stick */}
-                <div 
-                  className="absolute w-16 h-1 bg-amber-800 origin-bottom-left"
-                  style={{
-                    transform: 'rotate(-20deg)',
-                    bottom: '20px',
-                    left: '15px',
-                    animation: 'stickSwing 1.5s ease-in-out infinite'
-                  }}
-                ></div>
-                {/* Body */}
-                <div className="w-8 h-12 bg-blue-600 rounded-t-lg"></div>
-                {/* Head */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-amber-100 border-2 border-blue-600"></div>
-                {/* Helmet */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 border-gray-800"></div>
-              </div>
-              
-              {/* Puck */}
-              <div 
-                className="absolute w-6 h-6 rounded-full bg-gray-800 shadow-lg z-10"
-                style={{
-                  left: '100px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  animation: 'puckShot 1.5s ease-in-out infinite'
-                }}
-              >
-                <div className="absolute inset-0.5 rounded-full border border-gray-600"></div>
-              </div>
-              
-              {/* Goal Net (Right Side) */}
-              <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                {/* Net Frame */}
-                <div className="w-20 h-16 border-4 border-red-600 rounded-t-lg">
-                  {/* Net Lines */}
-                  <div className="absolute inset-0 border border-red-400 opacity-50" style={{
-                    backgroundImage: `
-                      repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(220, 38, 38, 0.3) 4px, rgba(220, 38, 38, 0.3) 8px),
-                      repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(220, 38, 38, 0.3) 4px, rgba(220, 38, 38, 0.3) 8px)
-                    `
-                  }}></div>
-                </div>
-                {/* Goal Posts */}
-                <div className="absolute -bottom-2 left-0 w-1 h-4 bg-red-600"></div>
-                <div className="absolute -bottom-2 right-0 w-1 h-4 bg-red-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="text-center">
+          {/* Mooninites Pixel Art */}
+          <div className="relative mx-auto mb-8 h-48 w-64">
+            {/* Animated Mooninite */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="animate-pulse" style={{ imageRendering: 'pixelated' }}>
+                <img 
+                  src="/mooninites.png" 
+                  alt="Loading" 
+                  className="h-32 w-auto pixelated"
+                  style={{ imageRendering: 'pixelated' }}
+                />
               </div>
             </div>
             
-            <h2 className="mb-2 font-mono text-2xl font-bold text-gray-900">🏒 LOADING ROSTERS 🏒</h2>
-            <p className="font-mono text-sm text-gray-600">Building your trade lineup...</p>
-            
-            <style jsx>{`
-              @keyframes puckShot {
-                0% {
-                  left: 100px;
-                  opacity: 1;
-                }
-                50% {
-                  left: 280px;
-                  opacity: 1;
-                }
-                100% {
-                  left: 320px;
-                  opacity: 0;
-                }
-              }
-              
-              @keyframes stickSwing {
-                0%, 100% {
-                  transform: rotate(-20deg);
-                }
-                30% {
-                  transform: rotate(-5deg);
-                }
-                50% {
-                  transform: rotate(-20deg);
-                }
-              }
-            `}</style>
+            {/* Retro Scanlines */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 0, 0.03) 2px, rgba(0, 255, 0, 0.03) 4px)'
+            }}></div>
           </div>
+          
+          {/* Pixel Text */}
+          <div className="space-y-4">
+            <h2 className="font-mono text-3xl font-bold text-green-500" style={{ 
+              textShadow: '2px 2px 0px #10b981, 4px 4px 0px #059669',
+              letterSpacing: '0.1em'
+            }}>
+              LOADING
+            </h2>
+            
+            {/* Retro Progress Bar */}
+            <div className="mx-auto h-6 w-64 border-4 border-green-500 bg-black p-1">
+              <div className="h-full animate-pulse bg-gradient-to-r from-green-500 via-purple-500 to-green-500 bg-[length:200%_100%]" style={{
+                animation: 'progressBar 2s linear infinite'
+              }}></div>
+            </div>
+            
+            <p className="font-mono text-sm text-green-400">
+              THE MOONINITES ARE SYNCING YOUR DATA...
+            </p>
+            
+            {/* Blinking Cursor */}
+            <div className="flex items-center justify-center gap-1">
+              <span className="font-mono text-purple-500">PLEASE WAIT</span>
+              <span className="inline-block h-4 w-2 animate-pulse bg-purple-500"></span>
+            </div>
+          </div>
+          
+          <style jsx>{`
+            @keyframes progressBar {
+              0% {
+                background-position: 0% 50%;
+              }
+              100% {
+                background-position: 200% 50%;
+              }
+            }
+          `}</style>
         </div>
       </div>
     );
@@ -1025,15 +987,6 @@ export default function TradeBuilderPage() {
           </div>
         </div>
 
-        {/* Link to Formula Page */}
-        <div className="mb-6 text-center">
-          <Link
-            href={`/league/${leagueKey}/formula`}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700"
-          >
-            📊 View Value Calculation Formula
-          </Link>
-        </div>
 
         {/* Trade Summary */}
         <div className="rounded border border-gray-300 bg-white p-6">
