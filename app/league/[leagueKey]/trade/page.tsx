@@ -1307,7 +1307,12 @@ export default function TradeBuilderPage() {
                       const player = teamA?.roster.find((p) => p.playerId === item.id);
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
-                          <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
+                          <span className="text-gray-700">
+                            {player?.name || "Unknown Player"}
+                            {player?.isKeeper && (
+                              <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
+                            )}
+                          </span>
                           <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                         </div>
                       );
@@ -1344,7 +1349,12 @@ export default function TradeBuilderPage() {
                       const player = teamB?.roster.find((p) => p.playerId === item.id);
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
-                          <span className="text-gray-700">{player?.name || "Unknown Player"}</span>
+                          <span className="text-gray-700">
+                            {player?.name || "Unknown Player"}
+                            {player?.isKeeper && (
+                              <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
+                            )}
+                          </span>
                           <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
                         </div>
                       );
@@ -1445,6 +1455,27 @@ export default function TradeBuilderPage() {
               ) : (
                 <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {Math.abs(diff).toFixed(1)} points</p>
               )}
+              
+              {/* Keeper impact notice */}
+              {(() => {
+                const hasKeepers = [...teamASends, ...teamBSends].some(item => {
+                  if (item.type === "player") {
+                    const playerA = teamA?.roster.find(p => p.playerId === item.id);
+                    const playerB = teamB?.roster.find(p => p.playerId === item.id);
+                    return playerA?.isKeeper || playerB?.isKeeper;
+                  }
+                  return false;
+                });
+                
+                if (hasKeepers) {
+                  return (
+                    <p className="mt-2 text-xs text-purple-700 font-semibold">
+                      🔒 Keeper-adjusted values included (surplus × years remaining)
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
             
             {/* Save Trade Button */}
