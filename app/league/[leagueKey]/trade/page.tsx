@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { ThemeSwitcher } from "@/app/components/ThemeSwitcher";
+import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
 type TradeSide = {
@@ -1166,6 +1167,9 @@ export default function TradeBuilderPage() {
           })()}
         </div>
       </div>
+      
+      {/* Easter Egg: Shakezulla Player */}
+      <ShakezullaPlayer />
     </div>
     </ThemeProvider>
   );
