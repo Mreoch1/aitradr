@@ -201,14 +201,14 @@ export default function TradeBuilderPage() {
                   style={{ imageRendering: 'pixelated' }}
                 />
               </div>
-            </div>
-            
+              </div>
+              
             {/* Retro Scanlines */}
             <div className="absolute inset-0 pointer-events-none" style={{
               backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 0, 0.03) 2px, rgba(0, 255, 0, 0.03) 4px)'
             }}></div>
-          </div>
-          
+              </div>
+              
           {/* Pixel Text */}
           <div className="space-y-4">
             <h2 className="font-mono text-3xl font-bold text-green-500" style={{ 
@@ -222,8 +222,8 @@ export default function TradeBuilderPage() {
             <div className="mx-auto h-6 w-64 border-4 border-green-500 bg-black p-1">
               <div className="h-full animate-pulse bg-gradient-to-r from-green-500 via-purple-500 to-green-500 bg-[length:200%_100%]" style={{
                 animation: 'progressBar 2s linear infinite'
-              }}></div>
-            </div>
+                  }}></div>
+                </div>
             
             <p className="font-mono text-sm text-green-400">
               THE MOONINITES ARE SYNCING YOUR DATA...
@@ -233,19 +233,19 @@ export default function TradeBuilderPage() {
             <div className="flex items-center justify-center gap-1">
               <span className="font-mono text-purple-500">PLEASE WAIT</span>
               <span className="inline-block h-4 w-2 animate-pulse bg-purple-500"></span>
+              </div>
             </div>
-          </div>
-          
-          <style jsx>{`
+            
+            <style jsx>{`
             @keyframes progressBar {
               0% {
                 background-position: 0% 50%;
-              }
-              100% {
+                }
+                100% {
                 background-position: 200% 50%;
+                }
               }
-            }
-          `}</style>
+            `}</style>
         </div>
       </div>
     );
@@ -253,7 +253,7 @@ export default function TradeBuilderPage() {
 
   if (error || !tradeData) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen theme-bg-secondary">
         <div className="container mx-auto px-4 py-8">
           <div className="rounded-lg border border-red-200 bg-red-50 p-6">
             <p className="text-red-600">{error || "Failed to load trade data"}</p>
@@ -470,9 +470,9 @@ export default function TradeBuilderPage() {
     const isGoalie = player.position === "G";
     const stats = player.stats || [];
     
-    const rowBgColor = index % 2 === 0 ? "theme-bg-primary" : "bg-gray-50";
-    const hoverColor = "hover:bg-blue-50";
-    const selectedColor = isConfirmed ? "bg-green-50" : "";
+    const rowBgColor = index % 2 === 0 ? "theme-bg-primary" : "theme-bg-secondary";
+    const hoverColor = "hover:opacity-80";
+    const selectedColor = isConfirmed ? "!bg-green-100 dark:!bg-green-900" : "";
 
     return (
       <tr key={player.playerId} className={`border-t border-gray-200 ${selectedColor || rowBgColor} ${hoverColor} transition-colors`}>
@@ -492,7 +492,7 @@ export default function TradeBuilderPage() {
         </td>
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
           {player.valueScore.toFixed(1)}
-        </td>
+            </td>
         <td className="px-2 py-2 text-sm font-medium theme-text-primary">
           <div className="flex items-center gap-2">
             <span>{player.name}</span>
@@ -502,7 +502,7 @@ export default function TradeBuilderPage() {
               </span>
             )}
           </div>
-        </td>
+            </td>
         <td className="px-2 py-2 text-sm theme-text-secondary">
           {(() => {
             if (!player.positions && !player.position) return "-";
@@ -525,7 +525,7 @@ export default function TradeBuilderPage() {
             // Return unique positions joined by slash
             return [...new Set(validPositions)].join('/') || (player.position || "-");
           })()}
-        </td>
+            </td>
         <td className="px-2 py-2 text-sm theme-text-secondary">{player.nhlTeam || "-"}</td>
         {isGoalieTable ? (
           // Goalie stats
@@ -611,7 +611,7 @@ export default function TradeBuilderPage() {
   return (
     <ThemeProvider>
       <div className="min-h-screen theme-bg-secondary">
-        <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6">
         {/* Retro Header with Branding */}
         <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-6 py-4 shadow-lg" style={{ imageRendering: 'pixelated' }}>
           <div className="flex items-center justify-between">
@@ -631,7 +631,7 @@ export default function TradeBuilderPage() {
                 </div>
                 <h1 className="text-2xl font-bold uppercase text-white" style={{ fontFamily: 'monospace', textShadow: '3px 3px 0px rgba(0,0,0,0.5), 0 0 10px rgba(0,255,0,0.5)' }}>
                   The Mooninites
-                </h1>
+          </h1>
               </div>
             </div>
             <div className="text-right space-y-2">
@@ -702,7 +702,7 @@ export default function TradeBuilderPage() {
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Team A */}
           <div className="theme-bg-primary">
-            <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+            <div className="border-b border-gray-300 theme-bg-secondary px-4 py-3">
               <h2 className="text-lg font-semibold theme-text-primary">
                 Team A {teamA && `- ${teamA.name}`}
               </h2>
@@ -712,7 +712,7 @@ export default function TradeBuilderPage() {
                 {/* Skaters Section */}
                 {teamA.roster.some((p) => p.position !== "G") && (
                   <>
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200">
                       <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
                     </div>
                     {/* Top Scrollbar for Skaters */}
@@ -732,13 +732,13 @@ export default function TradeBuilderPage() {
                       onScroll={handleTableScrollA}
                     >
                       <table className="w-full text-xs" style={{ minWidth: '900px' }}>
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                  <thead className="theme-bg-secondary">
+                    <tr>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
                             <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
                             <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
                             <SortableHeader label="G" statKey="goals" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700" />
                             <SortableHeader label="A" statKey="assists" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
                             <SortableHeader label="P" statKey="points" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
@@ -768,13 +768,13 @@ export default function TradeBuilderPage() {
                 {/* Goalies Section */}
                 {teamA.roster.some((p) => p.position === "G") && (
                   <>
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
+                    <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
                       <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
                     </div>
                     {/* Goalies Table */}
                     <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
                       <table className="w-full text-xs" style={{ minWidth: '600px' }}>
-                        <thead className="bg-gray-100">
+                        <thead className="theme-bg-secondary">
                           <tr>
                             <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
                             <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
@@ -788,22 +788,22 @@ export default function TradeBuilderPage() {
                             <SortableHeader label="SV" statKey="saves" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
                             <SortableHeader label="SV%" statKey="save percentage" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
                             <SortableHeader label="SHO" statKey="shutouts" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
-                          </tr>
-                        </thead>
-                        <tbody>
+                    </tr>
+                  </thead>
+                  <tbody>
                           {sortPlayers(teamA.roster.filter((p) => p.position === "G"), sortConfig.teamA).map((player, index) => {
-                            const isPending = pendingSelections.A.includes(player.playerId);
-                            const isConfirmed = sideA.playerIds.includes(player.playerId);
+                      const isPending = pendingSelections.A.includes(player.playerId);
+                      const isConfirmed = sideA.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "A", isPending, isConfirmed, true, index);
-                          })}
-                        </tbody>
-                      </table>
+                    })}
+                  </tbody>
+                </table>
                     </div>
                   </>
                 )}
                 
                 {pendingSelections.A.length > 0 && (
-                  <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                  <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
                     <button
                       onClick={() => confirmPlayers("A")}
                       className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -819,7 +819,7 @@ export default function TradeBuilderPage() {
 
             {/* Draft Picks for Team A */}
             {teamA && normalizedTradeData.draftPickValues.length > 0 && (
-              <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+              <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
                 <h3 className="mb-2 text-sm font-semibold text-gray-700">
                   Draft Picks {teamA?.draftPicks && teamA.draftPicks.length > 0 && `(${teamA.draftPicks.length} owned)`}
                 </h3>
@@ -836,7 +836,7 @@ export default function TradeBuilderPage() {
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
                             ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
-                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:bg-gray-50"
+                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:theme-bg-secondary"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
@@ -851,7 +851,7 @@ export default function TradeBuilderPage() {
 
           {/* Team B */}
           <div className="theme-bg-primary">
-            <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+            <div className="border-b border-gray-300 theme-bg-secondary px-4 py-3">
               <h2 className="text-lg font-semibold theme-text-primary">
                 Team B {teamB && `- ${teamB.name}`}
               </h2>
@@ -861,7 +861,7 @@ export default function TradeBuilderPage() {
                 {/* Skaters Section */}
                 {teamB.roster.some((p) => p.position !== "G") && (
                   <>
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200">
                       <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
                     </div>
                     {/* Top Scrollbar for Skaters */}
@@ -881,13 +881,13 @@ export default function TradeBuilderPage() {
                       onScroll={handleTableScrollB}
                     >
                       <table className="w-full text-xs" style={{ minWidth: '900px' }}>
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
+                  <thead className="theme-bg-secondary">
+                    <tr>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
                             <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
                             <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
                             <SortableHeader label="G" statKey="goals" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700" />
                             <SortableHeader label="A" statKey="assists" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
                             <SortableHeader label="P" statKey="points" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
@@ -917,13 +917,13 @@ export default function TradeBuilderPage() {
                 {/* Goalies Section */}
                 {teamB.roster.some((p) => p.position === "G") && (
                   <>
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
+                    <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
                       <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
                     </div>
                     {/* Goalies Table */}
                     <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
                       <table className="w-full text-xs" style={{ minWidth: '600px' }}>
-                        <thead className="bg-gray-100">
+                        <thead className="theme-bg-secondary">
                           <tr>
                             <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
                             <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
@@ -937,22 +937,22 @@ export default function TradeBuilderPage() {
                             <SortableHeader label="SV" statKey="saves" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
                             <SortableHeader label="SV%" statKey="save percentage" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
                             <SortableHeader label="SHO" statKey="shutouts" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
-                          </tr>
-                        </thead>
-                        <tbody>
+                    </tr>
+                  </thead>
+                  <tbody>
                           {sortPlayers(teamB.roster.filter((p) => p.position === "G"), sortConfig.teamB).map((player, index) => {
-                            const isPending = pendingSelections.B.includes(player.playerId);
-                            const isConfirmed = sideB.playerIds.includes(player.playerId);
+                      const isPending = pendingSelections.B.includes(player.playerId);
+                      const isConfirmed = sideB.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "B", isPending, isConfirmed, true, index);
-                          })}
-                        </tbody>
-                      </table>
+                    })}
+                  </tbody>
+                </table>
                     </div>
                   </>
                 )}
                 
                 {pendingSelections.B.length > 0 && (
-                  <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                  <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
                     <button
                       onClick={() => confirmPlayers("B")}
                       className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -968,7 +968,7 @@ export default function TradeBuilderPage() {
 
             {/* Draft Picks for Team B */}
             {teamB && normalizedTradeData.draftPickValues.length > 0 && (
-              <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+              <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
                 <h3 className="mb-2 text-sm font-semibold text-gray-700">
                   Draft Picks {teamB?.draftPicks && teamB.draftPicks.length > 0 && `(${teamB.draftPicks.length} owned)`}
                 </h3>
@@ -985,7 +985,7 @@ export default function TradeBuilderPage() {
                             ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
                             : isOwned
                             ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
-                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:bg-gray-50"
+                            : "border-gray-300 theme-bg-primary theme-text-secondary hover:theme-bg-secondary"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
                       >
@@ -1094,12 +1094,12 @@ export default function TradeBuilderPage() {
               <div className="rounded-lg theme-bg-primary p-4 shadow">
                 <div className="mb-3 text-center">
                   <h4 className="text-sm font-semibold text-gray-700">{teamA?.name || "Team A"}</h4>
-                </div>
+            </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gives Away:</span>
                     <span className="font-semibold text-red-600">-{teamASendTotal.toFixed(1)}</span>
-                  </div>
+            </div>
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gets Back:</span>
                     <span className="font-semibold text-green-600">+{teamAReceiveTotal.toFixed(1)}</span>
