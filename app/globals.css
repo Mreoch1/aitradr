@@ -30,15 +30,184 @@
   --accent-secondary: #a78bfa;
 }
 
-/* Mooninites Mode (Green & Purple) */
+/* Mooninites Mode (Retro Pixel Aesthetic) */
 [data-theme="mooninites"] {
-  --bg-primary: #1a0a2e;
-  --bg-secondary: #0f051f;
-  --text-primary: #22c55e;
-  --text-secondary: #86efac;
-  --border-color: #7c3aed;
-  --accent-primary: #22c55e;
-  --accent-secondary: #a855f7;
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --text-primary: #00ff00;
+  --text-secondary: #00cc00;
+  --border-color: #00ff00;
+  --accent-primary: #ff00ff;
+  --accent-secondary: #00ffff;
+  
+  /* Retro styling */
+  font-family: 'Courier New', monospace !important;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* Mooninite theme retro effects */
+[data-theme="mooninites"] * {
+  font-family: 'Courier New', monospace !important;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+[data-theme="mooninites"] button {
+  border: 2px solid #00ff00 !important;
+  box-shadow: 0 0 10px #00ff00, inset 0 0 5px rgba(0, 255, 0, 0.2) !important;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+[data-theme="mooninites"] button:hover {
+  box-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00, inset 0 0 10px rgba(0, 255, 0, 0.3) !important;
+  background-color: #001a00 !important;
+}
+
+[data-theme="mooninites"] input,
+[data-theme="mooninites"] select,
+[data-theme="mooninites"] textarea {
+  border: 2px solid #00ff00 !important;
+  background-color: #000000 !important;
+  color: #00ff00 !important;
+}
+
+[data-theme="mooninites"] table {
+  border: 2px solid #00ff00 !important;
+}
+
+[data-theme="mooninites"] th {
+  background-color: #001a00 !important;
+  color: #00ff00 !important;
+  border: 1px solid #00ff00 !important;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+[data-theme="mooninites"] td {
+  border: 1px solid #003300 !important;
+}
+
+[data-theme="mooninites"] .rounded-lg,
+[data-theme="mooninites"] .rounded {
+  border-radius: 0 !important; /* Angular, pixelated look */
+}
+
+[data-theme="mooninites"] img {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Scanline effect for Mooninite mode */
+[data-theme="mooninites"]::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 0, 0.03),
+    rgba(0, 255, 0, 0.03) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+/* Mooninite theme CRT flicker effect */
+[data-theme="mooninites"] body {
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 1; }
+  50% { opacity: 0.98; }
+  100% { opacity: 1; }
+}
+
+/* Mooninite special button styles */
+[data-theme="mooninites"] .theme-btn-ai {
+  background: linear-gradient(to right, #ff00ff, #00ff00) !important;
+  border: 3px solid #00ff00 !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="mooninites"] .theme-btn-ai:hover {
+  background: linear-gradient(to right, #00ff00, #ff00ff) !important;
+  animation: pulse-green 0.5s infinite;
+}
+
+[data-theme="mooninites"] .theme-btn-primary {
+  background-color: #00ff00 !important;
+  color: #000000 !important;
+  border: 3px solid #00ff00 !important;
+}
+
+[data-theme="mooninites"] .theme-btn-primary:hover {
+  background-color: #00cc00 !important;
+  box-shadow: 0 0 30px #00ff00 !important;
+}
+
+[data-theme="mooninites"] .theme-btn-secondary {
+  background-color: #ff00ff !important;
+  color: #000000 !important;
+  border: 3px solid #ff00ff !important;
+}
+
+[data-theme="mooninites"] .theme-btn-secondary:hover {
+  background-color: #cc00cc !important;
+  box-shadow: 0 0 30px #ff00ff !important;
+}
+
+[data-theme="mooninites"] .theme-btn-warning {
+  background-color: #00ffff !important;
+  color: #000000 !important;
+  border: 3px solid #00ffff !important;
+}
+
+[data-theme="mooninites"] .theme-btn-warning:hover {
+  background-color: #00cccc !important;
+  box-shadow: 0 0 30px #00ffff !important;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00; }
+  50% { box-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00; }
+}
+
+/* ASCII-style borders for Mooninite mode */
+[data-theme="mooninites"] .border-2,
+[data-theme="mooninites"] .border-4 {
+  border-style: solid !important;
+  border-color: #00ff00 !important;
+}
+
+/* Green glow for warnings/alerts in Mooninite mode */
+[data-theme="mooninites"] .bg-red-50,
+[data-theme="mooninites"] .bg-yellow-50 {
+  background-color: #001a00 !important;
+  border: 2px solid #00ff00 !important;
+}
+
+[data-theme="mooninites"] .text-red-900,
+[data-theme="mooninites"] .text-yellow-900 {
+  color: #00ff00 !important;
+}
+
+[data-theme="mooninites"] .text-red-700,
+[data-theme="mooninites"] .text-yellow-700 {
+  color: #00cc00 !important;
 }
 
 /* Aqua Teen Hunger Force Mode (Bright & Chaotic) */

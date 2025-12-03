@@ -762,7 +762,11 @@ export default function TradeBuilderPage() {
                   }
                 }}
                 disabled={aiLoading}
-                className="rounded-lg bg-gradient-to-r from-purple-600 to-green-500 px-8 py-3 font-mono text-lg font-bold text-white shadow-lg hover:from-purple-700 hover:to-green-600 disabled:opacity-50"
+                className="rounded-lg px-8 py-3 font-mono text-lg font-bold shadow-lg disabled:opacity-50 theme-btn-ai"
+                style={{
+                  background: 'linear-gradient(to right, var(--accent-secondary), var(--accent-primary))',
+                  color: 'white'
+                }}
               >
                 {aiLoading ? "🤖 ANALYZING..." : "🤖 GET AI TRADE SUGGESTIONS"}
               </button>
@@ -770,7 +774,11 @@ export default function TradeBuilderPage() {
               {aiSuggestions.length > 0 && !aiLoading && (
                 <button
                   onClick={() => setShowAiModal(true)}
-                  className="rounded-lg bg-blue-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-blue-700"
+                  className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg theme-btn-secondary"
+                  style={{
+                    backgroundColor: 'var(--accent-primary)',
+                    color: 'white'
+                  }}
                 >
                   📋 VIEW LAST SUGGESTIONS ({aiSuggestions.length})
                 </button>
@@ -792,7 +800,11 @@ export default function TradeBuilderPage() {
                     alert("Failed to load saved trades");
                   }
                 }}
-                className="rounded-lg bg-green-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-green-700"
+                className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg theme-btn-primary"
+                style={{
+                  backgroundColor: 'var(--accent-primary)',
+                  color: 'white'
+                }}
               >
                 💾 VIEW SAVED TRADES
               </button>
@@ -817,7 +829,11 @@ export default function TradeBuilderPage() {
                   }
                 }}
                 disabled={refreshLoading}
-                className="rounded-lg bg-yellow-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-yellow-700 disabled:opacity-50"
+                className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg disabled:opacity-50 theme-btn-warning"
+                style={{
+                  backgroundColor: 'var(--accent-secondary)',
+                  color: 'white'
+                }}
               >
                 {refreshLoading ? "⏳ SYNCING..." : "🔄 REFRESH TEAMS"}
               </button>
