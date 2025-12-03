@@ -685,7 +685,7 @@ export default function TradeBuilderPage() {
             </div>
             
             {/* AI Suggestions Button */}
-            <div className="text-center">
+            <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={async () => {
                   setAiLoading(true);
@@ -712,6 +712,15 @@ export default function TradeBuilderPage() {
               >
                 {aiLoading ? "🤖 ANALYZING..." : "🤖 GET AI TRADE SUGGESTIONS"}
               </button>
+              
+              {aiSuggestions.length > 0 && !aiLoading && (
+                <button
+                  onClick={() => setShowAiModal(true)}
+                  className="rounded-lg bg-blue-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-blue-700"
+                >
+                  📋 VIEW LAST SUGGESTIONS ({aiSuggestions.length})
+                </button>
+              )}
               {aiLoading && (
                 <div className="mt-4 rounded-lg border-4 border-red-600 bg-yellow-300 p-6">
                   {/* ATHF Characters Animation */}
@@ -1274,7 +1283,7 @@ export default function TradeBuilderPage() {
             
             {/* Save Trade Button */}
             {(teamASends.length > 0 || teamBSends.length > 0) && (
-              <div className="mt-6 text-center">
+              <div className="mt-8 border-t-2 border-gray-300 pt-6 text-center">
                 <button
                   onClick={async () => {
                     const tradeName = prompt("Give this trade a name (optional):");
@@ -1306,7 +1315,7 @@ export default function TradeBuilderPage() {
                       alert("Failed to save trade");
                     }
                   }}
-                  className="rounded-lg bg-blue-600 px-6 py-3 font-mono font-bold text-white hover:bg-blue-700"
+                  className="rounded-lg bg-gradient-to-r from-green-600 to-blue-600 px-8 py-4 font-mono text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-blue-700"
                 >
                   💾 SAVE THIS TRADE
                 </button>
@@ -1326,44 +1335,53 @@ export default function TradeBuilderPage() {
         suggestions={aiSuggestions}
         myTeamName={normalizedTradeData.myTeamName || "Your Team"}
         onPreviewTrade={(suggestion) => {
-          // Find teams by name
-          const targetTeam = normalizedTradeData.teams.find(t => t.name === suggestion.tradeWithTeam);
+          console.log("[Preview] Looking for team:", suggestion.tradeWithTeam);
+          
+          // Find teams by name (try exact match or contains match)
+          const targetTeam = normalizedTradeData.teams.find(t => 
+            t.name === suggestion.tradeWithTeam || 
+            t.name.includes(suggestion.tradeWithTeam.split("(")[0].trim())
+          );
           const myTeam = normalizedTradeData.teams.find(t => t.isOwner);
           
-          if (!targetTeam || !myTeam) return;
+          console.log("[Preview] Found target team:", targetTeam?.name);
+          console.log("[Preview] Found my team:", myTeam?.name);
           
-          // Set Team A to user's team, Team B to trade partner
-          setSideA({ teamId: myTeam.id, playerIds: [], picks: [] });
-          setSideB({ teamId: targetTeam.id, playerIds: [], picks: [] });
+          if (!targetTeam || !myTeam) {
+            alert("Could not find teams for preview");
+            return;
+          }
           
-          // Auto-select suggested players/picks
-          setTimeout(() => {
-            const myPlayerIds: string[] = [];
-            const theirPlayerIds: string[] = [];
-            const myPicks: number[] = [];
-            const theirPicks: number[] = [];
-            
-            suggestion.youGive.forEach(item => {
-              if (item.type === "player") {
-                const player = myTeam.roster.find(p => p.name === item.name);
-                if (player) myPlayerIds.push(player.playerId);
-              } else {
-                theirPicks.push(parseInt(item.name)); // Round number
-              }
-            });
-            
-            suggestion.youGet.forEach(item => {
-              if (item.type === "player") {
-                const player = targetTeam.roster.find(p => p.name === item.name);
-                if (player) theirPlayerIds.push(player.playerId);
-              } else {
-                myPicks.push(parseInt(item.name)); // Round number
-              }
-            });
-            
-            setSideA({ teamId: myTeam.id, playerIds: myPlayerIds, picks: theirPicks });
-            setSideB({ teamId: targetTeam.id, playerIds: theirPlayerIds, picks: myPicks });
-          }, 100);
+          const myPlayerIds: string[] = [];
+          const theirPlayerIds: string[] = [];
+          const myPicks: number[] = [];
+          const theirPicks: number[] = [];
+          
+          suggestion.youGive.forEach(item => {
+            if (item.type === "player") {
+              const player = myTeam.roster.find(p => p.name === item.name);
+              console.log("[Preview] Looking for your player:", item.name, "Found:", player?.name);
+              if (player) myPlayerIds.push(player.playerId);
+            } else {
+              theirPicks.push(parseInt(item.name));
+            }
+          });
+          
+          suggestion.youGet.forEach(item => {
+            if (item.type === "player") {
+              const player = targetTeam.roster.find(p => p.name === item.name);
+              console.log("[Preview] Looking for their player:", item.name, "Found:", player?.name);
+              if (player) theirPlayerIds.push(player.playerId);
+            } else {
+              myPicks.push(parseInt(item.name));
+            }
+          });
+          
+          console.log("[Preview] Setting trade:", { myPlayerIds, theirPlayerIds, myPicks, theirPicks });
+          
+          // Set teams and players
+          setSideA({ teamId: myTeam.id, playerIds: myPlayerIds, picks: myPicks });
+          setSideB({ teamId: targetTeam.id, playerIds: theirPlayerIds, picks: theirPicks });
         }}
       />
       
