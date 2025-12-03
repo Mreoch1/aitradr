@@ -475,6 +475,7 @@ export async function getPlayerValue(
 
 /**
  * Calculate draft pick values dynamically based on actual player values.
+ * Uses percentile-based approach with floors to ensure sensible values.
  */
 export async function calculateDraftPickValues(leagueId: string): Promise<void> {
   console.log(`[DraftPicks] Calculating dynamic draft pick values for league`);
@@ -500,6 +501,7 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
     const roundPlayers = playerValues.slice(startIdx, endIdx);
     
     if (roundPlayers.length === 0) {
+      // Fallback for empty rounds
       const score = Math.max(5, 85 - (round * 5));
       await prisma.draftPickValue.upsert({
         where: { leagueId_round: { leagueId, round } },
@@ -509,15 +511,30 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
       continue;
     }
     
+    // Calculate average but apply floor based on round
     const avgValue = roundPlayers.reduce((sum, p) => sum + p.score, 0) / roundPlayers.length;
+    
+    // Floor values by round - late picks still have value
+    let finalValue = avgValue;
+    if (round >= 14) {
+      // Rounds 14-16: Floor at 5-1 (bench/speculative value)
+      const lateFloor = Math.max(1, 8 - (round - 14) * 3);
+      finalValue = Math.max(avgValue, lateFloor);
+    } else if (round >= 10) {
+      // Rounds 10-13: Floor at 30 (still rosterable)
+      finalValue = Math.max(avgValue, 30);
+    } else if (round >= 7) {
+      // Rounds 7-9: Floor at 60 (depth value)
+      finalValue = Math.max(avgValue, 60);
+    }
     
     await prisma.draftPickValue.upsert({
       where: { leagueId_round: { leagueId, round } },
-      update: { score: avgValue },
-      create: { leagueId, round, score: avgValue },
+      update: { score: finalValue },
+      create: { leagueId, round, score: finalValue },
     });
     
-    console.log(`[DraftPicks] Round ${round}: ${avgValue.toFixed(1)}`);
+    console.log(`[DraftPicks] Round ${round}: ${finalValue.toFixed(1)} ${avgValue !== finalValue ? `(floor applied, was ${avgValue.toFixed(1)})` : ''}`);
   }
 }
 
