@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { leagueKey: string } }
+  { params }: { params: Promise<{ leagueKey: string }> }
 ) {
   try {
     const session = await getSession(request);
@@ -12,7 +12,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const { leagueKey } = params;
+    const { leagueKey } = await params;
 
     // Find the league
     const league = await prisma.league.findFirst({
