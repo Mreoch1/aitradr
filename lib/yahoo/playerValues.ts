@@ -30,7 +30,7 @@ const FRANCHISE_FLOOR = 160; // Top-5 players maintain this minimum
 
 // League format toggle
 const LEAGUE_TYPE: "redraft" | "dynasty" = "redraft"; // Affects rookie valuation
-const ROOKIE_REDRAFT_ADJUSTMENT = 0.94; // 6% reduction for rookies in redraft leagues
+const ROOKIE_REDRAFT_ADJUSTMENT = 0.96; // 4% reduction for rookies in redraft leagues (more mild)
 
 // ===== TYPES =====
 
@@ -289,11 +289,19 @@ export async function calculateSkaterValue(
     value *= suppression;
   }
   
-  // Franchise floor for true elite names (market perception override)
-  // Players like McDavid, MacKinnon, Kucherov never drop below franchise tier regardless of down year
-  const isTop5Caliber = points >= 35 || (points >= 30 && ppp >= 12) || assists >= 24;
-  if (isTop5Caliber) {
+  // Franchise floor for TRUE elite names only (very selective)
+  // Only generational talents: 38+ points OR 25+ assists OR extreme scoring balance
+  // This catches McDavid (36P + 25A), MacKinnon (46P), but NOT Suzuki (30P, 22A)
+  const isTrueElite = points >= 38 || assists >= 25 || (points >= 35 && assists >= 22);
+  if (isTrueElite) {
     value = Math.max(value, FRANCHISE_FLOOR);
+  }
+  
+  // Small reputation bias for proven franchise names
+  // Players with elite balanced production get market premium
+  const hasEliteReputation = points >= 40 || (goals >= 20 && assists >= 20);
+  if (hasEliteReputation) {
+    value += 4; // +4 point boost for proven franchise players
   }
   
   return value;
