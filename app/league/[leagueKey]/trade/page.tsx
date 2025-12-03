@@ -1025,93 +1025,14 @@ export default function TradeBuilderPage() {
           </div>
         </div>
 
-        {/* Value Formula Reference */}
-        <div className="mb-6 rounded border border-gray-300 bg-white p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Value Calculation Formula</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <h3 className="mb-2 font-semibold text-gray-700">Skaters</h3>
-              <div className="space-y-1 text-sm text-gray-600">
-                <div className="flex justify-between">
-                  <span>Goals (G):</span>
-                  <span className="font-mono text-green-700">× 4</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Assists (A):</span>
-                  <span className="font-mono text-blue-700">× 3</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Power Play Points (PPP):</span>
-                  <span className="font-mono text-orange-700">× 2</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Short Handed Points (SHP):</span>
-                  <span className="font-mono">× 3</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Game Winning Goals (GWG):</span>
-                  <span className="font-mono">× 2.5</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Plus/Minus (+/-):</span>
-                  <span className="font-mono">× 0.5</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Penalty Minutes (PIM):</span>
-                  <span className="font-mono">× 0.08</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shots on Goal (SOG):</span>
-                  <span className="font-mono">× 0.15</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Faceoffs Won (FW):</span>
-                  <span className="font-mono">× 0.02</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Hits (HIT):</span>
-                  <span className="font-mono">× 0.25</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Blocks (BLK):</span>
-                  <span className="font-mono">× 0.3</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="mb-2 font-semibold text-gray-700">Goalies</h3>
-              <div className="space-y-1 text-sm text-gray-600">
-                <div className="flex justify-between">
-                  <span>Wins (W):</span>
-                  <span className="font-mono text-green-700">× 8</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Saves (SV):</span>
-                  <span className="font-mono text-blue-700">× 0.10</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Save Percentage (SV%):</span>
-                  <span className="font-mono">× 50</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shutouts (SHO):</span>
-                  <span className="font-mono text-purple-700">× 12</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Losses (L):</span>
-                  <span className="font-mono text-red-700">× -4</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Goals Against (GA):</span>
-                  <span className="font-mono text-red-700">× -0.3</span>
-                </div>
-              </div>
-              <div className="mt-4 rounded bg-blue-50 p-3 text-xs text-gray-600">
-                <p className="font-semibold mb-1">Draft Pick Values:</p>
-                <p>Calculated dynamically based on average player values in each draft tier. Round 1 = top-tier players, later rounds = depth players.</p>
-              </div>
-            </div>
-          </div>
+        {/* Link to Formula Page */}
+        <div className="mb-6 text-center">
+          <Link
+            href={`/league/${leagueKey}/formula`}
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700"
+          >
+            📊 View Value Calculation Formula
+          </Link>
         </div>
 
         {/* Trade Summary */}
