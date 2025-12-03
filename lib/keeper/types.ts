@@ -141,19 +141,42 @@ export function applyExpirationPenalty(value: number, yearsRemaining: number): n
 }
 
 /**
- * Calculate keeper surplus value (bonus for late-round steals)
- * @param playerValue - Current player value
- * @param draftRoundAvg - Average value of players drafted in that round
- * @param yearsRemaining - How many more years can be kept
- * @returns Keeper bonus to add to trade value
+ * New keeper bonus formula with tier-based caps and stability bonuses
+ * Balances late-round steals vs multi-year control of studs
+ * 
+ * @param baseValue - Current player value from z-score engine
+ * @param draftRound - Original draft round (1-16)
+ * @param draftRoundAvg - Average player value for this draft round
+ * @param yearsOfControl - Years of keeper eligibility remaining (1-3)
+ * @returns Keeper bonus points
  */
 export function calculateKeeperBonus(
-  playerValue: number,
+  baseValue: number,
+  draftRound: number,
   draftRoundAvg: number,
-  yearsRemaining: number
+  yearsOfControl: number
 ): number {
-  const surplus = Math.max(0, playerValue - draftRoundAvg);
-  const bonus = surplus * (yearsRemaining / KEEPER_RULES.MAX_KEEPER_YEARS);
-  return bonus;
+  // Step 1: Calculate raw surplus vs round average
+  const surplus = Math.max(0, baseValue - draftRoundAvg);
+  
+  // Step 2: Cap surplus by tier to prevent late-round monsters from blowing up
+  const tier = getRoundTier(draftRound);
+  const surplusCapByTier: Record<KeeperTier, number> = {
+    'A': 25,  // Rounds 1-4: small cap (elite picks have less upside)
+    'B': 40,  // Rounds 5-10: medium cap
+    'C': 55,  // Rounds 11-16: large cap (reward late-round steals)
+  };
+  const cappedSurplus = Math.min(surplus, surplusCapByTier[tier]);
+  
+  // Step 3: Weight by years of control (non-linear)
+  // 1 year = 0.60x, 2 years = 0.85x, 3 years = 1.10x
+  const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+  
+  // Step 4: Stability bonus - rewards multi-year control even on studs
+  // This is what MacKinnon was missing: 3 years of R1 stud has value
+  const stabilityBonus = 4 * yearsOfControl;  // 4, 8, or 12 points
+  
+  // Step 5: Final keeper bonus
+  return cappedSurplus * yearWeight + stabilityBonus;
 }
 

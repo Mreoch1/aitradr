@@ -111,6 +111,7 @@ export default function TradeBuilderPage() {
   const [aiSuggestions, setAiSuggestions] = useState<TradeSuggestion[]>([]);
   const [showAiModal, setShowAiModal] = useState(false);
   const [savedTrades, setSavedTrades] = useState<any[]>([]);
+  const [hasSyncIssues, setHasSyncIssues] = useState(false);
   const [showSavedTradesModal, setShowSavedTradesModal] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [sideB, setSideB] = useState<TradeSide>({
@@ -741,6 +742,12 @@ export default function TradeBuilderPage() {
               const hoursOld = lastUpdated ? (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60) : 999;
               const isStale = hoursOld > 12;
               
+              // Update sync issues state
+              const issuesDetected = (!hasValues && allPlayers.length > 0) || isStale;
+              if (hasSyncIssues !== issuesDetected) {
+                setHasSyncIssues(issuesDetected);
+              }
+              
               if (!hasValues && allPlayers.length > 0) {
                 return (
                   <div className="rounded-lg border-2 border-red-500 bg-red-50 px-6 py-4 shadow-md">
@@ -841,34 +848,37 @@ export default function TradeBuilderPage() {
                 💾 VIEW SAVED TRADES
               </button>
               
-              <button
-                onClick={async () => {
-                  setRefreshLoading(true);
-                  try {
-                    const response = await fetch(`/api/league/${leagueKey}/force-sync`, { method: 'POST' });
-                    const data = await response.json();
-                    if (data.ok) {
-                      alert("✅ " + data.message + "\n\nPage will reload now.");
-                      window.location.reload();
-                    } else {
-                      alert("❌ Refresh failed: " + data.error);
+              {/* Only show Refresh Teams button when there are sync issues */}
+              {hasSyncIssues && (
+                <button
+                  onClick={async () => {
+                    setRefreshLoading(true);
+                    try {
+                      const response = await fetch(`/api/league/${leagueKey}/force-sync`, { method: 'POST' });
+                      const data = await response.json();
+                      if (data.ok) {
+                        alert("✅ " + data.message + "\n\nPage will reload now.");
+                        window.location.reload();
+                      } else {
+                        alert("❌ Refresh failed: " + data.error);
+                        setRefreshLoading(false);
+                      }
+                    } catch (error) {
+                      console.error("Refresh failed:", error);
+                      alert("❌ Refresh failed. Check console for details.");
                       setRefreshLoading(false);
                     }
-                  } catch (error) {
-                    console.error("Refresh failed:", error);
-                    alert("❌ Refresh failed. Check console for details.");
-                    setRefreshLoading(false);
-                  }
-                }}
-                disabled={refreshLoading}
-                className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg disabled:opacity-50 theme-btn-warning"
-                style={{
-                  backgroundColor: 'var(--accent-secondary)',
-                  color: 'white'
-                }}
-              >
-                {refreshLoading ? "⏳ SYNCING..." : "🔄 REFRESH TEAMS"}
-              </button>
+                  }}
+                  disabled={refreshLoading}
+                  className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg disabled:opacity-50 theme-btn-warning"
+                  style={{
+                    backgroundColor: 'var(--accent-secondary)',
+                    color: 'white'
+                  }}
+                >
+                  {refreshLoading ? "⏳ SYNCING..." : "🔄 REFRESH TEAMS"}
+                </button>
+              )}
             </div>
             
             {/* AI Loading Overlay - Fixed position, doesn't affect layout */}
