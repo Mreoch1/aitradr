@@ -46,7 +46,7 @@ function buildTradeAnalysisPrompt(
   myTeam: TeamForAI,
   otherTeams: TeamForAI[]
 ): string {
-  // Analyze position strengths/weaknesses
+  // Analyze position strengths/weaknesses with DUAL ELIGIBILITY
   const positions = ["C", "LW", "RW", "D", "G"];
   const myPositionCounts: Record<string, number> = {};
   const myPositionValues: Record<string, number> = {};
@@ -56,12 +56,15 @@ function buildTradeAnalysisPrompt(
     myPositionValues[pos] = 0;
   });
   
+  // Count players for ALL eligible positions (dual eligibility matters!)
   myTeam.roster.forEach(player => {
-    const pos = player.position.split("/")[0] || player.position; // Take first position if dual eligible
-    if (myPositionCounts[pos] !== undefined) {
-      myPositionCounts[pos]++;
-      myPositionValues[pos] += player.value;
-    }
+    const eligiblePositions = player.position.split("/"); // e.g., "C/RW" -> ["C", "RW"]
+    eligiblePositions.forEach(pos => {
+      if (myPositionCounts[pos] !== undefined) {
+        myPositionCounts[pos]++;
+        myPositionValues[pos] += player.value;
+      }
+    });
   });
   
   // Calculate average values per position
@@ -73,10 +76,18 @@ function buildTradeAnalysisPrompt(
   // Build the prompt
   return `You are an expert fantasy hockey trade analyzer. Analyze trades that would improve the user's team.
 
+⚠️ CRITICAL: Players have DUAL POSITION ELIGIBILITY in fantasy hockey!
+- A player listed as "C/RW" can play BOTH center AND right wing
+- When counting depth: "C/RW" adds +1 to C count AND +1 to RW count
+- Example: Team with "6 C-eligible" might be: 2 pure C, 3 C/RW, 1 C/LW (not 6 pure centers!)
+- Always consider this when analyzing roster construction and trade needs
+
 ## USER'S TEAM: "${myTeam.name}" ${myTeam.managerName ? `(Manager: ${myTeam.managerName})` : ""}
 
-### Roster Summary (${myTeam.roster.length} players):
-${positions.map(pos => `- ${pos}: ${myPositionCounts[pos]} players, Avg Value: ${myAvgValues[pos].toFixed(1)}`).join("\n")}
+### Roster Summary (${myTeam.roster.length} total players):
+${positions.map(pos => `- ${pos}: ${myPositionCounts[pos]} eligible players, Avg Value: ${myAvgValues[pos].toFixed(1)}`).join("\n")}
+
+Note: Counts above reflect ALL players eligible for that position (dual-eligible players counted in multiple positions).
 
 ### Top 10 Players by Value:
 ${myTeam.roster
@@ -85,10 +96,10 @@ ${myTeam.roster
   .map((p, i) => `${i+1}. ${p.name} (${p.position}, ${p.nhlTeam}) - Value: ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`)
   .join("\n")}
 
-### Position Depth Analysis:
+### Position Depth Analysis (Top 3 per position):
 ${positions.map(pos => {
   const players = myTeam.roster.filter(p => p.position.includes(pos)).sort((a, b) => b.value - a.value);
-  return `${pos}: ${players.length} players - ${players.slice(0, 3).map(p => `${p.name} (${p.value.toFixed(0)})`).join(", ")}`;
+  return `${pos} (${players.length} eligible): ${players.slice(0, 3).map(p => `${p.name} [${p.position}] (${p.value.toFixed(0)})`).join(", ")}`;
 }).join("\n")}
 
 ### Draft Picks:
@@ -98,16 +109,24 @@ ${myTeam.draftPicks.length > 0 ? `Rounds: ${myTeam.draftPicks.sort((a, b) => a -
 
 ## OTHER TEAMS IN LEAGUE (${otherTeams.length} teams):
 
-${otherTeams.map(team => `
+${otherTeams.map(team => {
+  // Count position eligibility for this team (dual-eligible players count for multiple positions)
+  const teamPosCounts: Record<string, number> = {};
+  positions.forEach(pos => teamPosCounts[pos] = 0);
+  team.roster.forEach(player => {
+    player.position.split("/").forEach(pos => {
+      if (teamPosCounts[pos] !== undefined) teamPosCounts[pos]++;
+    });
+  });
+  
+  return `
 ### ${team.name} ${team.managerName ? `(${team.managerName})` : ""}
 - Total Roster Value: ${team.totalValue.toFixed(1)}
-- ${positions.map(pos => {
-  const count = team.roster.filter(p => p.position.includes(pos)).length;
-  return `${pos}: ${count}`;
-}).join(", ")}
-- Top 3 Players: ${team.roster.sort((a, b) => b.value - a.value).slice(0, 3).map(p => `${p.name} (${p.value.toFixed(0)})`).join(", ")}
+- Position Depth (eligible): ${positions.map(pos => `${pos}: ${teamPosCounts[pos]}`).join(", ")}
+- Top 3 Players: ${team.roster.sort((a, b) => b.value - a.value).slice(0, 3).map(p => `${p.name} [${p.position}] (${p.value.toFixed(0)})`).join(", ")}
 - Draft Picks: ${team.draftPicks.length > 0 ? team.draftPicks.sort((a, b) => a - b).join(", ") : "None"}
-`).join("\n")}
+`;
+}).join("\n")}
 
 ---
 
@@ -116,10 +135,13 @@ ${otherTeams.map(team => `
 Suggest 3-5 realistic trade opportunities that would IMPROVE the user's team ("${myTeam.name}"). For each suggestion:
 
 1. **Identify strategic fit**: Which team has what you need, and needs what you have?
+   - ⚠️ REMEMBER: A "C/RW" player fills BOTH positions! Count all eligible positions when assessing depth.
+   - Example: Team with 6 "C-eligible" players might only have 2 pure-C, and 4 are dual-eligible (C/RW, C/LW).
 2. **Propose specific players/picks**: Be realistic about value balance
 3. **Explain the benefit**: How does this improve position weaknesses, add depth, or address specific needs?
 4. **Consider injury status**: If a player is on IR, factor that into timing
 5. **Assess fairness**: Aim for fair value (within ±10 points)
+6. **Account for dual eligibility**: When explaining roster composition, note how many are pure-position vs dual-eligible
 
 Format your response as JSON:
 
