@@ -84,6 +84,40 @@ async function getUserWithYahooAccount(
   };
 }
 
+/**
+ * Helper function to retry requests with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // Don't retry on auth errors or rate limiting
+      if (error instanceof YahooFantasyError) {
+        if (error.status === 401 || error.status === 999) {
+          throw error;
+        }
+      }
+      
+      if (attempt < maxRetries) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`[Yahoo] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 async function yahooFantasyRequest(
   userIdOrRequest: string | NextRequest,
   path: string,
@@ -149,6 +183,7 @@ async function yahooFantasyRequest(
         path: urlObj.pathname + urlObj.search,
         method: options?.method || "GET",
         headers,
+        timeout: 30000, // 30 second timeout
       },
       (res) => {
         console.log(`[YahooFantasy] Response status: ${res.statusCode}`);
@@ -169,6 +204,19 @@ async function yahooFantasyRequest(
                 new YahooFantasyError(
                   `Yahoo API blocked request (status 999). This usually means rate limiting or the request was flagged. Try again in a few minutes or re-authenticate your Yahoo account.`,
                   999,
+                  path
+                )
+              );
+              return;
+            }
+            
+            // Handle 504 Gateway Timeout
+            if (res.statusCode === 504) {
+              console.error(`[YahooFantasy] Yahoo API timeout (504)`);
+              reject(
+                new YahooFantasyError(
+                  `Yahoo API is taking too long to respond. This is usually temporary. Wait a minute and try clicking "Refresh Teams" again.`,
+                  504,
                   path
                 )
               );
@@ -196,6 +244,19 @@ async function yahooFantasyRequest(
         });
       }
     );
+
+    // Handle request timeout
+    req.on("timeout", () => {
+      console.error(`[YahooFantasy] Request timeout after 30 seconds`);
+      req.destroy();
+      reject(
+        new YahooFantasyError(
+          `Yahoo API request timed out after 30 seconds. Yahoo's servers might be slow. Wait a minute and try again.`,
+          504,
+          path
+        )
+      );
+    });
 
     req.on("error", (error) => {
       console.error(`[YahooFantasy] Request error:`, error);
@@ -247,7 +308,7 @@ export async function getYahooFantasyClientForRequest(
       method?: string;
       headers?: Record<string, string>;
       body?: string;
-    }) => yahooFantasyRequest(user.id, path, options),
+    }) => retryWithBackoff(() => yahooFantasyRequest(user.id, path, options)),
   };
 }
 
@@ -260,6 +321,6 @@ export async function yahooFantasyRequestForUser(
     body?: string;
   }
 ): Promise<string> {
-  return yahooFantasyRequest(userId, path, options);
+  return retryWithBackoff(() => yahooFantasyRequest(userId, path, options));
 }
 
