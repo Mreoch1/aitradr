@@ -8,6 +8,7 @@ import {
 } from "@/lib/yahoo/fantasyClient";
 import { ensureLeaguePlayerValues } from "@/lib/yahoo/playerValues";
 import { syncLeaguePlayerStats } from "@/lib/yahoo/playerStats";
+import { syncLeagueRoster } from "@/lib/yahoo/roster";
 import { getYahooAuthRedirectUrl } from "@/lib/yahoo/tokenExpiration";
 
 export type TradeData = {
@@ -97,13 +98,13 @@ export async function GET(
       );
     }
 
-    // Sync player stats first, then calculate values
+    // Sync rosters (teams and players) first
     try {
-      console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
-      await syncLeaguePlayerStats(request, leagueKey);
-      console.log("[Trade Data] Player stats sync completed");
+      console.log("[Trade Data] Starting roster sync for league:", leagueKey);
+      await syncLeagueRoster(request, leagueKey);
+      console.log("[Trade Data] Roster sync completed");
     } catch (error) {
-      console.error("[Trade Data] Error syncing player stats:", error);
+      console.error("[Trade Data] Error syncing rosters:", error);
       if (error instanceof Error) {
         console.error("[Trade Data] Error message:", error.message);
         
@@ -120,6 +121,15 @@ export async function GET(
           );
         }
       }
+    }
+
+    // Sync player stats
+    try {
+      console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
+      await syncLeaguePlayerStats(request, leagueKey);
+      console.log("[Trade Data] Player stats sync completed");
+    } catch (error) {
+      console.error("[Trade Data] Error syncing player stats:", error);
       // Continue even if stats sync fails - we'll use existing stats or defaults
     }
     
