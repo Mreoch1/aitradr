@@ -167,6 +167,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("[Yahoo Callback] Verifying state token. Received state length:", state.length);
+    const cookieHeader = request.headers.get("cookie");
+    console.log("[Yahoo Callback] Cookie header:", cookieHeader ? "present (length: " + cookieHeader.length + ")" : "MISSING");
+    if (cookieHeader) {
+      console.log("[Yahoo Callback] Cookie contents:", cookieHeader.substring(0, 200));
+      console.log("[Yahoo Callback] Has yahoo_oauth_state:", cookieHeader.includes("yahoo_oauth_state"));
+    }
     console.log("[Yahoo Callback] Request headers:", {
       host: request.headers.get("host"),
       'x-forwarded-host': request.headers.get("x-forwarded-host"),
