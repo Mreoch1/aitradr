@@ -657,8 +657,8 @@ export default function TradeBuilderPage() {
                   {normalizedTradeData.leagueName}
                 </div>
                 {normalizedTradeData.lastUpdated && (
-                  <div className="text-xs text-gray-200 mt-1" style={{ fontFamily: 'monospace' }}>
-                    Updated: {new Date(normalizedTradeData.lastUpdated).toLocaleString('en-US', {
+                  <div className="text-xs text-white mt-1 bg-black bg-opacity-30 px-2 py-1 rounded" style={{ fontFamily: 'monospace' }}>
+                    📅 Updated: {new Date(normalizedTradeData.lastUpdated).toLocaleString('en-US', {
                       month: 'numeric',
                       day: 'numeric',
                       hour: 'numeric',
@@ -795,6 +795,31 @@ export default function TradeBuilderPage() {
                 className="rounded-lg bg-green-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-green-700"
               >
                 💾 VIEW SAVED TRADES
+              </button>
+              
+              <button
+                onClick={async () => {
+                  setRefreshLoading(true);
+                  try {
+                    const response = await fetch(`/api/league/${leagueKey}/force-sync`, { method: 'POST' });
+                    const data = await response.json();
+                    if (data.ok) {
+                      alert("✅ " + data.message + "\n\nPage will reload now.");
+                      window.location.reload();
+                    } else {
+                      alert("❌ Refresh failed: " + data.error);
+                      setRefreshLoading(false);
+                    }
+                  } catch (error) {
+                    console.error("Refresh failed:", error);
+                    alert("❌ Refresh failed. Check console for details.");
+                    setRefreshLoading(false);
+                  }
+                }}
+                disabled={refreshLoading}
+                className="rounded-lg bg-yellow-600 px-6 py-3 font-mono text-sm font-bold text-white shadow-lg hover:bg-yellow-700 disabled:opacity-50"
+              >
+                {refreshLoading ? "⏳ SYNCING..." : "🔄 REFRESH TEAMS"}
               </button>
               {aiLoading && (
                 <div className="mt-4 rounded-lg border-4 border-red-600 bg-yellow-300 p-6">
