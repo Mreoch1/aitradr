@@ -27,35 +27,32 @@ function calculatePlayerValueFromStats(
   }
 
   // Goalie-specific calculation
+  // League uses: GS, W, L, GAA, SV, SV%, SHO
   if (position === "G") {
-    const wins = statMap.get("wins") || statMap.get("w") || 0;
-    const losses = statMap.get("losses") || statMap.get("l") || 0;
-    const saves = statMap.get("saves") || statMap.get("sv") || 0;
-    const savePercentage = statMap.get("save percentage") || statMap.get("sv%") || 0;
-    const shutouts = statMap.get("shutouts") || statMap.get("sho") || 0;
-    const goalsAgainst = statMap.get("goals against") || statMap.get("ga") || 0;
-    const gaa = statMap.get("goals against average") || statMap.get("gaa") || 0;
+    const W = statMap.get("wins") || statMap.get("w") || 0;
+    const L = statMap.get("losses") || statMap.get("l") || 0;
+    const SV = statMap.get("saves") || statMap.get("sv") || 0;
+    const svPct = statMap.get("save percentage") || statMap.get("sv%") || 0;
+    const SHO = statMap.get("shutouts") || statMap.get("sho") || 0;
+    const GAA = statMap.get("goals against average") || statMap.get("gaa") || 0;
+    const GS = statMap.get("games started") || statMap.get("gs") || 0;
     
-    // Yahoo stores SV% as whole number (915 for 91.5%)
-    // Normalize to decimal: if > 100, divide by 1000; if > 1, divide by 100
-    let normalizedSvPct = savePercentage;
-    if (savePercentage > 100) {
-      normalizedSvPct = savePercentage / 1000;
-    } else if (savePercentage > 1) {
-      normalizedSvPct = savePercentage / 100;
-    }
+    // Baselines for comparison
+    const baselineSvPct = 0.9;
+    const baselineGaa = 2.9;
     
-    // Goalie formula weighted to match Yahoo rankings
-    // Elite skaters (MacKinnon) should rank higher than elite goalies (Wedgewood)
-    // Scale adjusted so top goalies ~150-180, matching their typical rank position
-    return (
-      8 * wins +                    // Wins: 8 points each
-      0.10 * saves +                // Saves: 0.10 per save  
-      50 * normalizedSvPct +        // SV%: 50 * percentage (e.g., 50 * 0.920 = 46)
-      12 * shutouts -               // Shutouts: 12 points each
-      4 * losses -                  // Losses: -4 points each (significant penalty)
-      0.3 * goalsAgainst            // GA: -0.3 per goal against
-    );
+    // Goalie formula based on league scoring
+    const goalieRaw =
+      W * 3.0 +
+      SV * 0.04 +
+      (svPct - baselineSvPct) * 400 +
+      (baselineGaa - GAA) * 120 +
+      SHO * 4.0 -
+      L * 1.0;
+    
+    // Apply scaling factor to balance goalies vs skaters
+    const GOALIE_SCALING = 0.8;
+    return goalieRaw * GOALIE_SCALING;
   }
 
   // Skater formula weighted for standard Yahoo categories
