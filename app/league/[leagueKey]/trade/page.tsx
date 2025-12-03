@@ -285,16 +285,35 @@ export default function TradeBuilderPage() {
   const teamA = normalizedTradeData.teams.find((t) => t.id === sideA.teamId);
   const teamB = normalizedTradeData.teams.find((t) => t.id === sideB.teamId);
 
+  // Build pick value map first (needed for keeper bonus calculation)
+  const pickValueMap = new Map<number, number>();
+  normalizedTradeData.draftPickValues.forEach((pick) => {
+    pickValueMap.set(pick.round, pick.score);
+  });
+
+  // Helper: Calculate keeper-adjusted value
+  const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
+    const baseValue = player.valueScore;
+    
+    // If not a keeper, return base value
+    if (!player.isKeeper || !player.keeperRoundCost) {
+      return baseValue;
+    }
+    
+    // Calculate keeper bonus (surplus value × years remaining factor)
+    const draftRoundAvg = pickValueMap.get(player.keeperRoundCost) ?? 100;
+    const surplus = Math.max(0, baseValue - draftRoundAvg);
+    const yearsRemainingFactor = (player.yearsRemaining ?? 0) / 3;
+    const keeperBonus = surplus * yearsRemainingFactor;
+    
+    return baseValue + keeperBonus;
+  };
+
   const playerValueMap = new Map<string, number>();
   normalizedTradeData.teams.forEach((team) => {
     team.roster.forEach((player) => {
       playerValueMap.set(player.playerId, player.valueScore);
     });
-  });
-
-  const pickValueMap = new Map<number, number>();
-  normalizedTradeData.draftPickValues.forEach((pick) => {
-    pickValueMap.set(pick.round, pick.score);
   });
 
   const togglePendingPlayer = (side: "A" | "B", playerId: string) => {
@@ -495,7 +514,14 @@ export default function TradeBuilderPage() {
           />
         </td>
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
-          {player.valueScore.toFixed(1)}
+          <div className="flex flex-col items-center">
+            <span>{player.valueScore.toFixed(1)}</span>
+            {player.isKeeper && player.yearsRemaining && player.yearsRemaining > 0 && (
+              <span className="text-xs text-purple-600 font-semibold">
+                +{((player.valueScore - (pickValueMap.get(player.keeperRoundCost ?? 0) ?? 100)) * (player.yearsRemaining / 3)).toFixed(0)} K
+              </span>
+            )}
+          </div>
             </td>
         <td className="px-2 py-2 text-sm font-medium theme-text-primary">
           <div className="flex items-center gap-2">
@@ -503,6 +529,14 @@ export default function TradeBuilderPage() {
             {player.status && (player.status === "IR" || player.status === "IR+" || player.status === "O") && (
               <span className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-red-600 rounded">
                 {player.status}
+              </span>
+            )}
+            {player.isKeeper && (
+              <span 
+                className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-purple-600 rounded"
+                title={`Keeper: Year ${(player.keeperYearIndex ?? 0) + 1}, ${player.yearsRemaining ?? 0} years left, Cost R${player.keeperRoundCost ?? 0}`}
+              >
+                K
               </span>
             )}
           </div>
