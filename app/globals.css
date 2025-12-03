@@ -51,18 +51,18 @@
   font-family: 'Courier New', monospace !important;
 }
 
-/* Only add glow to headers and large text, not body text */
+/* Remove all text glow for maximum readability */
 [data-theme="mooninites"] h1,
 [data-theme="mooninites"] h2,
-[data-theme="mooninites"] h3 {
-  text-shadow: 0 0 3px #00ff00;
-}
-
-/* Ensure all body text, paragraphs, labels, and spans are crisp */
+[data-theme="mooninites"] h3,
+[data-theme="mooninites"] h4,
+[data-theme="mooninites"] h5,
+[data-theme="mooninites"] h6,
 [data-theme="mooninites"] p,
 [data-theme="mooninites"] span,
 [data-theme="mooninites"] label,
-[data-theme="mooninites"] div {
+[data-theme="mooninites"] div,
+[data-theme="mooninites"] a {
   text-shadow: none !important;
 }
 
