@@ -119,6 +119,7 @@ export default function TradeBuilderPage() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [savedTrades, setSavedTrades] = useState<any[]>([]);
   const [showSavedTradesModal, setShowSavedTradesModal] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
   const [sideB, setSideB] = useState<TradeSide>({
     teamId: null,
     playerIds: [],
@@ -687,6 +688,25 @@ export default function TradeBuilderPage() {
               </p>
             </div>
             
+            {/* Warning if no values calculated */}
+            {(() => {
+              const allPlayers = normalizedTradeData.teams.flatMap(t => t.roster);
+              const hasValues = allPlayers.some(p => p.valueScore > 0);
+              if (!hasValues && allPlayers.length > 0) {
+                return (
+                  <div className="rounded-lg border-2 border-red-500 bg-red-50 px-6 py-4 shadow-md">
+                    <p className="text-center text-base font-bold text-red-900">
+                      ⚠️ Player values not calculated yet!
+                    </p>
+                    <p className="text-center text-sm text-red-700 mt-2">
+                      Click <strong>"🔄 Refresh Teams"</strong> below to sync data from Yahoo and calculate values.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
             {/* AI Suggestions Button */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -778,20 +798,29 @@ export default function TradeBuilderPage() {
           <div className="mb-6 rounded-lg border-2 border-yellow-500 bg-yellow-50 px-6 py-4 shadow-md">
             <p className="text-center text-sm text-yellow-900">
               ⚠️ Your team hasn't been identified yet. 
-              <button 
+              <button
                 onClick={async () => {
+                  setRefreshLoading(true);
                   try {
                     const response = await fetch(`/api/league/${leagueKey}/force-sync`, { method: 'POST' });
-                    if (response.ok) {
+                    const data = await response.json();
+                    if (data.ok) {
+                      alert("✅ " + data.message + "\n\nPage will reload now.");
                       window.location.reload();
+                    } else {
+                      alert("❌ Refresh failed: " + data.error);
+                      setRefreshLoading(false);
                     }
                   } catch (error) {
                     console.error("Refresh failed:", error);
+                    alert("❌ Refresh failed. Check console for details.");
+                    setRefreshLoading(false);
                   }
                 }}
-                className="ml-2 rounded bg-yellow-600 px-3 py-1 text-xs font-semibold text-white hover:bg-yellow-700"
+                disabled={refreshLoading}
+                className="ml-2 rounded bg-yellow-600 px-3 py-1 text-xs font-semibold text-white hover:bg-yellow-700 disabled:opacity-50"
               >
-                Refresh Teams
+                {refreshLoading ? "⏳ Syncing..." : "🔄 Refresh Teams"}
               </button>
             </p>
           </div>
