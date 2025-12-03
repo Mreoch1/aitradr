@@ -83,7 +83,7 @@ export async function GET(
     const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
 
     // Find the league
-    const league = await prisma.league.findFirst({
+    let league = await prisma.league.findFirst({
       where: {
         userId: session.userId,
         OR: [
@@ -94,9 +94,27 @@ export async function GET(
       },
     });
 
+    // If league not found, sync leagues from Yahoo and try again
+    if (!league) {
+      console.log("[Trade Data] League not in database, syncing leagues from Yahoo...");
+      const { syncUserLeagues } = await import("@/lib/yahoo/leagues");
+      await syncUserLeagues(request);
+      
+      league = await prisma.league.findFirst({
+        where: {
+          userId: session.userId,
+          OR: [
+            { leagueKey: normalizedLeagueKey },
+            { leagueKey: reverseNormalizedKey },
+            { leagueKey: leagueKey },
+          ],
+        },
+      });
+    }
+
     if (!league) {
       return NextResponse.json(
-        { ok: false, error: `League not found: ${leagueKey}` },
+        { ok: false, error: `You are not a member of league ${leagueKey}. This app is for the atfh2 league only.` },
         { status: 404 }
       );
     }
