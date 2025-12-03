@@ -32,8 +32,8 @@
 
 /* Mooninites Mode (Retro Pixel Aesthetic) */
 [data-theme="mooninites"] {
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
+  --bg-primary: #1a0a2e;
+  --bg-secondary: #0f051f;
   --text-primary: #00ff00;
   --text-secondary: #00cc00;
   --border-color: #00ff00;
@@ -69,7 +69,7 @@
 [data-theme="mooninites"] select,
 [data-theme="mooninites"] textarea {
   border: 2px solid #00ff00 !important;
-  background-color: #000000 !important;
+  background-color: #0f051f !important;
   color: #00ff00 !important;
 }
 
