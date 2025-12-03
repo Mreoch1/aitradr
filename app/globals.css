@@ -8,6 +8,50 @@
   --yahoo-blue: #0066CC;
 }
 
+/* Light Mode (Default) */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+}
+
+/* Dark Mode */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
+  --accent-primary: #60a5fa;
+  --accent-secondary: #a78bfa;
+}
+
+/* Mooninites Mode (Green & Purple) */
+[data-theme="mooninites"] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a0a2e;
+  --text-primary: #22c55e;
+  --text-secondary: #86efac;
+  --border-color: #8b5cf6;
+  --accent-primary: #22c55e;
+  --accent-secondary: #a855f7;
+}
+
+/* Aqua Teen Hunger Force Mode (Bright & Chaotic) */
+[data-theme="athf"] {
+  --bg-primary: #fef3c7;
+  --bg-secondary: #fcd34d;
+  --text-primary: #b91c1c;
+  --text-secondary: #7c2d12;
+  --border-color: #dc2626;
+  --accent-primary: #ef4444;
+  --accent-secondary: #f97316;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
