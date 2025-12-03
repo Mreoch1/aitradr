@@ -713,9 +713,32 @@ export default function TradeBuilderPage() {
                 {aiLoading ? "🤖 ANALYZING..." : "🤖 GET AI TRADE SUGGESTIONS"}
               </button>
               {aiLoading && (
-                <p className="mt-2 font-mono text-xs theme-text-secondary">
-                  Analyzing 174 players across 10 teams...
-                </p>
+                <div className="mt-4 rounded-lg border-4 border-red-600 bg-yellow-300 p-6">
+                  {/* ATHF Characters Animation */}
+                  <div className="mb-4 flex items-center justify-center gap-4">
+                    <div className="animate-bounce" style={{ animationDelay: "0ms" }}>
+                      <div className="text-6xl">🍔</div>
+                    </div>
+                    <div className="animate-bounce" style={{ animationDelay: "200ms" }}>
+                      <div className="text-6xl">🍟</div>
+                    </div>
+                    <div className="animate-bounce" style={{ animationDelay: "400ms" }}>
+                      <div className="text-6xl">🥤</div>
+                    </div>
+                  </div>
+                  <p className="text-center font-mono text-lg font-bold text-red-700 animate-pulse">
+                    THE AQUA TEENS ARE ANALYZING YOUR TRADES...
+                  </p>
+                  <p className="mt-2 text-center font-mono text-sm text-red-600">
+                    Scanning {normalizedTradeData.teams.reduce((sum, t) => sum + t.roster.length, 0)} players • Finding the best deals • This may take 10-15 seconds
+                  </p>
+                  {/* Progress dots */}
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <div className="h-3 w-3 animate-ping rounded-full bg-red-600"></div>
+                    <div className="h-3 w-3 animate-ping rounded-full bg-orange-600" style={{ animationDelay: "300ms" }}></div>
+                    <div className="h-3 w-3 animate-ping rounded-full bg-red-600" style={{ animationDelay: "600ms" }}></div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
