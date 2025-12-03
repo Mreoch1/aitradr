@@ -10,7 +10,6 @@ import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
 import { SignOutButton } from "@/app/components/SignOutButton";
 import { AISuggestionsModal } from "@/app/components/AISuggestionsModal";
 import { SavedTradesModal } from "@/app/components/SavedTradesModal";
-import { KeeperSummary } from "@/app/components/KeeperSummary";
 import type { TradeSuggestion } from "@/lib/ai/tradeAnalyzer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
@@ -979,11 +978,6 @@ export default function TradeBuilderPage() {
             </div>
             {teamA ? (
               <>
-                {/* Keeper Summary */}
-                <div className="px-4 py-3">
-                  <KeeperSummary team={teamA} draftPickValues={normalizedTradeData.draftPickValues} />
-                </div>
-                
                 {/* Skaters Section */}
                 {teamA.roster.some((p) => p.position !== "G") && (
                   <>
@@ -1136,11 +1130,6 @@ export default function TradeBuilderPage() {
             </div>
             {teamB ? (
               <>
-                {/* Keeper Summary */}
-                <div className="px-4 py-3">
-                  <KeeperSummary team={teamB} draftPickValues={normalizedTradeData.draftPickValues} />
-                </div>
-                
                 {/* Skaters Section */}
                 {teamB.roster.some((p) => p.position !== "G") && (
                   <>
