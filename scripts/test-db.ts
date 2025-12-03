@@ -1,7 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "../lib/prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma";
 
 async function main() {
   try {
