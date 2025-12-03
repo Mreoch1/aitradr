@@ -94,11 +94,16 @@ export function calculateKeeperRound(
 
 /**
  * Calculate years remaining
- * @param keeperYearIndex - 0 = first year, 1 = second year, 2 = third year
- * @returns Years remaining (3, 2, 1, or 0)
+ * @param keeperYearIndex - 0 = first year kept, 1 = second year kept, 2 = third year kept (final)
+ * @returns Years remaining (2, 1, or 0 after current year)
+ * 
+ * Example: If keeperYearIndex = 1 (in 2nd year of keeping), yearsRemaining = 1 (can keep once more)
  */
 export function calculateYearsRemaining(keeperYearIndex: number): number {
-  return Math.max(0, KEEPER_RULES.MAX_KEEPER_YEARS - keeperYearIndex);
+  // Years remaining = total allowed - (current year)
+  // If in year 2 (index 1), they're using year 2, so 1 year left
+  const currentYear = keeperYearIndex + 1;
+  return Math.max(0, KEEPER_RULES.MAX_KEEPER_YEARS - currentYear);
 }
 
 /**
