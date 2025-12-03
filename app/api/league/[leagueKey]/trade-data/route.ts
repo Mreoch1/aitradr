@@ -46,9 +46,12 @@ export async function GET(
 ) {
   // Extract leagueKey first so it's available in catch blocks
   const { leagueKey } = await params;
+  console.log("[Trade Data] ========== STARTING TRADE DATA REQUEST ==========");
+  console.log("[Trade Data] League key:", leagueKey);
   
   try {
     const session = await getSession();
+    console.log("[Trade Data] Session:", session ? "authenticated" : "not authenticated");
 
     if (!session) {
       return NextResponse.json(
@@ -137,6 +140,7 @@ export async function GET(
     await ensureLeaguePlayerValues(league.id);
 
     // Fetch all teams in this league
+    console.log("[Trade Data] Querying teams from database for league:", league.id);
     const teams = await prisma.team.findMany({
       where: { leagueId: league.id },
       include: {
@@ -150,6 +154,10 @@ export async function GET(
         name: "asc",
       },
     });
+    console.log("[Trade Data] Found", teams.length, "teams in database");
+    if (teams.length > 0) {
+      console.log("[Trade Data] Team names:", teams.map(t => t.name).join(", "));
+    }
 
     // Build team roster data with player values and stats
     const teamsData = await Promise.all(
