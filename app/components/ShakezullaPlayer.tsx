@@ -32,12 +32,12 @@ export function ShakezullaPlayer() {
         
         {/* Shakezulla Image */}
         <img
-          src="/shakezulla.png"
+          src="/ShakeZulla.png"
           alt="Shakezulla"
-          className={`relative h-16 w-16 rounded-full border-4 border-purple-600 shadow-2xl transition-all ${
+          className={`relative h-20 w-20 rounded-full border-4 border-purple-600 bg-black shadow-2xl transition-all ${
             isPlaying ? "animate-pulse" : ""
           }`}
-          style={{ imageRendering: 'pixelated' }}
+          style={{ imageRendering: 'pixelated', objectFit: 'cover' }}
         />
         
         {/* Play/Pause indicator */}
@@ -53,7 +53,7 @@ export function ShakezullaPlayer() {
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        src="/shakezulla.mp3"
+        src="/Aqua_Teen_Hunger_Force_OST_-_Intro_(mp3.pm).mp3"
         loop
         onEnded={() => setIsPlaying(false)}
       />
