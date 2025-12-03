@@ -17,16 +17,18 @@ export async function POST(
 
     console.log("[AI Suggestions] Starting analysis for league:", leagueKey);
 
-    // Find the league
+    // Find the league - shared across all users
     const normalizedLeagueKey = leagueKey.replace(/\.1\./g, '.l.');
+    const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
     const league = await prisma.league.findFirst({
       where: {
-        userId: session.userId,
         OR: [
           { leagueKey: normalizedLeagueKey },
+          { leagueKey: reverseNormalizedKey },
           { leagueKey: leagueKey },
         ],
       },
+      orderBy: { createdAt: 'asc' }, // Use the oldest record (primary league)
     });
 
     if (!league) {

@@ -52,13 +52,13 @@ export async function POST(
 
     const league = await prisma.league.findFirst({
       where: {
-        userId: session.userId,
         OR: [
           { leagueKey: normalizedLeagueKey },
           { leagueKey: reverseNormalizedKey },
           { leagueKey: leagueKey },
         ],
       },
+      orderBy: { createdAt: 'asc' },
     });
 
     if (league) {

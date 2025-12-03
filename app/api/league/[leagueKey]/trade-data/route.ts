@@ -86,16 +86,17 @@ export async function GET(
     const normalizedLeagueKey = leagueKey.replace(/\.1\./g, '.l.');
     const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
 
-    // Find the league
+    // Find the league - look for ANY league with this key (shared across all users)
+    // This is the correct behavior since we hardcoded everyone to the same league
     let league = await prisma.league.findFirst({
       where: {
-        userId: session.userId,
         OR: [
           { leagueKey: normalizedLeagueKey },
           { leagueKey: reverseNormalizedKey },
           { leagueKey: leagueKey },
         ],
       },
+      orderBy: { createdAt: 'asc' }, // Use the oldest record (primary league)
     });
 
     // If league not found, sync leagues from Yahoo and try again
@@ -106,13 +107,13 @@ export async function GET(
       
       league = await prisma.league.findFirst({
         where: {
-          userId: session.userId,
           OR: [
             { leagueKey: normalizedLeagueKey },
             { leagueKey: reverseNormalizedKey },
             { leagueKey: leagueKey },
           ],
         },
+        orderBy: { createdAt: 'asc' },
       });
     }
 
