@@ -9,8 +9,9 @@ import prisma from "@/lib/prisma";
 
 // ===== TUNABLE CONSTANTS =====
 
-// Games started baseline for goalie volume adjustment
-const BASELINE_GS = 15;
+// Games started threshold for full reliability (5 games = 100% reliable)
+// Lower baseline recognizes early-season breakouts while still favoring volume
+const BASELINE_GS = 5;
 
 // Optional scaling factor to balance goalies vs skaters
 const GOALIE_SCALING = 1.0; // Adjust if goalies still seem over/undervalued
@@ -160,9 +161,10 @@ export async function calculateGoalieValue(
     totalZScore += z;
   }
   
-  // Apply games-started volume adjustment
+  // Apply games-started volume adjustment with soft curve
+  // sqrt(min(1, GS/BASELINE)) - smoother than linear, prevents crushing breakout goalies
   const gamesStarted = playerStats.stats.get("games started") || 0;
-  const gsFactor = Math.min(Math.sqrt(gamesStarted / BASELINE_GS), 1.0);
+  const gsFactor = Math.sqrt(Math.min(1.0, gamesStarted / BASELINE_GS));
   
   // Scale to make values positive and easier to read
   const baseValue = totalZScore * 10 + 100;
