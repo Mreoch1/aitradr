@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getYahooFantasyClientForRequest } from "@/lib/yahoo/fantasyClient";
 import { parseYahooXml, normalizeYahooNode, findFirstPath } from "@/lib/yahoo/normalize";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { getStatDefinitionsForCurrentGame } from "@/lib/yahoo/statDefinitions";
 
 export interface PlayerStatData {

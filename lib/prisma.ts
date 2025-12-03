@@ -1,34 +1,36 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { Pool, neonConfig } from "@neondatabase/serverless";
+import { neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 
-// Configure WebSocket for local development
-if (process.env.NODE_ENV !== "production") {
-  neonConfig.webSocketConstructor = ws;
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
 }
 
-// PrismaClient is attached to the `global` object in development to prevent
-// exhausting your database connection limit.
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+// Configure WebSocket for Neon
+neonConfig.webSocketConstructor = ws;
 
-function createPrismaClient() {
-  // For serverless environments, use Neon's serverless adapter
-  if (process.env.DATABASE_URL) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const adapter = new PrismaNeon(pool);
-    return new PrismaClient({
-      adapter,
-      log: process.env.NODE_ENV === "development" ? ["query"] : [],
-    });
-  }
-  
-  // Fallback to standard client
-  return new PrismaClient({
+const connectionString = process.env.DATABASE_URL as string;
+
+function getPrismaClient() {
+  if (globalThis.prisma) return globalThis.prisma;
+
+  // Use PrismaNeon with a config object, not a Pool instance
+  const adapter = new PrismaNeon({ connectionString });
+
+  const client = new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === "development" ? ["query"] : [],
   });
+
+  if (process.env.NODE_ENV === "development") {
+    globalThis.prisma = client;
+  }
+
+  return client;
 }
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
+const prisma = getPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export default prisma;

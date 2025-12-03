@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getYahooFantasyClientForRequest } from "@/lib/yahoo/fantasyClient";
 import { parseYahooXml, normalizeYahooNode, findFirstPath } from "@/lib/yahoo/normalize";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { syncUserLeagues } from "@/lib/yahoo/leagues";
 import { syncLeagueStandings } from "@/lib/yahoo/standings";
 
