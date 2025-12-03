@@ -205,11 +205,11 @@ function generatePotentialTrades(
       for (const theirPlayer of theirTradeable.slice(0, 5)) {
         const valueDiff = theirPlayer.value - myPlayer.value;
         
-        // ELITE PLAYER PROTECTION: Never suggest trading elite for >10% downgrade
-        // Elite tier = 155+ value (MacKinnon, Celebrini, McDavid, Kucherov, etc.)
-        const isMyPlayerElite = myPlayer.value >= 155;
-        if (isMyPlayerElite && valueDiff < -15) {
-          // Losing >10% value on elite player - REJECT
+        // FIX #4: ELITE PLAYER PROTECTION (tighter threshold)
+        // Elite tier = 150+ value (lowered from 155 to be more protective)
+        const isMyPlayerElite = myPlayer.value >= 150;
+        if (isMyPlayerElite && valueDiff < -(myPlayer.value * 0.07)) {
+          // Losing >7% value on elite player - REJECT
           continue;
         }
         
@@ -222,6 +222,24 @@ function generatePotentialTrades(
           [myPlayer],
           [theirPlayer]
         );
+        
+        // FIX #2: KEEPER ASSET LOCK
+        // Expiring high-surplus keepers CANNOT be traded for non-keepers unless major value gain
+        if (myPlayer.isKeeper && 
+            (myPlayer.yearsRemaining ?? 3) === 1 && 
+            (myPlayer.keeperBonus ?? 0) > 20) {
+          // This is a valuable expiring keeper
+          if (!theirPlayer.isKeeper && valueDiff < 15) {
+            // Trading keeper for non-keeper without major value gain - BLOCK
+            continue;
+          }
+        }
+        
+        // FIX #3: Bad Trade Hard Blocker (keeper loss)
+        // If losing value AND losing keeper, reject
+        if (valueDiff < -12 && myPlayer.isKeeper && !theirPlayer.isKeeper) {
+          continue;
+        }
         
         // Calculate keeper economics impact
         let keeperImpact = 0;
@@ -241,8 +259,28 @@ function generatePotentialTrades(
           keeperImpact -= 12; // Penalty for trading away elite keeper bargain
         }
         
+        // FIX #5: Market Sanity Filter
+        // Downgrade from elite to non-elite requires extra justification
+        let marketPenalty = 0;
+        if (myPlayer.value >= 150 && theirPlayer.value < 135) {
+          // Elite → non-elite downgrade
+          marketPenalty = 8; // Treat as 8 points worse than stated
+        }
+        
+        // FIX #6: Position Justification (track if trade creates holes)
+        // For now, this is a placeholder - full positional analysis would need roster context
+        let positionPenalty = 0;
+        const myPos = myPlayer.position.split("/")[0];
+        const theirPos = theirPlayer.position.split("/")[0];
+        
+        // If trading away primary position for different position, small penalty
+        if (myPos !== theirPos) {
+          positionPenalty = 2; // Mild penalty for position change
+        }
+        
         // Calculate combined trade score
-        const tradeScore = calculateTradeScore(valueDiff, categoryGain) + keeperImpact;
+        const adjustedValueDiff = valueDiff - marketPenalty - positionPenalty;
+        const tradeScore = calculateTradeScore(adjustedValueDiff, categoryGain) + keeperImpact;
         
         // Filter logic: skip trades that don't make strategic sense
         // 1. Skip heavy value losses with no category help
@@ -265,7 +303,7 @@ function generatePotentialTrades(
         // 4. Only suggest if trade score is positive (net benefit)
         if (tradeScore < 0) continue;
         
-        console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${valueDiff.toFixed(1)}, catGain=${categoryGain.toFixed(1)}, keeperImpact=${keeperImpact.toFixed(1)}, finalScore=${tradeScore.toFixed(1)}`);
+        console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${valueDiff.toFixed(1)}, cat=${categoryGain.toFixed(1)}, keeper=${keeperImpact.toFixed(1)}, market=${marketPenalty}, score=${tradeScore.toFixed(1)}`);
         
         const payload: TradePayload = {
           userTeam: myTeamSummary,
@@ -451,10 +489,25 @@ export async function analyzeTrades(
     // Step 2: Ask DeepSeek to explain the top 5 trades (already scored and ranked)
     const suggestions: TradeSuggestion[] = [];
     
+    // FIX #7: Deduplicate trades
+    const seenTrades = new Set<string>();
+    
     for (const { partner, payload, categoryGain, tradeScore } of potentialTrades.slice(0, 5)) {
       try {
+        // Create unique key for this trade
+        const tradeKey = `${payload.trade.send.map(p => p.name).join(',')}|${payload.trade.receive.map(p => p.name).join(',')}|${partner.name}`;
+        if (seenTrades.has(tradeKey)) {
+          continue; // Skip duplicate
+        }
+        seenTrades.add(tradeKey);
+        
         console.log(`[AI] Explaining trade with ${partner.name} (score: ${tradeScore.toFixed(1)})...`);
-        const { reasoning, confidence } = await explainTrade(payload, categoryGain);
+        const { reasoning } = await explainTrade(payload, categoryGain);
+        
+        // FIX #8: Risk-based confidence calculation
+        // Confidence decreases with value risk: abs(valueDelta × 2.5)
+        const valueDelta = payload.trade.netChangeUser;
+        const riskBasedConfidence = Math.max(55, Math.min(95, 100 - Math.abs(valueDelta * 2.5)));
         
         suggestions.push({
           tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
@@ -470,7 +523,7 @@ export async function analyzeTrades(
           })),
           netGain: payload.trade.netChangeUser,
           reasoning,
-          confidence,
+          confidence: riskBasedConfidence, // Use calculated confidence, not AI's opinion
         });
       } catch (error) {
         console.error("[AI] Failed to explain trade with", partner.name, error);

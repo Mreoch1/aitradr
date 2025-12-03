@@ -211,15 +211,27 @@ export function calculateCategoryGain(
 }
 
 /**
+ * Normalize category gain to prevent unbounded compensation logic
+ * Raw category deltas can be arbitrarily large and meaningless
+ */
+function normalizedCategoryGain(rawGain: number): number {
+  // Clamp to reasonable range: -12 to +12
+  return Math.max(-12, Math.min(12, rawGain));
+}
+
+/**
  * Calculate final trade score combining value and category gains
  * Heavily weights category improvement over pure value (H2H reality)
  */
 export function calculateTradeScore(
   valueGain: number,
-  categoryGain: number
+  rawCategoryGain: number
 ): number {
-  // Base score: value delta + heavily weighted category gain
-  let score = (valueGain * 1.0) + (categoryGain * 2.5);
+  // FIX #1: Normalize category gain to prevent fake compensation
+  const categoryGain = normalizedCategoryGain(rawCategoryGain);
+  
+  // Base score: value delta + weighted category gain (reduced from 2.5 to 2.0)
+  let score = (valueGain * 1.0) + (categoryGain * 2.0);
   
   // Sidegrade penalty: trades with minimal value difference are pointless
   // unless they have strong category justification
