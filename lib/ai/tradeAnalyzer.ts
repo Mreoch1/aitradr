@@ -191,6 +191,9 @@ function generatePotentialTrades(
       .filter(p => !p.status || p.status === "DTD")
       .sort((a, b) => b.value - a.value);
     
+    console.log(`[Trade Gen]   My tradeable: ${myTradeable.length} players (from ${myTeam.roster.length} total)`);
+    console.log(`[Trade Gen]   Their tradeable: ${theirTradeable.length} players (from ${partnerTeam.roster.length} total)`);
+    
     // Try to find trades that improve categories
     for (const myPlayer of myTradeable.slice(0, 5)) {
       for (const theirPlayer of theirTradeable.slice(0, 5)) {
@@ -250,6 +253,13 @@ function generatePotentialTrades(
   }
   
   console.log(`[Trade Gen] Generated ${potentialTrades.length} total trades`);
+  
+  if (potentialTrades.length === 0) {
+    console.log(`[Trade Gen] No trades found. Possible reasons:`);
+    console.log(`[Trade Gen]   - Not enough tradeable players (need value 50-180, healthy)`);
+    console.log(`[Trade Gen]   - No fair value matches (need within ±25 points)`);
+    console.log(`[Trade Gen]   - Trade scores too low (value + category gains)`);
+  }
   
   // Sort by trade score (value + category gain)
   return potentialTrades.sort((a, b) => b.tradeScore - a.tradeScore);
@@ -370,6 +380,13 @@ export async function analyzeTrades(
     console.log("[AI] Computing trade opportunities for:", myTeam.name);
     console.log("[AI] My team roster size:", myTeam.roster.length);
     console.log("[AI] Other teams count:", otherTeams.length);
+    
+    // Check if player values are calculated
+    const myTeamHasValues = myTeam.roster.some(p => p.value > 0);
+    if (!myTeamHasValues) {
+      console.error("[AI] ERROR: All players have 0 value - values not calculated yet");
+      throw new Error("Player values not calculated. Please click 'Refresh Teams' to sync data from Yahoo.");
+    }
     
     // Step 1: Generate potential trades using category-aware logic
     const potentialTrades = generatePotentialTrades(myTeam, otherTeams, allTeams);
