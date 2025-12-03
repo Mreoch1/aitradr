@@ -147,6 +147,7 @@ function buildTeamSummary(team: TeamForAI): TeamSummary {
 
 /**
  * Generate potential trades using OUR logic (not DeepSeek's)
+ * Strategy: Find fair value swaps between different positions
  */
 function generatePotentialTrades(
   myTeam: TeamForAI,
@@ -155,72 +156,85 @@ function generatePotentialTrades(
   const myTeamSummary = buildTeamSummary(myTeam);
   const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload }> = [];
   
+  console.log("[Trade Gen] My team:", myTeamSummary.name);
+  console.log("[Trade Gen] Position counts:", myTeamSummary.positionCounts);
+  console.log("[Trade Gen] Weak positions:", myTeamSummary.weakPositions);
+  console.log("[Trade Gen] Surplus positions:", myTeamSummary.surplusPositions);
+  
   for (const partnerTeam of otherTeams) {
     const partnerSummary = buildTeamSummary(partnerTeam);
     
-    // Find complementary needs
-    // Example: I'm weak at RW, they're surplus RW; they're weak at C, I'm surplus C
-    const myWeakTheyStrong = myTeamSummary.weakPositions.filter(pos =>
-      partnerSummary.surplusPositions.includes(pos)
-    );
-    const theyWeakIStrong = partnerSummary.weakPositions.filter(pos =>
-      myTeamSummary.surplusPositions.includes(pos)
-    );
+    console.log(`[Trade Gen] Checking ${partnerTeam.name}...`);
     
-    if (myWeakTheyStrong.length === 0 && theyWeakIStrong.length === 0) {
-      // No complementary fit, skip
-      continue;
-    }
+    // Strategy: Try to find ANY fair 1-for-1 trade
+    // Sort my players by value (willing to trade lower/mid tier)
+    const myTradeable = myTeam.roster
+      .filter(p => p.value > 50 && p.value < 150) // Mid-tier players
+      .filter(p => !p.status || p.status === "DTD") // Not on long-term IR
+      .sort((a, b) => b.value - a.value);
     
-    // Build a simple 1-for-1 or 2-for-2 trade
-    // Find a player I can send from my surplus positions
-    const myPlayerToSend = myTeam.roster
-      .filter(p => theyWeakIStrong.some(pos => p.position.includes(pos)))
-      .sort((a, b) => b.value - a.value)[0];
+    // Sort their players by value
+    const theirTradeable = partnerTeam.roster
+      .filter(p => p.value > 50 && p.value < 150)
+      .filter(p => !p.status || p.status === "DTD")
+      .sort((a, b) => b.value - a.value);
     
-    // Find a player I want to receive from their surplus positions
-    const playerToReceive = partnerTeam.roster
-      .filter(p => myWeakTheyStrong.some(pos => p.position.includes(pos)))
-      .sort((a, b) => b.value - a.value)[0];
+    console.log(`[Trade Gen]   My tradeable: ${myTradeable.length}, Their tradeable: ${theirTradeable.length}`);
     
-    if (!myPlayerToSend || !playerToReceive) {
-      continue;
-    }
-    
-    const netChange = playerToReceive.value - myPlayerToSend.value;
-    
-    // Only suggest if value is within ±20 points
-    if (Math.abs(netChange) > 20) {
-      continue;
-    }
-    
-    const payload: TradePayload = {
-      userTeam: myTeamSummary,
-      partnerTeam: partnerSummary,
-      trade: {
-        send: [
-          {
-            name: myPlayerToSend.name,
-            positions: myPlayerToSend.position.split("/") as Position[],
-            value: myPlayerToSend.value,
-            status: myPlayerToSend.status,
+    // Try to find a fair swap with different positions
+    for (const myPlayer of myTradeable.slice(0, 5)) { // Check top 5
+      for (const theirPlayer of theirTradeable.slice(0, 5)) {
+        const valueDiff = Math.abs(myPlayer.value - theirPlayer.value);
+        
+        // Fair value (within 20 points)
+        if (valueDiff > 20) continue;
+        
+        // Different primary positions (makes it interesting)
+        const myPos = myPlayer.position.split("/")[0];
+        const theirPos = theirPlayer.position.split("/")[0];
+        
+        if (myPos === theirPos) continue; // Same position = boring
+        
+        console.log(`[Trade Gen]   Found potential: ${myPlayer.name} (${myPos}, ${myPlayer.value.toFixed(0)}) <-> ${theirPlayer.name} (${theirPos}, ${theirPlayer.value.toFixed(0)})`);
+        
+        const netChange = theirPlayer.value - myPlayer.value;
+        
+        const payload: TradePayload = {
+          userTeam: myTeamSummary,
+          partnerTeam: partnerSummary,
+          trade: {
+            send: [
+              {
+                name: myPlayer.name,
+                positions: myPlayer.position.split("/") as Position[],
+                value: myPlayer.value,
+                status: myPlayer.status,
+              },
+            ],
+            receive: [
+              {
+                name: theirPlayer.name,
+                positions: theirPlayer.position.split("/") as Position[],
+                value: theirPlayer.value,
+                status: theirPlayer.status,
+              },
+            ],
+            netChangeUser: netChange,
+            netChangePartner: -netChange,
           },
-        ],
-        receive: [
-          {
-            name: playerToReceive.name,
-            positions: playerToReceive.position.split("/") as Position[],
-            value: playerToReceive.value,
-            status: playerToReceive.status,
-          },
-        ],
-        netChangeUser: netChange,
-        netChangePartner: -netChange,
-      },
-    };
-    
-    potentialTrades.push({ partner: partnerTeam, payload });
+        };
+        
+        potentialTrades.push({ partner: partnerTeam, payload });
+        break; // Only one trade per partner for now
+      }
+      
+      if (potentialTrades.some(t => t.partner.name === partnerTeam.name)) {
+        break; // Found a trade with this partner, move on
+      }
+    }
   }
+  
+  console.log(`[Trade Gen] Generated ${potentialTrades.length} total trades`);
   
   // Sort by absolute net change (closer to fair is better)
   return potentialTrades.sort((a, b) => 
