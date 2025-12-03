@@ -5,7 +5,7 @@ function validateRequiredEnv(key: string): string {
       `Required environment variable ${key} is not set or is empty`
     );
   }
-  return value;
+  return value.trim();
 }
 
 function validateRedirectUri(uri: string): void {
