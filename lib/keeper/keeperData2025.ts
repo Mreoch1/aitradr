@@ -1,6 +1,7 @@
 /**
  * 2025 Keeper data extracted from Yahoo draft results
- * Players with  marker next to their name
+ * Players with ⠀ marker next to their name
+ * ONLY includes players with the keeper symbol - NOT all drafted players
  */
 
 export const KEEPERS_2025 = [
