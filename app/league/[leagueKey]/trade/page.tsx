@@ -1003,6 +1003,12 @@ export default function TradeBuilderPage() {
         {/* Trade Summary */}
         <div className="rounded border border-gray-300 bg-white p-6">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Trade Summary</h2>
+          {(() => {
+            const teamASendTotal = teamASends.reduce((sum, item) => sum + item.value, 0);
+            const teamBSendTotal = teamBSends.reduce((sum, item) => sum + item.value, 0);
+            
+            return (
+              <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <h3 className="mb-2 text-lg font-medium text-gray-700">Team A Sends</h3>
@@ -1155,6 +1161,9 @@ export default function TradeBuilderPage() {
               )}
             </div>
           </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
