@@ -285,6 +285,7 @@ export async function GET(
               stats: playerStats,
               // Keeper data
               isKeeper: entry.isKeeper || false,
+              originalDraftRound: entry.originalDraftRound ?? undefined,
               keeperYearIndex: entry.keeperYearIndex ?? undefined,
               yearsRemaining: entry.yearsRemaining ?? undefined,
               keeperRoundCost: entry.keeperRoundCost ?? undefined,

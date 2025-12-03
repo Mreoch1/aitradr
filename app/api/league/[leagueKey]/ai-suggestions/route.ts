@@ -135,15 +135,31 @@ export async function POST(
           ? positionsArray.join("/")
           : (player.primaryPosition || "?");
         
-        // Calculate keeper bonus if applicable
+        // Calculate keeper bonus using new formula with tier caps and stability bonus
         let keeperBonus = 0;
         let adjustedValue = playerValue?.score || 0;
         
-        if (entry.isKeeper && entry.keeperRoundCost && entry.yearsRemaining) {
-          const draftRoundAvg = pickValueMap.get(entry.keeperRoundCost) ?? 100;
+        if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining) {
+          const draftRound = entry.originalDraftRound;
+          const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
+          const yearsOfControl = entry.yearsRemaining;
+          
+          // Step 1: Raw surplus
           const surplus = Math.max(0, adjustedValue - draftRoundAvg);
-          keeperBonus = surplus * (entry.yearsRemaining / 3);
-          // No expiration penalty - yearsRemaining/3 already handles decay naturally
+          
+          // Step 2: Tier cap
+          const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
+          const surplusCap = { A: 25, B: 40, C: 55 }[tier];
+          const cappedSurplus = Math.min(surplus, surplusCap);
+          
+          // Step 3: Year weight (1yr=0.60x, 2yr=0.85x, 3yr=1.10x)
+          const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+          
+          // Step 4: Stability bonus (4 pts per year)
+          const stabilityBonus = 4 * yearsOfControl;
+          
+          // Step 5: Final bonus
+          keeperBonus = cappedSurplus * yearWeight + stabilityBonus;
           adjustedValue += keeperBonus;
         }
         
@@ -157,6 +173,7 @@ export async function POST(
           status: player.status || undefined,
           // Keeper data
           isKeeper: entry.isKeeper || false,
+          originalDraftRound: entry.originalDraftRound ?? undefined,
           keeperYearIndex: entry.keeperYearIndex ?? undefined,
           yearsRemaining: entry.yearsRemaining ?? undefined,
           keeperRoundCost: entry.keeperRoundCost ?? undefined,

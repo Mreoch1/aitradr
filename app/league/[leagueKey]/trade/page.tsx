@@ -292,21 +292,36 @@ export default function TradeBuilderPage() {
     pickValueMap.set(pick.round, pick.score);
   });
 
-  // Helper: Calculate keeper-adjusted value
+  // Helper: Calculate keeper-adjusted value using new formula
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
     const baseValue = player.valueScore;
     
     // If not a keeper, return base value
-    if (!player.isKeeper || !player.keeperRoundCost) {
+    if (!player.isKeeper || !player.originalDraftRound || !player.yearsRemaining) {
       return baseValue;
     }
     
-    // Calculate keeper bonus (surplus value × years remaining factor)
-    // The yearsRemaining/3 factor already handles expiration scaling naturally
-    // No additional penalty - last year keepers are still premium assets
-    const draftRoundAvg = pickValueMap.get(player.keeperRoundCost) ?? 100;
+    // Use new keeper bonus formula with tier caps and stability bonus
+    const draftRound = player.originalDraftRound;
+    const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
+    const yearsOfControl = player.yearsRemaining;
+    
+    // Step 1: Calculate raw surplus
     const surplus = Math.max(0, baseValue - draftRoundAvg);
-    const keeperBonus = surplus * ((player.yearsRemaining ?? 0) / 3);
+    
+    // Step 2: Cap surplus by tier
+    const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
+    const surplusCap = { A: 25, B: 40, C: 55 }[tier];
+    const cappedSurplus = Math.min(surplus, surplusCap);
+    
+    // Step 3: Weight by years of control (1yr=0.60x, 2yr=0.85x, 3yr=1.10x)
+    const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+    
+    // Step 4: Stability bonus for multi-year control
+    const stabilityBonus = 4 * yearsOfControl;
+    
+    // Step 5: Final keeper bonus
+    const keeperBonus = cappedSurplus * yearWeight + stabilityBonus;
     
     return baseValue + keeperBonus;
   };
@@ -520,9 +535,19 @@ export default function TradeBuilderPage() {
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
           <div className="flex flex-col items-center">
             <span>{player.valueScore.toFixed(1)}</span>
-            {player.isKeeper && player.yearsRemaining && player.yearsRemaining > 0 && (
+            {player.isKeeper && player.originalDraftRound && player.yearsRemaining && player.yearsRemaining > 0 && (
               <span className="text-xs text-purple-600 font-semibold">
-                +{((player.valueScore - (pickValueMap.get(player.keeperRoundCost ?? 0) ?? 100)) * (player.yearsRemaining / 3)).toFixed(0)} K
+                +{(() => {
+                  const draftRound = player.originalDraftRound!;
+                  const roundAvg = pickValueMap.get(draftRound) ?? 100;
+                  const surplus = Math.max(0, player.valueScore - roundAvg);
+                  const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
+                  const cap = { A: 25, B: 40, C: 55 }[tier];
+                  const cappedSurplus = Math.min(surplus, cap);
+                  const yearWeight = 0.6 + 0.25 * (player.yearsRemaining! - 1);
+                  const stabilityBonus = 4 * player.yearsRemaining!;
+                  return (cappedSurplus * yearWeight + stabilityBonus).toFixed(0);
+                })()} K
               </span>
             )}
           </div>
