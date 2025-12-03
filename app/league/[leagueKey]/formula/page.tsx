@@ -186,24 +186,37 @@ export default async function FormulaPage({
             </div>
             <div className="space-y-2 text-sm text-purple-800">
               <div className="rounded bg-white p-3">
-                <strong>Keeper Bonus Formula:</strong>
+                <strong>Part A: Surplus Bonus (Underdraft Value):</strong>
                 <div className="mt-2 font-mono text-xs text-gray-700">
-                  surplus = max(0, playerValue - draftRoundAvg)
-                  <br />
-                  bonus = surplus × (yearsRemaining / 3)
+                  surplus = max(0, playerValue - draftRoundAvg)<br />
+                  cappedSurplus = min(surplus, tierCap)<br />
+                  surplusBonus = cappedSurplus × surplusWeight[years]
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
-                  Late-round elites (Celebrini R14, value 168) have massive surplus vs early picks (McDavid R1).
+                  <strong>Surplus Weights:</strong> 1yr=0.60x, 2yr=0.85x, 3yr=1.00x<br />
+                  <strong>Tier Caps:</strong> A=25, B=40, C=55 (prevents late-round explosion)
                 </div>
               </div>
               <div className="rounded bg-white p-3">
-                <strong className="text-blue-700">Natural Decay (No Additional Penalty):</strong>
+                <strong className="text-blue-700">Part B: Control Premium (Multi-Year Elite Control):</strong>
                 <div className="mt-2 font-mono text-xs text-gray-700">
-                  keeperValue = baseValue + keeperBonus<br />
-                  (no × 0.75 multiplier)
+                  tier = Franchise (165+), Star (150+), Core (135+), Normal<br />
+                  controlBonus = CONTROL_PREMIUM[tier][yearsRemaining]
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
-                  The yearsRemaining/3 factor already handles decay. Last-year keepers are still premium assets.
+                  <strong>Control Premium Table:</strong><br />
+                  Franchise: [0, 18, 36, 55] | Star: [0, 12, 25, 38]<br />
+                  Core: [0, 7, 14, 22] | Normal: [0, 0, 0, 0]<br />
+                  <em>This rewards multi-year control of elite players independent of draft slot.</em>
+                </div>
+              </div>
+              <div className="rounded bg-white p-3">
+                <strong className="text-green-700">Final Formula:</strong>
+                <div className="mt-2 font-mono text-xs text-gray-700">
+                  keeperValue = baseValue + surplusBonus + controlBonus
+                </div>
+                <div className="mt-2 text-gray-600 text-xs">
+                  No expiration multipliers. Value falls naturally as years remaining decrease.
                 </div>
               </div>
               <div className="rounded bg-white p-3">
@@ -216,9 +229,20 @@ export default async function FormulaPage({
                 </ul>
               </div>
             </div>
-            <div className="mt-3 text-sm text-purple-900">
-              <strong>Example:</strong> Celebrini (R14, Year 2, 1 yr left):
-              <br />Base 168 + Bonus 36 = <strong>204 final</strong> (no expiration penalty)
+            <div className="mt-3 space-y-2 text-sm text-purple-900">
+              <div>
+                <strong>Example 1 - Celebrini (R14 Tier C, 1 yr, value 168):</strong><br />
+                Surplus: min(118, 55) = 55 × 0.60 = 33 | Control: Franchise[1yr] = 18<br />
+                <strong>Final: 168 + 33 + 18 = ~219</strong>
+              </div>
+              <div>
+                <strong>Example 2 - McDavid (R1 Tier A, 3 yr, value 160):</strong><br />
+                Surplus: min(0, 25) = 0 × 1.00 = 0 | Control: Franchise[3yr] = 55<br />
+                <strong>Final: 160 + 0 + 55 = ~215</strong>
+              </div>
+              <div className="text-xs text-purple-700 mt-2">
+                <em>Philosophy: "How expensive is this player to replace?" McDavid's multi-year control has massive value even with no surplus.</em>
+              </div>
             </div>
           </div>
         </div>

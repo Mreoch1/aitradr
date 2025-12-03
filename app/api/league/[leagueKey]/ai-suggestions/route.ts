@@ -135,31 +135,37 @@ export async function POST(
           ? positionsArray.join("/")
           : (player.primaryPosition || "?");
         
-        // Calculate keeper bonus using new formula with tier caps and stability bonus
+        // Calculate keeper bonus with control premium
         let keeperBonus = 0;
         let adjustedValue = playerValue?.score || 0;
         
         if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining) {
           const draftRound = entry.originalDraftRound;
           const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
-          const yearsOfControl = entry.yearsRemaining;
+          const years = Math.max(0, Math.min(3, entry.yearsRemaining));
           
-          // Step 1: Raw surplus
+          // PART A: Surplus Bonus (underdraft value)
           const surplus = Math.max(0, adjustedValue - draftRoundAvg);
-          
-          // Step 2: Tier cap
-          const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-          const surplusCap = { A: 25, B: 40, C: 55 }[tier];
+          const draftTier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
+          const surplusCap = { A: 25, B: 40, C: 55 }[draftTier];
           const cappedSurplus = Math.min(surplus, surplusCap);
+          const surplusWeights = [0, 0.6, 0.85, 1.0];
+          const surplusBonus = cappedSurplus * surplusWeights[years];
           
-          // Step 3: Year weight (1yr=0.60x, 2yr=0.85x, 3yr=1.10x)
-          const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+          // PART B: Control Premium (multi-year elite control)
+          const playerTier = 
+            adjustedValue >= 165 ? 'Franchise' :
+            adjustedValue >= 150 ? 'Star' :
+            adjustedValue >= 135 ? 'Core' : 'Normal';
+          const controlPremium: Record<string, number[]> = {
+            Franchise: [0, 18, 36, 55],
+            Star:      [0, 12, 25, 38],
+            Core:      [0,  7, 14, 22],
+            Normal:    [0,  0,  0,  0],
+          };
+          const controlBonus = controlPremium[playerTier][years];
           
-          // Step 4: Stability bonus (4 pts per year)
-          const stabilityBonus = 4 * yearsOfControl;
-          
-          // Step 5: Final bonus
-          keeperBonus = cappedSurplus * yearWeight + stabilityBonus;
+          keeperBonus = surplusBonus + controlBonus;
           adjustedValue += keeperBonus;
         }
         

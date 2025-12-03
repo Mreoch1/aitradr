@@ -141,42 +141,73 @@ export function applyExpirationPenalty(value: number, yearsRemaining: number): n
 }
 
 /**
- * New keeper bonus formula with tier-based caps and stability bonuses
- * Balances late-round steals vs multi-year control of studs
+ * Player tier classification by base value
+ * Used for control premium calculation
+ */
+type PlayerTier = 'Franchise' | 'Star' | 'Core' | 'Normal';
+
+function classifyPlayerTier(baseValue: number): PlayerTier {
+  if (baseValue >= 165) return 'Franchise';
+  if (baseValue >= 150) return 'Star';
+  if (baseValue >= 135) return 'Core';
+  return 'Normal';
+}
+
+/**
+ * Control Premium: value of locking elite players for multiple years
+ * Index: [0 years, 1 year, 2 years, 3 years]
+ * Elite players aren't fungible - multi-year control has massive trade gravity
+ */
+const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
+  Franchise: [0, 18, 36, 55],  // McDavid, MacKinnon, Matthews tier
+  Star:      [0, 12, 25, 38],  // Elite but not irreplaceable
+  Core:      [0,  7, 14, 22],  // Solid players worth keeping
+  Normal:    [0,  0,  0,  0],  // No premium for role players
+};
+
+/**
+ * New keeper bonus formula with surplus + control premium
+ * Philosophy: "How expensive would this player be to replace?"
  * 
  * @param baseValue - Current player value from z-score engine
  * @param draftRound - Original draft round (1-16)
  * @param draftRoundAvg - Average player value for this draft round
- * @param yearsOfControl - Years of keeper eligibility remaining (1-3)
+ * @param yearsRemaining - Years of keeper eligibility remaining (0-3)
  * @returns Keeper bonus points
  */
 export function calculateKeeperBonus(
   baseValue: number,
   draftRound: number,
   draftRoundAvg: number,
-  yearsOfControl: number
+  yearsRemaining: number
 ): number {
-  // Step 1: Calculate raw surplus vs round average
+  // Clamp years remaining to valid range
+  const years = Math.max(0, Math.min(3, yearsRemaining));
+  
+  // PART A: Surplus Bonus (underdraft value)
+  // How much better is this player than the draft round average?
   const surplus = Math.max(0, baseValue - draftRoundAvg);
   
-  // Step 2: Cap surplus by tier to prevent late-round monsters from blowing up
-  const tier = getRoundTier(draftRound);
+  // Cap surplus by draft tier to prevent late-round explosion
+  const draftTier = getRoundTier(draftRound);
   const surplusCapByTier: Record<KeeperTier, number> = {
-    'A': 25,  // Rounds 1-4: small cap (elite picks have less upside)
+    'A': 25,  // Rounds 1-4: small cap
     'B': 40,  // Rounds 5-10: medium cap
     'C': 55,  // Rounds 11-16: large cap (reward late-round steals)
   };
-  const cappedSurplus = Math.min(surplus, surplusCapByTier[tier]);
+  const cappedSurplus = Math.min(surplus, surplusCapByTier[draftTier]);
   
-  // Step 3: Weight by years of control (non-linear)
-  // 1 year = 0.60x, 2 years = 0.85x, 3 years = 1.10x
-  const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+  // Weight surplus by years remaining
+  // [0 years, 1 year, 2 years, 3 years] = [0, 0.60, 0.85, 1.00]
+  const surplusWeights = [0, 0.6, 0.85, 1.0];
+  const surplusBonus = cappedSurplus * surplusWeights[years];
   
-  // Step 4: Stability bonus - rewards multi-year control even on studs
-  // This is what MacKinnon was missing: 3 years of R1 stud has value
-  const stabilityBonus = 4 * yearsOfControl;  // 4, 8, or 12 points
+  // PART B: Control Premium (multi-year elite control)
+  // This is what makes McDavid valuable even with no surplus
+  const playerTier = classifyPlayerTier(baseValue);
+  const controlBonus = CONTROL_PREMIUM[playerTier][years];
   
-  // Step 5: Final keeper bonus
-  return cappedSurplus * yearWeight + stabilityBonus;
+  // Final keeper bonus: surplus + control
+  return surplusBonus + controlBonus;
 }
 

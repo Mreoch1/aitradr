@@ -292,7 +292,7 @@ export default function TradeBuilderPage() {
     pickValueMap.set(pick.round, pick.score);
   });
 
-  // Helper: Calculate keeper-adjusted value using new formula
+  // Helper: Calculate keeper-adjusted value with control premium
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
     const baseValue = player.valueScore;
     
@@ -301,28 +301,38 @@ export default function TradeBuilderPage() {
       return baseValue;
     }
     
-    // Use new keeper bonus formula with tier caps and stability bonus
     const draftRound = player.originalDraftRound;
     const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
-    const yearsOfControl = player.yearsRemaining;
+    const years = Math.max(0, Math.min(3, player.yearsRemaining));
     
-    // Step 1: Calculate raw surplus
+    // PART A: Surplus Bonus (underdraft value)
     const surplus = Math.max(0, baseValue - draftRoundAvg);
     
-    // Step 2: Cap surplus by tier
-    const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-    const surplusCap = { A: 25, B: 40, C: 55 }[tier];
+    // Cap surplus by draft tier
+    const draftTier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
+    const surplusCap = { A: 25, B: 40, C: 55 }[draftTier];
     const cappedSurplus = Math.min(surplus, surplusCap);
     
-    // Step 3: Weight by years of control (1yr=0.60x, 2yr=0.85x, 3yr=1.10x)
-    const yearWeight = 0.6 + 0.25 * (yearsOfControl - 1);
+    // Weight surplus by years: [0, 0.60, 0.85, 1.00]
+    const surplusWeights = [0, 0.6, 0.85, 1.0];
+    const surplusBonus = cappedSurplus * surplusWeights[years];
     
-    // Step 4: Stability bonus for multi-year control
-    const stabilityBonus = 4 * yearsOfControl;
+    // PART B: Control Premium (multi-year elite control)
+    const playerTier = 
+      baseValue >= 165 ? 'Franchise' :
+      baseValue >= 150 ? 'Star' :
+      baseValue >= 135 ? 'Core' : 'Normal';
     
-    // Step 5: Final keeper bonus
-    const keeperBonus = cappedSurplus * yearWeight + stabilityBonus;
+    const controlPremium: Record<string, number[]> = {
+      Franchise: [0, 18, 36, 55],
+      Star:      [0, 12, 25, 38],
+      Core:      [0,  7, 14, 22],
+      Normal:    [0,  0,  0,  0],
+    };
+    const controlBonus = controlPremium[playerTier][years];
     
+    // Final: base + surplus + control
+    const keeperBonus = surplusBonus + controlBonus;
     return baseValue + keeperBonus;
   };
 
@@ -540,13 +550,30 @@ export default function TradeBuilderPage() {
                 +{(() => {
                   const draftRound = player.originalDraftRound!;
                   const roundAvg = pickValueMap.get(draftRound) ?? 100;
+                  const years = Math.max(0, Math.min(3, player.yearsRemaining!));
+                  
+                  // Surplus bonus
                   const surplus = Math.max(0, player.valueScore - roundAvg);
                   const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
                   const cap = { A: 25, B: 40, C: 55 }[tier];
                   const cappedSurplus = Math.min(surplus, cap);
-                  const yearWeight = 0.6 + 0.25 * (player.yearsRemaining! - 1);
-                  const stabilityBonus = 4 * player.yearsRemaining!;
-                  return (cappedSurplus * yearWeight + stabilityBonus).toFixed(0);
+                  const surplusWeights = [0, 0.6, 0.85, 1.0];
+                  const surplusBonus = cappedSurplus * surplusWeights[years];
+                  
+                  // Control premium
+                  const playerTier = 
+                    player.valueScore >= 165 ? 'Franchise' :
+                    player.valueScore >= 150 ? 'Star' :
+                    player.valueScore >= 135 ? 'Core' : 'Normal';
+                  const controlPremium: Record<string, number[]> = {
+                    Franchise: [0, 18, 36, 55],
+                    Star:      [0, 12, 25, 38],
+                    Core:      [0,  7, 14, 22],
+                    Normal:    [0,  0,  0,  0],
+                  };
+                  const controlBonus = controlPremium[playerTier][years];
+                  
+                  return (surplusBonus + controlBonus).toFixed(0);
                 })()} K
               </span>
             )}
