@@ -1248,6 +1248,47 @@ export default function TradeBuilderPage() {
                 <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {Math.abs(diff).toFixed(1)} points</p>
               )}
             </div>
+            
+            {/* Save Trade Button */}
+            {(teamASends.length > 0 || teamBSends.length > 0) && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={async () => {
+                    const tradeName = prompt("Give this trade a name (optional):");
+                    try {
+                      const response = await fetch(`/api/league/${leagueKey}/save-trade`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          tradeName,
+                          teamAId: sideA.teamId,
+                          teamBId: sideB.teamId,
+                          teamAPlayers: sideA.playerIds,
+                          teamBPlayers: sideB.playerIds,
+                          teamAPicks: sideA.picks,
+                          teamBPicks: sideB.picks,
+                          teamAValue: teamASends.reduce((sum, item) => sum + item.value, 0),
+                          teamBValue: teamBSends.reduce((sum, item) => sum + item.value, 0),
+                          netDiff: diff,
+                        }),
+                      });
+                      const data = await response.json();
+                      if (data.ok) {
+                        alert("✅ Trade saved successfully!");
+                      } else {
+                        alert("Failed to save: " + data.error);
+                      }
+                    } catch (error) {
+                      console.error("Save error:", error);
+                      alert("Failed to save trade");
+                    }
+                  }}
+                  className="rounded-lg bg-blue-600 px-6 py-3 font-mono font-bold text-white hover:bg-blue-700"
+                >
+                  💾 SAVE THIS TRADE
+                </button>
+              </div>
+            )}
           </div>
               </>
             );
