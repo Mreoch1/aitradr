@@ -49,7 +49,21 @@
 /* Mooninite theme retro effects */
 [data-theme="mooninites"] * {
   font-family: 'Courier New', monospace !important;
-  text-shadow: 0 0 5px #00ff00;
+}
+
+/* Only add glow to headers and large text, not body text */
+[data-theme="mooninites"] h1,
+[data-theme="mooninites"] h2,
+[data-theme="mooninites"] h3 {
+  text-shadow: 0 0 3px #00ff00;
+}
+
+/* Ensure all body text, paragraphs, labels, and spans are crisp */
+[data-theme="mooninites"] p,
+[data-theme="mooninites"] span,
+[data-theme="mooninites"] label,
+[data-theme="mooninites"] div {
+  text-shadow: none !important;
 }
 
 [data-theme="mooninites"] button {
@@ -58,6 +72,7 @@
   text-transform: uppercase;
   font-weight: bold;
   letter-spacing: 1px;
+  text-shadow: none !important; /* Keep button text crisp */
 }
 
 [data-theme="mooninites"] button:hover {
@@ -71,6 +86,7 @@
   border: 2px solid #00ff00 !important;
   background-color: #0f051f !important;
   color: #00ff00 !important;
+  text-shadow: none !important; /* Keep text crisp and readable */
 }
 
 [data-theme="mooninites"] table {
@@ -81,11 +97,12 @@
   background-color: #001a00 !important;
   color: #00ff00 !important;
   border: 1px solid #00ff00 !important;
-  text-shadow: 0 0 5px #00ff00;
+  font-weight: bold !important;
 }
 
 [data-theme="mooninites"] td {
   border: 1px solid #003300 !important;
+  text-shadow: none !important; /* Keep table data readable */
 }
 
 [data-theme="mooninites"] .rounded-lg,
@@ -99,7 +116,7 @@
   image-rendering: crisp-edges;
 }
 
-/* Scanline effect for Mooninite mode */
+/* Scanline effect for Mooninite mode - subtle to maintain readability */
 [data-theme="mooninites"]::before {
   content: "";
   position: fixed;
@@ -111,8 +128,8 @@
   z-index: 9999;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 255, 0, 0.03),
-    rgba(0, 255, 0, 0.03) 1px,
+    rgba(0, 255, 0, 0.015),
+    rgba(0, 255, 0, 0.015) 1px,
     transparent 1px,
     transparent 2px
   );
@@ -124,8 +141,8 @@
   100% { transform: translateY(100%); }
 }
 
-/* Mooninite theme CRT flicker effect */
-[data-theme="mooninites"] body {
+/* Mooninite theme CRT flicker effect - removed to improve readability */
+/* [data-theme="mooninites"] body {
   animation: flicker 0.15s infinite;
 }
 
@@ -133,7 +150,7 @@
   0% { opacity: 1; }
   50% { opacity: 0.98; }
   100% { opacity: 1; }
-}
+} */
 
 /* Mooninite special button styles */
 [data-theme="mooninites"] .theme-btn-ai {
