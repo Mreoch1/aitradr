@@ -93,9 +93,28 @@ export async function POST(
           if (name.includes("shutout")) statsObj.shutouts = stat.value;
         });
         
+        // Parse positions JSON string into array and filter out non-position values
+        let positionsArray: string[] = [];
+        try {
+          const parsed = typeof player.positions === 'string' ? JSON.parse(player.positions) : player.positions;
+          if (Array.isArray(parsed)) {
+            // Filter out IR/Util, keep only actual positions
+            positionsArray = parsed.filter((p: string) => 
+              ["C", "LW", "RW", "D", "G"].includes(p)
+            );
+          }
+        } catch (e) {
+          console.error("[AI] Failed to parse positions for", player.name, player.positions);
+        }
+        
+        // Use parsed array, fallback to primary position, or "?"
+        const positionString = positionsArray.length > 0 
+          ? positionsArray.join("/")
+          : (player.primaryPosition || "?");
+        
         return {
           name: player.name,
-          position: player.primaryPosition || player.positions || "?",
+          position: positionString,
           nhlTeam: player.teamAbbr || "?",
           value: playerValue?.score || 0,
           stats: statsObj,
