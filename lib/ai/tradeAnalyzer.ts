@@ -89,17 +89,16 @@ ${positions.map(pos => `- ${pos}: ${myPositionCounts[pos]} eligible players, Avg
 
 Note: Counts above reflect ALL players eligible for that position (dual-eligible players counted in multiple positions).
 
-### Top 10 Players by Value:
+### COMPLETE ROSTER LIST (All ${myTeam.roster.length} players):
 ${myTeam.roster
   .sort((a, b) => b.value - a.value)
-  .slice(0, 10)
-  .map((p, i) => `${i+1}. ${p.name} (${p.position}, ${p.nhlTeam}) - Value: ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`)
+  .map((p, i) => `${i+1}. ${p.name} - Position(s): ${p.position} - NHL Team: ${p.nhlTeam} - Value: ${p.value.toFixed(1)}${p.status ? ` [STATUS: ${p.status}]` : ""}`)
   .join("\n")}
 
-### Position Depth Analysis (Top 3 per position):
+### Position-Specific Lists (for clarity):
 ${positions.map(pos => {
   const players = myTeam.roster.filter(p => p.position.includes(pos)).sort((a, b) => b.value - a.value);
-  return `${pos} (${players.length} eligible): ${players.slice(0, 3).map(p => `${p.name} [${p.position}] (${p.value.toFixed(0)})`).join(", ")}`;
+  return `\n${pos}-Eligible Players (${players.length} total):\n${players.map(p => `  • ${p.name} [${p.position}] - ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`).join("\n")}`;
 }).join("\n")}
 
 ### Draft Picks:
@@ -121,10 +120,21 @@ ${otherTeams.map(team => {
   
   return `
 ### ${team.name} ${team.managerName ? `(${team.managerName})` : ""}
-- Total Roster Value: ${team.totalValue.toFixed(1)}
-- Position Depth (eligible): ${positions.map(pos => `${pos}: ${teamPosCounts[pos]}`).join(", ")}
-- Top 3 Players: ${team.roster.sort((a, b) => b.value - a.value).slice(0, 3).map(p => `${p.name} [${p.position}] (${p.value.toFixed(0)})`).join(", ")}
-- Draft Picks: ${team.draftPicks.length > 0 ? team.draftPicks.sort((a, b) => a - b).join(", ") : "None"}
+Total Roster Value: ${team.totalValue.toFixed(1)}
+Position Counts: ${positions.map(pos => `${pos}: ${teamPosCounts[pos]}`).join(", ")}
+Draft Picks: ${team.draftPicks.length > 0 ? `Rounds ${team.draftPicks.sort((a, b) => a - b).join(", ")}` : "None"}
+
+Top 10 Players:
+${team.roster.sort((a, b) => b.value - a.value).slice(0, 10).map((p, i) => 
+  `${i+1}. ${p.name} [${p.position}] ${p.nhlTeam} - ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`
+).join("\n")}
+
+Position Breakdown:
+${positions.map(pos => {
+  const players = team.roster.filter(p => p.position.includes(pos));
+  if (players.length === 0) return `${pos}: None`;
+  return `${pos} (${players.length}): ${players.sort((a, b) => b.value - a.value).map(p => `${p.name}[${p.position}]`).join(", ")}`;
+}).join("\n")}
 `;
 }).join("\n")}
 
@@ -132,16 +142,28 @@ ${otherTeams.map(team => {
 
 ## TASK:
 
-Suggest 3-5 realistic trade opportunities that would IMPROVE the user's team ("${myTeam.name}"). For each suggestion:
+Suggest 3-5 realistic trade opportunities that would IMPROVE the user's team ("${myTeam.name}").
 
-1. **Identify strategic fit**: Which team has what you need, and needs what you have?
-   - ⚠️ REMEMBER: A "C/RW" player fills BOTH positions! Count all eligible positions when assessing depth.
-   - Example: Team with 6 "C-eligible" players might only have 2 pure-C, and 4 are dual-eligible (C/RW, C/LW).
-2. **Propose specific players/picks**: Be realistic about value balance
-3. **Explain the benefit**: How does this improve position weaknesses, add depth, or address specific needs?
-4. **Consider injury status**: If a player is on IR, factor that into timing
-5. **Assess fairness**: Aim for fair value (within ±10 points)
-6. **Account for dual eligibility**: When explaining roster composition, note how many are pure-position vs dual-eligible
+### STRICT RULES:
+1. **READ THE COMPLETE ROSTER LISTS ABOVE CAREFULLY** - Don't make false claims about position scarcity
+2. **Value balance**: Net gain must be between -10 and +15 points (no terrible trades!)
+3. **Both teams must benefit** - Explain why BOTH sides would want this trade
+4. **Use actual player names** from the rosters above only
+5. **Consider dual eligibility correctly**:
+   - A player listed as "C/RW" can play BOTH C and RW
+   - Don't say "only 1 RW" if there are multiple RW-eligible players
+   - Check the Position Breakdown sections for each team
+6. **Focus on realistic needs**:
+   - Surplus position (5+ eligible) = can afford to trade
+   - Weak position (1-2 eligible) = needs help
+   - Injured players (IR, DTD) = buy low opportunity
+7. **NO TERRIBLE TRADES**: Don't suggest -80 point losses!
+
+### For Each Suggestion:
+1. **Strategic Fit**: What does each team actually need based on the Position Breakdown?
+2. **Fair Value**: Within ±15 points maximum
+3. **Mutual Benefit**: Both teams improve in some way
+4. **Specific Players**: Use exact names from rosters above
 
 Format your response as JSON:
 
