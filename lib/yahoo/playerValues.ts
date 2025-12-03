@@ -31,12 +31,33 @@ interface ZScoreStats {
 
 // ===== STAT CATEGORIES =====
 
-// Skater categories (11 total)
+// Weighted buckets - reflects fantasy trade reality, not pure math equality
+const SCORING_CORE = ["goals", "assists", "powerplay points", "shots on goal"] as const;
+const SUPPORT_STATS = ["plus/minus", "shorthanded points", "game winning goals"] as const;
+const GRIND_STATS = ["penalty minutes", "faceoffs won", "hits", "blocks"] as const;
+
+// All skater categories for z-score calculation
 const SKATER_CATEGORIES = [
-  "goals", "assists", "plus/minus", "penalty minutes",
-  "powerplay points", "shorthanded points", "game winning goals",
-  "shots on goal", "faceoffs won", "hits", "blocks"
+  ...SCORING_CORE,
+  ...SUPPORT_STATS,
+  ...GRIND_STATS,
 ] as const;
+
+// Category weights - reflects fantasy market reality
+const CATEGORY_WEIGHTS = {
+  SCORING: 1.5,  // Goals, Assists, PPP, SOG - what managers actually trade for
+  SUPPORT: 1.0,  // +/-, SHP, GWG - meaningful but not primary
+  GRIND: 0.7,    // FW, PIM, HIT, BLK - valuable but not trade drivers
+} as const;
+
+// Position scarcity multipliers - reflects roster construction reality
+const POSITION_MULTIPLIERS = {
+  LW: 1.08,  // Wings are scarce
+  RW: 1.04,  // Wings are scarce
+  C: 0.96,   // Centers are plentiful
+  D: 1.10,   // Good defensemen are gold
+  G: 1.00,   // Already balanced via reliability curve
+} as const;
 
 // Goalie categories (5 total)
 const GOALIE_CATEGORIES = [
@@ -85,7 +106,8 @@ function zScore(value: number, mean: number, std: number, isNegative: boolean = 
 // ===== SKATER VALUE CALCULATION =====
 
 /**
- * Calculate skater value using z-scores across all skater categories
+ * Calculate skater value using WEIGHTED z-scores by bucket
+ * Reflects fantasy trade reality: offense > support > grind stats
  */
 export async function calculateSkaterValue(
   playerId: string,
@@ -102,26 +124,89 @@ export async function calculateSkaterValue(
     return 40; // Default for players without stats
   }
   
+  // Get player info for position multiplier
+  const player = await prisma.player.findUnique({
+    where: { id: playerId },
+    select: { primaryPosition: true, name: true }
+  });
+  
   // Calculate z-scores for each category
   const categoryStats = calculateCategoryStats(allSkaterStats, SKATER_CATEGORIES);
   
-  let totalZScore = 0;
+  let scoringZSum = 0;
+  let supportZSum = 0;
+  let grindZSum = 0;
   
-  for (const category of SKATER_CATEGORIES) {
+  // Bucket 1: Scoring Core (G, A, PPP, SOG)
+  for (const category of SCORING_CORE) {
     const playerValue = playerStats.stats.get(category) || 0;
     const catStats = categoryStats.get(category);
-    
-    if (!catStats) continue;
-    
-    const isNegative = NEGATIVE_CATEGORIES.includes(category);
-    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
-    
-    totalZScore += z;
+    if (catStats) {
+      scoringZSum += zScore(playerValue, catStats.mean, catStats.stdDev, false);
+    }
   }
   
-  // Return raw z-score sum (can be negative for below-average players)
-  // Scale to make values positive and easier to read
-  return totalZScore * 10 + 100;
+  // Bucket 2: Support Stats (+/-, SHP, GWG)
+  for (const category of SUPPORT_STATS) {
+    const playerValue = playerStats.stats.get(category) || 0;
+    const catStats = categoryStats.get(category);
+    if (catStats) {
+      const isNegative = NEGATIVE_CATEGORIES.includes(category);
+      supportZSum += zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    }
+  }
+  
+  // Bucket 3: Grind Stats (FW, PIM, HIT, BLK)
+  for (const category of GRIND_STATS) {
+    const playerValue = playerStats.stats.get(category) || 0;
+    const catStats = categoryStats.get(category);
+    if (catStats) {
+      grindZSum += zScore(playerValue, catStats.mean, catStats.stdDev, false);
+    }
+  }
+  
+  // Apply bucket weights
+  const weightedScoring = scoringZSum * CATEGORY_WEIGHTS.SCORING;
+  const weightedSupport = supportZSum * CATEGORY_WEIGHTS.SUPPORT;
+  const weightedGrind = grindZSum * CATEGORY_WEIGHTS.GRIND;
+  
+  const totalWeightedZ = weightedScoring + weightedSupport + weightedGrind;
+  
+  // Cap grind dominance: grind contribution cannot exceed 40% of total value
+  let finalWeightedZ = totalWeightedZ;
+  const totalValue = Math.abs(weightedScoring) + Math.abs(weightedSupport) + Math.abs(weightedGrind);
+  if (totalValue > 0) {
+    const grindPercent = Math.abs(weightedGrind) / totalValue;
+    if (grindPercent > 0.40) {
+      const maxGrind = totalValue * 0.40;
+      const clampedGrind = weightedGrind > 0 ? maxGrind : -maxGrind;
+      finalWeightedZ = weightedScoring + weightedSupport + clampedGrind;
+    }
+  }
+  
+  // Base value from weighted z-scores
+  let value = finalWeightedZ * 10 + 100;
+  
+  // Position scarcity multiplier
+  if (player?.primaryPosition) {
+    const pos = player.primaryPosition as keyof typeof POSITION_MULTIPLIERS;
+    const multiplier = POSITION_MULTIPLIERS[pos] || 1.0;
+    value *= multiplier;
+  }
+  
+  // Superstar floor: Elite scorers cannot rank below depth players
+  const goals = playerStats.stats.get("goals") || 0;
+  const assists = playerStats.stats.get("assists") || 0;
+  const points = goals + assists;
+  const ppp = playerStats.stats.get("powerplay points") || 0;
+  
+  // Top-tier offensive production gets a floor
+  const isEliteScorer = points >= 25 || goals >= 12 || ppp >= 12;
+  if (isEliteScorer) {
+    value = Math.max(value, 135);
+  }
+  
+  return value;
 }
 
 // ===== GOALIE VALUE CALCULATION =====
