@@ -143,13 +143,13 @@ export async function POST(
           const draftRoundAvg = pickValueMap.get(entry.keeperRoundCost) ?? 100;
           const surplus = Math.max(0, adjustedValue - draftRoundAvg);
           keeperBonus = surplus * (entry.yearsRemaining / 3);
-          adjustedValue += keeperBonus;
           
-          // EXPIRATION PENALTY: Last year keepers lose 25% of total value
+          // Optional small discount on bonus only for last year
           if (entry.yearsRemaining === 1) {
-            adjustedValue *= 0.75;
-            keeperBonus *= 0.75; // Also reduce displayed bonus
+            keeperBonus *= 0.85; // 15% haircut on keeper surplus only
           }
+          
+          adjustedValue += keeperBonus;
         }
         
         return {

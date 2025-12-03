@@ -5,10 +5,12 @@
 
 import type { TeamForAI, PlayerForAI } from "./tradeAnalyzer";
 
-// Skater categories (11 total) - MUST match Yahoo API stat names (normalized)
+// Skater categories (12 total - Yahoo format) - MUST match Yahoo API stat names (normalized)
+// Yahoo counts G, A, and P as SEPARATE categories
 const SKATER_STATS = [
   "goals",
-  "assists", 
+  "assists",
+  "points",                // 12th category - Yahoo counts this separately from G+A
   "plus/minus",
   "penalty minutes",
   "powerplay points",      // Yahoo: "Powerplay Points"

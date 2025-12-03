@@ -291,7 +291,7 @@ export default function TradeBuilderPage() {
     pickValueMap.set(pick.round, pick.score);
   });
 
-  // Helper: Calculate keeper-adjusted value with expiration penalty
+  // Helper: Calculate keeper-adjusted value
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
     const baseValue = player.valueScore;
     
@@ -301,19 +301,17 @@ export default function TradeBuilderPage() {
     }
     
     // Calculate keeper bonus (surplus value × years remaining factor)
+    // The yearsRemaining/3 factor already handles expiration scaling
     const draftRoundAvg = pickValueMap.get(player.keeperRoundCost) ?? 100;
     const surplus = Math.max(0, baseValue - draftRoundAvg);
-    const yearsRemainingFactor = (player.yearsRemaining ?? 0) / 3;
-    const keeperBonus = surplus * yearsRemainingFactor;
+    let keeperBonus = surplus * ((player.yearsRemaining ?? 0) / 3);
     
-    let adjustedValue = baseValue + keeperBonus;
-    
-    // EXPIRATION PENALTY: Last year keepers lose 25% value
+    // Optional small discount on bonus only for last year (not full value)
     if (player.yearsRemaining === 1) {
-      adjustedValue *= 0.75;
+      keeperBonus *= 0.85; // 15% haircut on keeper surplus only (not the whole value)
     }
     
-    return adjustedValue;
+    return baseValue + keeperBonus;
   };
 
   const playerValueMap = new Map<string, number>();

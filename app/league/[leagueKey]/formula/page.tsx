@@ -86,22 +86,25 @@ export default async function FormulaPage({
               <span className="font-semibold">Base Value = (Weighted z-scores × 8) + 100</span>
             </div>
             <div className="text-sm text-gray-600">
-              <strong>Weighted Category Buckets (reflects fantasy trade reality):</strong>
+              <strong>12 Categories (Yahoo Format - individual weights):</strong>
             </div>
             <div className="space-y-2 text-sm">
               <div className="rounded bg-white p-2">
-                <strong className="text-blue-700">Scoring Core (1.5× weight):</strong>
-                <div className="ml-4 text-gray-600">Goals, Assists, Powerplay Points, Shots on Goal</div>
+                <strong className="text-blue-700">Primary Scoring:</strong>
+                <div className="ml-4 text-gray-600">Goals (1.5×), Assists (1.3×), Points (0.7×), PPP (1.2×), SOG (1.3×)</div>
               </div>
               <div className="rounded bg-white p-2">
-                <strong className="text-green-700">Support Stats (1.0× weight):</strong>
-                <div className="ml-4 text-gray-600">Plus/Minus, Shorthanded Points, Game Winning Goals</div>
+                <strong className="text-green-700">Supporting Stats:</strong>
+                <div className="ml-4 text-gray-600">Plus/Minus (1.0×), Shorthanded Points (1.0×), GWG (1.0×)</div>
               </div>
               <div className="rounded bg-white p-2">
-                <strong className="text-gray-700">Grind Stats (0.7× weight):</strong>
-                <div className="ml-4 text-gray-600">Penalty Minutes, Faceoffs Won, Hits, Blocks</div>
-                <div className="ml-4 mt-1 text-xs text-gray-500">Capped at 40% of total value</div>
+                <strong className="text-gray-700">Grind Stats:</strong>
+                <div className="ml-4 text-gray-600">PIM (0.7×), Faceoffs Won (0.7×), Hits (0.6×), Blocks (0.6×)</div>
+                <div className="ml-4 mt-1 text-xs text-gray-500">Grind stats capped at 40% of total value to prevent grinders outranking stars</div>
               </div>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <strong>Note:</strong> Points (G+A) is weighted lower (0.7×) to avoid double-counting with Goals and Assists while still reflecting Yahoo's separate P category.
             </div>
           </div>
           

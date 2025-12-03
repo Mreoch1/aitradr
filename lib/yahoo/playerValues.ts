@@ -47,25 +47,40 @@ interface ZScoreStats {
 
 // ===== STAT CATEGORIES =====
 
-// Weighted buckets - reflects fantasy trade reality, not pure math equality
+// Weighted categories - reflects fantasy trade reality AND Yahoo league format
 // MUST match Yahoo's stat names after normalization
-const SCORING_CORE = ["goals", "assists", "powerplay points", "shots on goal"] as const;
-const SUPPORT_STATS = ["plus/minus", "shorthanded points", "game-winning goals"] as const;
-const GRIND_STATS = ["penalty minutes", "faceoffs won", "hits", "blocks"] as const;
+// Yahoo league counts G, A, and P as SEPARATE categories (12 total, not 11)
 
-// All skater categories for z-score calculation
 const SKATER_CATEGORIES = [
-  ...SCORING_CORE,
-  ...SUPPORT_STATS,
-  ...GRIND_STATS,
+  "goals",
+  "assists",
+  "points",              // 12th category - Yahoo counts this separately
+  "plus/minus",
+  "penalty minutes",
+  "powerplay points",
+  "shorthanded points",
+  "game-winning goals",
+  "shots on goal",
+  "faceoffs won",
+  "hits",
+  "blocks"
 ] as const;
 
-// Category weights - reflects fantasy market reality
-const CATEGORY_WEIGHTS = {
-  SCORING: 1.5,  // Goals, Assists, PPP, SOG - what managers actually trade for
-  SUPPORT: 1.0,  // +/-, SHP, GWG - meaningful but not primary
-  GRIND: 0.7,    // FW, PIM, HIT, BLK - valuable but not trade drivers
-} as const;
+// Individual category weights - reflects fantasy market reality
+const CATEGORY_WEIGHTS_MAP: Record<string, number> = {
+  "goals": 1.5,
+  "assists": 1.3,
+  "points": 0.7,           // Lower weight to avoid double-counting with G+A
+  "powerplay points": 1.2,
+  "shots on goal": 1.3,
+  "plus/minus": 1.0,
+  "shorthanded points": 1.0,
+  "game-winning goals": 1.0,
+  "penalty minutes": 0.7,
+  "faceoffs won": 0.7,
+  "hits": 0.6,
+  "blocks": 0.6,
+};
 
 // Position scarcity multipliers - reflects roster construction reality
 const POSITION_MULTIPLIERS = {
@@ -147,59 +162,46 @@ export async function calculateSkaterValue(
     select: { primaryPosition: true, name: true }
   });
   
-  // Calculate z-scores for each category
+  // Calculate z-scores for each category with individual weights
   const categoryStats = calculateCategoryStats(allSkaterStats, SKATER_CATEGORIES);
   
-  let scoringZSum = 0;
-  let supportZSum = 0;
-  let grindZSum = 0;
+  let totalWeightedZ = 0;
+  let grindContribution = 0;
+  const grindCategories = ["penalty minutes", "faceoffs won", "hits", "blocks"];
   
-  // Bucket 1: Scoring Core (G, A, PPP, SOG)
-  for (const category of SCORING_CORE) {
+  for (const category of SKATER_CATEGORIES) {
     const playerValue = playerStats.stats.get(category) || 0;
     const catStats = categoryStats.get(category);
-    if (catStats) {
-      scoringZSum += zScore(playerValue, catStats.mean, catStats.stdDev, false);
+    
+    if (!catStats) continue;
+    
+    const isNegative = NEGATIVE_CATEGORIES.includes(category);
+    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    
+    // Apply individual category weight
+    const weight = CATEGORY_WEIGHTS_MAP[category] || 1.0;
+    const weightedZ = z * weight;
+    
+    totalWeightedZ += weightedZ;
+    
+    // Track grind stat contribution for capping
+    if (grindCategories.includes(category)) {
+      grindContribution += Math.abs(weightedZ);
     }
   }
   
-  // Bucket 2: Support Stats (+/-, SHP, GWG)
-  for (const category of SUPPORT_STATS) {
-    const playerValue = playerStats.stats.get(category) || 0;
-    const catStats = categoryStats.get(category);
-    if (catStats) {
-      const isNegative = NEGATIVE_CATEGORIES.includes(category);
-      supportZSum += zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
-    }
-  }
-  
-  // Bucket 3: Grind Stats (FW, PIM, HIT, BLK)
-  for (const category of GRIND_STATS) {
-    const playerValue = playerStats.stats.get(category) || 0;
-    const catStats = categoryStats.get(category);
-    if (catStats) {
-      grindZSum += zScore(playerValue, catStats.mean, catStats.stdDev, false);
-    }
-  }
-  
-  // Apply bucket weights
-  const weightedScoring = scoringZSum * CATEGORY_WEIGHTS.SCORING;
-  const weightedSupport = supportZSum * CATEGORY_WEIGHTS.SUPPORT;
-  const weightedGrind = grindZSum * CATEGORY_WEIGHTS.GRIND;
-  
-  const totalWeightedZ = weightedScoring + weightedSupport + weightedGrind;
-  
-  // Cap grind dominance: grind contribution cannot exceed 40% of total value
-  let finalWeightedZ = totalWeightedZ;
-  const totalValue = Math.abs(weightedScoring) + Math.abs(weightedSupport) + Math.abs(weightedGrind);
-  if (totalValue > 0) {
-    const grindPercent = Math.abs(weightedGrind) / totalValue;
+  // Cap grind dominance: grind stats cannot exceed 40% of total value
+  const totalContribution = Math.abs(totalWeightedZ);
+  if (totalContribution > 0) {
+    const grindPercent = grindContribution / totalContribution;
     if (grindPercent > 0.40) {
-      const maxGrind = totalValue * 0.40;
-      const clampedGrind = weightedGrind > 0 ? maxGrind : -maxGrind;
-      finalWeightedZ = weightedScoring + weightedSupport + clampedGrind;
+      // Scale down total to enforce 40% cap
+      const excessGrind = grindContribution - (totalContribution * 0.40);
+      totalWeightedZ -= excessGrind * (totalWeightedZ > 0 ? 1 : -1);
     }
   }
+  
+  const finalWeightedZ = totalWeightedZ;
   
   // Base value from weighted z-scores (scaled down to prevent runaway scores)
   let value = finalWeightedZ * 8 + 100; // Reduced from 10 to 8 for tighter scaling
