@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
+import { ThemeProvider } from "@/app/components/ThemeProvider";
+import { ThemeSwitcher } from "@/app/components/ThemeSwitcher";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 
 type TradeSide = {
@@ -607,8 +609,9 @@ export default function TradeBuilderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
+    <ThemeProvider>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6">
         {/* Retro Header with Branding */}
         <div className="mb-6 border-4 border-black bg-gradient-to-r from-purple-600 via-green-500 to-purple-600 px-6 py-4 shadow-lg" style={{ imageRendering: 'pixelated' }}>
           <div className="flex items-center justify-between">
@@ -631,12 +634,21 @@ export default function TradeBuilderPage() {
                 </h1>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right space-y-2">
               <div className="text-sm font-bold uppercase text-black" style={{ fontFamily: 'monospace' }}>
                 Trade Builder
               </div>
               <div className="text-lg font-bold text-white" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
                 {normalizedTradeData.leagueName}
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <Link 
+                  href={`/league/${leagueKey}/formula`}
+                  className="text-xs font-mono text-white hover:text-yellow-300 underline"
+                >
+                  📊 Formula
+                </Link>
+                <ThemeSwitcher />
               </div>
             </div>
           </div>
@@ -1067,31 +1079,85 @@ export default function TradeBuilderPage() {
               </div>
             </div>
           </div>
-          <div className="mt-6 rounded border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Team A Receives:</span>
-              <span className="text-sm font-semibold text-gray-900">{teamAReceiveTotal.toFixed(1)}</span>
+          {/* Improved Trade Analysis */}
+          <div className="mt-6 rounded-lg border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 p-6 shadow-md">
+            <h3 className="mb-4 text-center text-lg font-bold text-gray-900">📊 Trade Analysis</h3>
+            
+            <div className="grid grid-cols-2 gap-6">
+              {/* Team A Analysis */}
+              <div className="rounded-lg bg-white p-4 shadow">
+                <div className="mb-3 text-center">
+                  <h4 className="text-sm font-semibold text-gray-700">{teamA?.name || "Team A"}</h4>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gives Away:</span>
+                    <span className="font-semibold text-red-600">-{teamASendTotal.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gets Back:</span>
+                    <span className="font-semibold text-green-600">+{teamAReceiveTotal.toFixed(1)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2">
+                    <div className="flex justify-between">
+                      <span className="font-bold text-gray-900">Net Change:</span>
+                      <span className={`font-bold text-lg ${
+                        diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-600"
+                      }`}>
+                        {diff > 0 ? "+" : ""}{diff.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Team B Analysis */}
+              <div className="rounded-lg bg-white p-4 shadow">
+                <div className="mb-3 text-center">
+                  <h4 className="text-sm font-semibold text-gray-700">{teamB?.name || "Team B"}</h4>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gives Away:</span>
+                    <span className="font-semibold text-red-600">-{teamBSendTotal.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gets Back:</span>
+                    <span className="font-semibold text-green-600">+{teamASendTotal.toFixed(1)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2">
+                    <div className="flex justify-between">
+                      <span className="font-bold text-gray-900">Net Change:</span>
+                      <span className={`font-bold text-lg ${
+                        diff < 0 ? "text-green-600" : diff > 0 ? "text-red-600" : "text-gray-600"
+                      }`}>
+                        {diff < 0 ? "+" : ""}{(-diff).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Team B Receives:</span>
-              <span className="text-sm font-semibold text-gray-900">{teamBReceiveTotal.toFixed(1)}</span>
-            </div>
-            <div className="mt-4 border-t border-gray-300 pt-4">
+            
+            {/* Overall Trade Verdict */}
+            <div className="mt-4 rounded-lg border-2 p-3 text-center" style={{
+              borderColor: diff === 0 ? "#22c55e" : Math.abs(diff) < 5 ? "#eab308" : "#ef4444",
+              backgroundColor: diff === 0 ? "#f0fdf4" : Math.abs(diff) < 5 ? "#fef9c3" : "#fef2f2"
+            }}>
               {diff === 0 ? (
-                <p className="text-center text-lg font-semibold text-green-600">Even trade</p>
+                <p className="font-bold text-green-700">✅ EVEN TRADE</p>
+              ) : Math.abs(diff) < 5 ? (
+                <p className="font-bold text-yellow-700">⚖️ RELATIVELY FAIR ({Math.abs(diff).toFixed(1)} point difference)</p>
               ) : diff > 0 ? (
-                <p className="text-center text-lg font-semibold text-blue-600">
-                  Advantage: Team A by {diff.toFixed(1)}
-                </p>
+                <p className="font-bold text-red-700">⚠️ {teamA?.name || "Team A"} wins by {diff.toFixed(1)} points</p>
               ) : (
-                <p className="text-center text-lg font-semibold text-orange-600">
-                  Advantage: Team B by {Math.abs(diff).toFixed(1)}
-                </p>
+                <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {Math.abs(diff).toFixed(1)} points</p>
               )}
             </div>
           </div>
         </div>
       </div>
     </div>
+    </ThemeProvider>
   );
 }
