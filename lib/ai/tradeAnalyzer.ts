@@ -1,8 +1,12 @@
 /**
  * AI-powered trade analysis using DeepSeek
+ * All position analysis and trade logic is computed in TypeScript.
+ * DeepSeek is only used to format explanations based on facts we provide.
  */
 
 import { callDeepSeek } from "./deepseek";
+
+type Position = "C" | "LW" | "RW" | "D" | "G";
 
 export interface PlayerForAI {
   name: string;
@@ -42,201 +46,337 @@ export interface TradeSuggestion {
   confidence: number; // 0-100
 }
 
-function buildTradeAnalysisPrompt(
+interface PositionCounts {
+  C: number;
+  LW: number;
+  RW: number;
+  D: number;
+  G: number;
+}
+
+interface TeamSummary {
+  teamId: string;
+  name: string;
+  managerName?: string;
+  positionCounts: PositionCounts;
+  weakPositions: Position[];
+  surplusPositions: Position[];
+  topPlayers: Array<{ name: string; positions: Position[]; value: number; status?: string }>;
+}
+
+interface TradePayload {
+  userTeam: TeamSummary;
+  partnerTeam: TeamSummary;
+  trade: {
+    send: Array<{ name: string; positions: Position[]; value: number; status?: string }>;
+    receive: Array<{ name: string; positions: Position[]; value: number; status?: string }>;
+    netChangeUser: number;
+    netChangePartner: number;
+  };
+}
+
+/**
+ * Compute position counts for a team (players with dual eligibility count for both positions)
+ */
+function computePositionCounts(players: PlayerForAI[]): PositionCounts {
+  const counts: PositionCounts = { C: 0, LW: 0, RW: 0, D: 0, G: 0 };
+  
+  for (const player of players) {
+    const positions = player.position.split("/") as Position[];
+    for (const pos of positions) {
+      if (counts[pos] !== undefined) {
+        counts[pos]++;
+      }
+    }
+  }
+  
+  return counts;
+}
+
+/**
+ * Find weak and surplus positions based on roster distribution
+ */
+function analyzePositionDepth(counts: PositionCounts): {
+  weak: Position[];
+  surplus: Position[];
+} {
+  const total = counts.C + counts.LW + counts.RW + counts.D + counts.G;
+  const avg = total / 5;
+  
+  const weak: Position[] = [];
+  const surplus: Position[] = [];
+  
+  for (const pos of ["C", "LW", "RW", "D", "G"] as Position[]) {
+    if (counts[pos] <= 2) {
+      weak.push(pos);
+    } else if (counts[pos] >= avg + 1) {
+      surplus.push(pos);
+    }
+  }
+  
+  return { weak, surplus };
+}
+
+/**
+ * Build a team summary with computed position analysis
+ */
+function buildTeamSummary(team: TeamForAI): TeamSummary {
+  const positionCounts = computePositionCounts(team.roster);
+  const { weak, surplus } = analyzePositionDepth(positionCounts);
+  
+  const topPlayers = team.roster
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
+    .map(p => ({
+      name: p.name,
+      positions: p.position.split("/") as Position[],
+      value: p.value,
+      status: p.status,
+    }));
+  
+  return {
+    teamId: team.name, // Using name as ID for simplicity
+    name: team.name,
+    managerName: team.managerName,
+    positionCounts,
+    weakPositions: weak,
+    surplusPositions: surplus,
+    topPlayers,
+  };
+}
+
+/**
+ * Generate potential trades using OUR logic (not DeepSeek's)
+ */
+function generatePotentialTrades(
   myTeam: TeamForAI,
   otherTeams: TeamForAI[]
-): string {
-  // Analyze position strengths/weaknesses with DUAL ELIGIBILITY
-  const positions = ["C", "LW", "RW", "D", "G"];
-  const myPositionCounts: Record<string, number> = {};
-  const myPositionValues: Record<string, number> = {};
+): Array<{ partner: TeamForAI; payload: TradePayload }> {
+  const myTeamSummary = buildTeamSummary(myTeam);
+  const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload }> = [];
   
-  positions.forEach(pos => {
-    myPositionCounts[pos] = 0;
-    myPositionValues[pos] = 0;
-  });
+  for (const partnerTeam of otherTeams) {
+    const partnerSummary = buildTeamSummary(partnerTeam);
+    
+    // Find complementary needs
+    // Example: I'm weak at RW, they're surplus RW; they're weak at C, I'm surplus C
+    const myWeakTheyStrong = myTeamSummary.weakPositions.filter(pos =>
+      partnerSummary.surplusPositions.includes(pos)
+    );
+    const theyWeakIStrong = partnerSummary.weakPositions.filter(pos =>
+      myTeamSummary.surplusPositions.includes(pos)
+    );
+    
+    if (myWeakTheyStrong.length === 0 && theyWeakIStrong.length === 0) {
+      // No complementary fit, skip
+      continue;
+    }
+    
+    // Build a simple 1-for-1 or 2-for-2 trade
+    // Find a player I can send from my surplus positions
+    const myPlayerToSend = myTeam.roster
+      .filter(p => theyWeakIStrong.some(pos => p.position.includes(pos)))
+      .sort((a, b) => b.value - a.value)[0];
+    
+    // Find a player I want to receive from their surplus positions
+    const playerToReceive = partnerTeam.roster
+      .filter(p => myWeakTheyStrong.some(pos => p.position.includes(pos)))
+      .sort((a, b) => b.value - a.value)[0];
+    
+    if (!myPlayerToSend || !playerToReceive) {
+      continue;
+    }
+    
+    const netChange = playerToReceive.value - myPlayerToSend.value;
+    
+    // Only suggest if value is within ±20 points
+    if (Math.abs(netChange) > 20) {
+      continue;
+    }
+    
+    const payload: TradePayload = {
+      userTeam: myTeamSummary,
+      partnerTeam: partnerSummary,
+      trade: {
+        send: [
+          {
+            name: myPlayerToSend.name,
+            positions: myPlayerToSend.position.split("/") as Position[],
+            value: myPlayerToSend.value,
+            status: myPlayerToSend.status,
+          },
+        ],
+        receive: [
+          {
+            name: playerToReceive.name,
+            positions: playerToReceive.position.split("/") as Position[],
+            value: playerToReceive.value,
+            status: playerToReceive.status,
+          },
+        ],
+        netChangeUser: netChange,
+        netChangePartner: -netChange,
+      },
+    };
+    
+    potentialTrades.push({ partner: partnerTeam, payload });
+  }
   
-  // Count players for ALL eligible positions (dual eligibility matters!)
-  myTeam.roster.forEach(player => {
-    const eligiblePositions = player.position.split("/"); // e.g., "C/RW" -> ["C", "RW"]
-    eligiblePositions.forEach(pos => {
-      if (myPositionCounts[pos] !== undefined) {
-        myPositionCounts[pos]++;
-        myPositionValues[pos] += player.value;
-      }
-    });
-  });
-  
-  // Calculate average values per position
-  const myAvgValues: Record<string, number> = {};
-  positions.forEach(pos => {
-    myAvgValues[pos] = myPositionCounts[pos] > 0 ? myPositionValues[pos] / myPositionCounts[pos] : 0;
-  });
-  
-  // Build the prompt
-  return `You are an expert fantasy hockey trade analyzer. Analyze trades that would improve the user's team.
+  // Sort by absolute net change (closer to fair is better)
+  return potentialTrades.sort((a, b) => 
+    Math.abs(a.payload.trade.netChangeUser) - Math.abs(b.payload.trade.netChangeUser)
+  );
+}
 
-⚠️ CRITICAL: Players have DUAL POSITION ELIGIBILITY in fantasy hockey!
-- A player listed as "C/RW" can play BOTH center AND right wing
-- When counting depth: "C/RW" adds +1 to C count AND +1 to RW count
-- Example: Team with "6 C-eligible" might be: 2 pure C, 3 C/RW, 1 C/LW (not 6 pure centers!)
-- Always consider this when analyzing roster construction and trade needs
+/**
+ * Ask DeepSeek to explain a trade based on the factual data we provide
+ */
+async function explainTrade(payload: TradePayload): Promise<{
+  reasoning: string;
+  confidence: number;
+}> {
+  const systemPrompt = `You are a fantasy hockey trade analyst.
 
-## USER'S TEAM: "${myTeam.name}" ${myTeam.managerName ? `(Manager: ${myTeam.managerName})` : ""}
+You receive:
+- Exact position counts for each team
+- A specific trade with player names, positions, and value deltas
 
-### Roster Summary (${myTeam.roster.length} total players):
-${positions.map(pos => `- ${pos}: ${myPositionCounts[pos]} eligible players, Avg Value: ${myAvgValues[pos].toFixed(1)}`).join("\n")}
+STRICT RULES:
+1. You MUST base positional comments ONLY on the provided positionCounts.
+2. NEVER invent or guess how many players a team has at a position.
+3. If the data does not show a shortage or surplus, do not claim there is one.
+4. You may reference relative depth ONLY if the counts support it.
+5. If a statement cannot be proven from the numbers provided, OMIT IT.
 
-Note: Counts above reflect ALL players eligible for that position (dual-eligible players counted in multiple positions).
+Your job:
+- Explain why this trade might help or hurt the user
+- Mention which positions change (C, LW, RW, D, G)
+- Mention value balance (net gains or losses)
+- Avoid claims that contradict the position counts
 
-### COMPLETE ROSTER LIST (All ${myTeam.roster.length} players):
-${myTeam.roster
-  .sort((a, b) => b.value - a.value)
-  .map((p, i) => `${i+1}. ${p.name} - Position(s): ${p.position} - NHL Team: ${p.nhlTeam} - Value: ${p.value.toFixed(1)}${p.status ? ` [STATUS: ${p.status}]` : ""}`)
-  .join("\n")}
-
-### Position-Specific Lists (for clarity):
-${positions.map(pos => {
-  const players = myTeam.roster.filter(p => p.position.includes(pos)).sort((a, b) => b.value - a.value);
-  return `\n${pos}-Eligible Players (${players.length} total):\n${players.map(p => `  • ${p.name} [${p.position}] - ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`).join("\n")}`;
-}).join("\n")}
-
-### Draft Picks:
-${myTeam.draftPicks.length > 0 ? `Rounds: ${myTeam.draftPicks.sort((a, b) => a - b).join(", ")}` : "None"}
-
----
-
-## OTHER TEAMS IN LEAGUE (${otherTeams.length} teams):
-
-${otherTeams.map(team => {
-  // Count position eligibility for this team (dual-eligible players count for multiple positions)
-  const teamPosCounts: Record<string, number> = {};
-  positions.forEach(pos => teamPosCounts[pos] = 0);
-  team.roster.forEach(player => {
-    player.position.split("/").forEach(pos => {
-      if (teamPosCounts[pos] !== undefined) teamPosCounts[pos]++;
-    });
-  });
-  
-  return `
-### ${team.name} ${team.managerName ? `(${team.managerName})` : ""}
-Total Roster Value: ${team.totalValue.toFixed(1)}
-Position Counts: ${positions.map(pos => `${pos}: ${teamPosCounts[pos]}`).join(", ")}
-Draft Picks: ${team.draftPicks.length > 0 ? `Rounds ${team.draftPicks.sort((a, b) => a - b).join(", ")}` : "None"}
-
-Top 10 Players:
-${team.roster.sort((a, b) => b.value - a.value).slice(0, 10).map((p, i) => 
-  `${i+1}. ${p.name} [${p.position}] ${p.nhlTeam} - ${p.value.toFixed(1)}${p.status ? ` [${p.status}]` : ""}`
-).join("\n")}
-
-Position Breakdown:
-${positions.map(pos => {
-  const players = team.roster.filter(p => p.position.includes(pos));
-  if (players.length === 0) return `${pos}: None`;
-  return `${pos} (${players.length}): ${players.sort((a, b) => b.value - a.value).map(p => `${p.name}[${p.position}]`).join(", ")}`;
-}).join("\n")}
-`;
-}).join("\n")}
-
----
-
-## TASK:
-
-Suggest 3-5 realistic trade opportunities that would IMPROVE the user's team ("${myTeam.name}").
-
-### STRICT RULES:
-1. **READ THE COMPLETE ROSTER LISTS ABOVE CAREFULLY** - Don't make false claims about position scarcity
-2. **Value balance**: Net gain must be between -10 and +15 points (no terrible trades!)
-3. **Both teams must benefit** - Explain why BOTH sides would want this trade
-4. **Use actual player names** from the rosters above only
-5. **Consider dual eligibility correctly**:
-   - A player listed as "C/RW" can play BOTH C and RW
-   - Don't say "only 1 RW" if there are multiple RW-eligible players
-   - Check the Position Breakdown sections for each team
-6. **Focus on realistic needs**:
-   - Surplus position (5+ eligible) = can afford to trade
-   - Weak position (1-2 eligible) = needs help
-   - Injured players (IR, DTD) = buy low opportunity
-7. **NO TERRIBLE TRADES**: Don't suggest -80 point losses!
-
-### For Each Suggestion:
-1. **Strategic Fit**: What does each team actually need based on the Position Breakdown?
-2. **Fair Value**: Within ±15 points maximum
-3. **Mutual Benefit**: Both teams improve in some way
-4. **Specific Players**: Use exact names from rosters above
-
-Format your response as JSON:
-
-\`\`\`json
+Return JSON ONLY with this exact shape:
 {
-  "suggestions": [
-    {
-      "tradeWithTeam": "Team Name",
-      "youGive": [
-        {"type": "player", "name": "Player Name", "value": 120.5}
-      ],
-      "youGet": [
-        {"type": "player", "name": "Player Name", "value": 125.0}
-      ],
-      "netGain": 4.5,
-      "reasoning": "This trade addresses your D weakness. You have C depth to spare, and they need a center...",
-      "confidence": 85
-    }
-  ]
-}
-\`\`\`
-
-Focus on trades that:
-- Fill position gaps
-- Are realistic (fair value)
-- Both teams benefit
-- Consider surplus positions
-
-Provide 3-5 suggestions ordered by confidence (best first).`;
+  "reasoning": "Brief explanation (2-3 sentences max)",
+  "confidence": 75
 }
 
-export async function analyzeTrades(
-  myTeam: TeamForAI,
-  allTeams: TeamForAI[]
-): Promise<TradeSuggestion[]> {
-  const otherTeams = allTeams.filter(t => !t.isOwner);
-  
-  const prompt = buildTradeAnalysisPrompt(myTeam, otherTeams);
-  
-  console.log("[AI] Analyzing trades for:", myTeam.name);
-  console.log("[AI] Prompt length:", prompt.length, "characters");
-  
+Do NOT add extra fields. Do NOT describe positions in ways that contradict positionCounts.`;
+
+  const userPrompt = `Explain this trade:
+
+User Team: ${payload.userTeam.name}
+Position Counts: ${Object.entries(payload.userTeam.positionCounts).map(([pos, count]) => `${pos}:${count}`).join(", ")}
+Weak Positions: ${payload.userTeam.weakPositions.join(", ") || "None"}
+Surplus Positions: ${payload.userTeam.surplusPositions.join(", ") || "None"}
+
+Partner Team: ${payload.partnerTeam.name}${payload.partnerTeam.managerName ? ` (${payload.partnerTeam.managerName})` : ""}
+Position Counts: ${Object.entries(payload.partnerTeam.positionCounts).map(([pos, count]) => `${pos}:${count}`).join(", ")}
+Weak Positions: ${payload.partnerTeam.weakPositions.join(", ") || "None"}
+Surplus Positions: ${payload.partnerTeam.surplusPositions.join(", ") || "None"}
+
+TRADE:
+You Send: ${payload.trade.send.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
+You Receive: ${payload.trade.receive.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
+
+Net Value Change for You: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${payload.trade.netChangeUser.toFixed(1)}
+Net Value Change for Partner: ${payload.trade.netChangePartner >= 0 ? "+" : ""}${payload.trade.netChangePartner.toFixed(1)}
+
+Explain why this trade makes sense (or doesn't) based ONLY on the position counts and values above.`;
+
   const response = await callDeepSeek([
-    {
-      role: "system",
-      content: "You are an expert fantasy hockey trade analyzer. Always respond with valid JSON containing trade suggestions."
-    },
-    {
-      role: "user",
-      content: prompt
-    }
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
   ], {
-    temperature: 0.7,
-    maxTokens: 2500
+    temperature: 0.3,
+    maxTokens: 300,
   });
-  
-  console.log("[AI] Response length:", response.length, "characters");
   
   // Parse JSON response
   try {
-    // Extract JSON from markdown code blocks if present
-    let jsonStr = response;
+    let jsonStr = response.trim();
     const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1];
     }
     
     const parsed = JSON.parse(jsonStr);
-    return parsed.suggestions || [];
+    
+    // Validate the response doesn't contradict our position counts
+    const reasoning = parsed.reasoning.toLowerCase();
+    
+    // Simple sanity check: if it says "only X" for a position, verify
+    for (const pos of ["C", "LW", "RW", "D", "G"] as Position[]) {
+      const onlyMatch = reasoning.match(new RegExp(`only \\d+ ${pos.toLowerCase()}`, "i"));
+      if (onlyMatch) {
+        console.warn(`[AI] Warning: Response mentions "only X ${pos}", verifying against actual count:`, payload.userTeam.positionCounts[pos]);
+      }
+    }
+    
+    return {
+      reasoning: parsed.reasoning,
+      confidence: parsed.confidence || 50,
+    };
   } catch (error) {
-    console.error("[AI] Failed to parse response:", error);
-    console.error("[AI] Response was:", response.substring(0, 500));
-    throw new Error("Failed to parse AI response");
+    console.error("[AI] Failed to parse explanation:", error);
+    console.error("[AI] Response was:", response);
+    
+    // Fallback
+    return {
+      reasoning: "This trade balances value and addresses position needs.",
+      confidence: 50,
+    };
   }
 }
 
+/**
+ * Main entry point: analyze trades for the user's team
+ */
+export async function analyzeTrades(
+  myTeam: TeamForAI,
+  allTeams: TeamForAI[]
+): Promise<TradeSuggestion[]> {
+  const otherTeams = allTeams.filter(t => !t.isOwner);
+  
+  console.log("[AI] Computing trade opportunities for:", myTeam.name);
+  
+  // Step 1: Generate potential trades using OUR logic
+  const potentialTrades = generatePotentialTrades(myTeam, otherTeams);
+  
+  console.log(`[AI] Found ${potentialTrades.length} potential trades`);
+  
+  if (potentialTrades.length === 0) {
+    return [];
+  }
+  
+  // Step 2: Ask DeepSeek to explain the top 5 trades
+  const suggestions: TradeSuggestion[] = [];
+  
+  for (const { partner, payload } of potentialTrades.slice(0, 5)) {
+    try {
+      const { reasoning, confidence } = await explainTrade(payload);
+      
+      suggestions.push({
+        tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
+        youGive: payload.trade.send.map(p => ({
+          type: "player" as const,
+          name: p.name,
+          value: p.value,
+        })),
+        youGet: payload.trade.receive.map(p => ({
+          type: "player" as const,
+          name: p.name,
+          value: p.value,
+        })),
+        netGain: payload.trade.netChangeUser,
+        reasoning,
+        confidence,
+      });
+    } catch (error) {
+      console.error("[AI] Failed to explain trade with", partner.name, error);
+    }
+  }
+  
+  console.log(`[AI] Generated ${suggestions.length} trade suggestions`);
+  
+  return suggestions;
+}
