@@ -324,16 +324,38 @@ export default function TradeBuilderPage() {
       baseValue >= 135 ? 'Core' : 'Normal';
     
     const controlPremium: Record<string, number[]> = {
-      Franchise: [0, 10, 28, 45],  // More moderate progression
+      Franchise: [0, 10, 28, 45],
       Star:      [0,  7, 20, 32],
       Core:      [0,  4, 12, 18],
       Normal:    [0,  0,  0,  0],
     };
     const controlBonus = controlPremium[playerTier][years];
     
-    // Final: base + surplus + control
-    const keeperBonus = surplusBonus + controlBonus;
-    return baseValue + keeperBonus;
+    // PART C: Raw keeper bonus
+    const keeperRawBonus = surplusBonus + controlBonus;
+    
+    // PART D: Apply tier-based keeper bonus cap (prevents tier jumping)
+    const tierBonusCap: Record<string, number> = {
+      Franchise: 45,
+      Star: 30,
+      Core: 22,
+      Normal: 15,
+    };
+    const keeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+    
+    // PART E: Calculate provisional keeper value
+    let keeperValue = baseValue + keeperBonus;
+    
+    // PART F: Apply final value cap by tier (hard ceiling)
+    const finalCap: Record<string, number> = {
+      Franchise: 230,
+      Star: 190,
+      Core: 175,
+      Normal: 165,
+    };
+    keeperValue = Math.min(keeperValue, finalCap[playerTier]);
+    
+    return keeperValue;
   };
 
   const playerValueMap = new Map<string, number>();
@@ -573,7 +595,18 @@ export default function TradeBuilderPage() {
                   };
                   const controlBonus = controlPremium[playerTier][years];
                   
-                  return (surplusBonus + controlBonus).toFixed(0);
+                  const keeperRawBonus = surplusBonus + controlBonus;
+                  
+                  // Apply tier-based keeper bonus cap
+                  const tierBonusCap: Record<string, number> = {
+                    Franchise: 45,
+                    Star: 30,
+                    Core: 22,
+                    Normal: 15,
+                  };
+                  const finalKeeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+                  
+                  return finalKeeperBonus.toFixed(0);
                 })()} K
               </span>
             )}

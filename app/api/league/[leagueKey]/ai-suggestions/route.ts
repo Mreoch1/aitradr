@@ -158,15 +158,34 @@ export async function POST(
             adjustedValue >= 150 ? 'Star' :
             adjustedValue >= 135 ? 'Core' : 'Normal';
           const controlPremium: Record<string, number[]> = {
-            Franchise: [0, 10, 28, 45],  // Moderate progression
+            Franchise: [0, 10, 28, 45],
             Star:      [0,  7, 20, 32],
             Core:      [0,  4, 12, 18],
             Normal:    [0,  0,  0,  0],
           };
           const controlBonus = controlPremium[playerTier][years];
           
-          keeperBonus = surplusBonus + controlBonus;
+          const keeperRawBonus = surplusBonus + controlBonus;
+          
+          // Apply tier-based keeper bonus cap
+          const tierBonusCap: Record<string, number> = {
+            Franchise: 45,
+            Star: 30,
+            Core: 22,
+            Normal: 15,
+          };
+          keeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+          
           adjustedValue += keeperBonus;
+          
+          // Apply final value cap by tier
+          const finalCap: Record<string, number> = {
+            Franchise: 230,
+            Star: 190,
+            Core: 175,
+            Normal: 165,
+          };
+          adjustedValue = Math.min(adjustedValue, finalCap[playerTier]);
         }
         
         return {

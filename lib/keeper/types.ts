@@ -166,6 +166,28 @@ const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
 };
 
 /**
+ * Tiered keeper bonus caps - prevent non-franchise players from reaching franchise level
+ * No matter how good the keeper economics, a Star can't become a Franchise
+ */
+const TIER_BONUS_CAP: Record<PlayerTier, number> = {
+  Franchise: 45,  // Can get full control premium
+  Star: 30,       // Limited even with perfect keeper economics
+  Core: 22,       // Meaningful but not elite
+  Normal: 15,     // Small bonus only
+};
+
+/**
+ * Final value caps by tier - prevent tier jumping via keeper bonuses
+ * Absolute ceiling based on player quality tier
+ */
+const FINAL_VALUE_CAP: Record<PlayerTier, number> = {
+  Franchise: 230,  // Practically unreachable
+  Star: 190,       // Ceiling for Star tier
+  Core: 175,       // Ceiling for Core tier
+  Normal: 165,     // Ceiling for Normal tier
+};
+
+/**
  * New keeper bonus formula with surplus + control premium
  * Philosophy: "How expensive would this player be to replace?"
  * 
@@ -203,11 +225,23 @@ export function calculateKeeperBonus(
   const surplusBonus = cappedSurplus * surplusWeights[years];
   
   // PART B: Control Premium (multi-year elite control)
-  // This is what makes McDavid valuable even with no surplus
   const playerTier = classifyPlayerTier(baseValue);
   const controlBonus = CONTROL_PREMIUM[playerTier][years];
   
-  // Final keeper bonus: surplus + control
-  return surplusBonus + controlBonus;
+  // PART C: Raw keeper bonus (before tier cap)
+  const keeperRawBonus = surplusBonus + controlBonus;
+  
+  // PART D: Apply tier-based keeper bonus cap
+  // Prevents Star/Core players from accumulating franchise-level bonuses
+  const keeperBonus = Math.min(keeperRawBonus, TIER_BONUS_CAP[playerTier]);
+  
+  // PART E: Calculate provisional keeper value
+  let finalValue = baseValue + keeperBonus;
+  
+  // PART F: Apply final value cap by tier
+  // Prevents tier jumping - Star players cannot reach Franchise values
+  finalValue = Math.min(finalValue, FINAL_VALUE_CAP[playerTier]);
+  
+  return keeperBonus; // Return only bonus for now to maintain compatibility
 }
 
