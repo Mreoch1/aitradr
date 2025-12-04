@@ -99,6 +99,9 @@ export default function TradeBuilderPage() {
   const params = useParams();
   const leagueKey = params.leagueKey as string;
 
+  // SAFE NUMERIC FORMATTER - prevents "Cannot read properties of undefined (reading 'toFixed')"
+  const safe = (n: any): number => Number.isFinite(n) ? n : 0;
+
   const [tradeData, setTradeData] = useState<TradeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -625,7 +628,7 @@ export default function TradeBuilderPage() {
         </td>
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
           <div className="flex flex-col items-center">
-            <span>{(player.valueScore ?? 0).toFixed(1)}</span>
+            <span>{safe(player.valueScore).toFixed(1)}</span>
             {player.isKeeper && player.originalDraftRound && player.yearsRemaining && player.yearsRemaining > 0 && (
               <span className="text-xs text-purple-600 font-semibold">
                 +{(() => {
@@ -674,7 +677,7 @@ export default function TradeBuilderPage() {
                     
                     // BULLETPROOF: Ensure displayBonus is a valid number before toFixed
                     const safeBonus = (typeof displayBonus === 'number' && !isNaN(displayBonus)) ? displayBonus : 0;
-                    return Math.max(0, safeBonus).toFixed(0);
+                    return safe(Math.max(0, safeBonus)).toFixed(0);
                   } catch (err) {
                     console.error("[Trade Page] Error calculating keeper bonus for", player.name, err);
                     return "?";
@@ -732,19 +735,19 @@ export default function TradeBuilderPage() {
           // Goalie stats
           <>
             <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
-              {getStatValue(stats, "wins").toFixed(0)}
+              {safe(getStatValue(stats, "wins")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-red-700">
-              {getStatValue(stats, "losses").toFixed(0)}
+              {safe(getStatValue(stats, "losses")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "goals against").toFixed(0)}
+              {safe(getStatValue(stats, "goals against")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "goals against average").toFixed(2)}
+              {safe(getStatValue(stats, "goals against average")).toFixed(2)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
-              {getStatValue(stats, "saves").toFixed(0)}
+              {safe(getStatValue(stats, "saves")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
               {(() => {
@@ -752,56 +755,56 @@ export default function TradeBuilderPage() {
                 // Yahoo stores SV% as a whole number like 915 for 91.5%
                 // But sometimes it's already a decimal or percentage
                 if (svPct > 100) {
-                  return (svPct / 1000).toFixed(3); // 915 -> 0.915
+                  return safe(svPct / 1000).toFixed(3); // 915 -> 0.915
                 } else if (svPct > 1) {
-                  return (svPct / 100).toFixed(3); // 91.5 -> 0.915
+                  return safe(svPct / 100).toFixed(3); // 91.5 -> 0.915
                 } else {
-                  return svPct.toFixed(3); // 0.915 -> 0.915
+                  return safe(svPct).toFixed(3); // 0.915 -> 0.915
                 }
               })()}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-purple-700">
-              {getStatValue(stats, "shutouts").toFixed(0)}
+              {safe(getStatValue(stats, "shutouts")).toFixed(0)}
             </td>
           </>
         ) : (
           // Skater stats
           <>
             <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
-              {getStatValue(stats, "goals").toFixed(0)}
+              {safe(getStatValue(stats, "goals")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
-              {getStatValue(stats, "assists").toFixed(0)}
+              {safe(getStatValue(stats, "assists")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-semibold text-purple-700">
-              {getStatValue(stats, "points").toFixed(0)}
+              {safe(getStatValue(stats, "points")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "plus/minus").toFixed(0)}
+              {safe(getStatValue(stats, "plus/minus")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "penalty minutes").toFixed(0)}
+              {safe(getStatValue(stats, "penalty minutes")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-orange-700">
-              {getStatValue(stats, "power play points").toFixed(0)}
+              {safe(getStatValue(stats, "power play points")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "short handed points").toFixed(0)}
+              {safe(getStatValue(stats, "short handed points")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "game winning goals").toFixed(0)}
+              {safe(getStatValue(stats, "game winning goals")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "shots on goal").toFixed(0)}
+              {safe(getStatValue(stats, "shots on goal")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "faceoffs won").toFixed(0)}
+              {safe(getStatValue(stats, "faceoffs won")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "hits").toFixed(0)}
+              {safe(getStatValue(stats, "hits")).toFixed(0)}
             </td>
             <td className="px-2 py-2 text-sm text-center text-gray-700">
-              {getStatValue(stats, "blocked shots").toFixed(0)}
+              {safe(getStatValue(stats, "blocked shots")).toFixed(0)}
             </td>
           </>
         )}
@@ -1283,7 +1286,7 @@ export default function TradeBuilderPage() {
                       >
                         <div className="flex flex-col items-center leading-tight">
                           <span className="text-[10px] font-bold">R{pick.round}</span>
-                          <span className="text-[9px]">{(pick.score ?? 0).toFixed(0)}</span>
+                          <span className="text-[9px]">{safe(pick.score).toFixed(0)}</span>
                         </div>
                       </button>
                     );
@@ -1437,7 +1440,7 @@ export default function TradeBuilderPage() {
                       >
                         <div className="flex flex-col items-center leading-tight">
                           <span className="text-[10px] font-bold">R{pick.round}</span>
-                          <span className="text-[9px]">{(pick.score ?? 0).toFixed(0)}</span>
+                          <span className="text-[9px]">{safe(pick.score).toFixed(0)}</span>
                         </div>
                       </button>
                     );
@@ -1479,14 +1482,14 @@ export default function TradeBuilderPage() {
                               <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
                             )}
                           </span>
-                          <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
+                          <span className="theme-text-secondary">{safe(item.value).toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
+                            <span className="theme-text-secondary">{safe(item.value).toFixed(1)}</span>
                           </div>
                         );
                       }
@@ -1497,7 +1500,7 @@ export default function TradeBuilderPage() {
                     <div className="flex justify-between font-semibold">
                       <span className="theme-text-primary">Total</span>
                       <span className="theme-text-primary">
-                        {teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0).toFixed(1)}
+                        {safe(teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0)).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -1521,14 +1524,14 @@ export default function TradeBuilderPage() {
                               <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
                             )}
                           </span>
-                          <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
+                          <span className="theme-text-secondary">{safe(item.value).toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
+                            <span className="theme-text-secondary">{safe(item.value).toFixed(1)}</span>
                           </div>
                         );
                       }
@@ -1539,7 +1542,7 @@ export default function TradeBuilderPage() {
                     <div className="flex justify-between font-semibold">
                       <span className="theme-text-primary">Total</span>
                       <span className="theme-text-primary">
-                        {teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0).toFixed(1)}
+                        {safe(teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0)).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -1560,11 +1563,11 @@ export default function TradeBuilderPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gives Away:</span>
-                    <span className="font-semibold text-red-600">-{teamASendTotal.toFixed(1)}</span>
+                    <span className="font-semibold text-red-600">-{safe(teamASendTotal).toFixed(1)}</span>
             </div>
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gets Back:</span>
-                    <span className="font-semibold text-green-600">+{teamAReceiveTotal.toFixed(1)}</span>
+                    <span className="font-semibold text-green-600">+{safe(teamAReceiveTotal).toFixed(1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
@@ -1572,7 +1575,7 @@ export default function TradeBuilderPage() {
                       <span className={`font-bold text-lg ${
                         diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "theme-text-secondary"
                       }`}>
-                        {diff > 0 ? "+" : ""}{diff.toFixed(1)}
+                        {diff > 0 ? "+" : ""}{safe(diff).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -1587,11 +1590,11 @@ export default function TradeBuilderPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gives Away:</span>
-                    <span className="font-semibold text-red-600">-{teamBSendTotal.toFixed(1)}</span>
+                    <span className="font-semibold text-red-600">-{safe(teamBSendTotal).toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gets Back:</span>
-                    <span className="font-semibold text-green-600">+{teamASendTotal.toFixed(1)}</span>
+                    <span className="font-semibold text-green-600">+{safe(teamASendTotal).toFixed(1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
@@ -1599,7 +1602,7 @@ export default function TradeBuilderPage() {
                       <span className={`font-bold text-lg ${
                         diff < 0 ? "text-green-600" : diff > 0 ? "text-red-600" : "theme-text-secondary"
                       }`}>
-                        {diff < 0 ? "+" : ""}{(-diff).toFixed(1)}
+                        {diff < 0 ? "+" : ""}{safe(-diff).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -1615,11 +1618,11 @@ export default function TradeBuilderPage() {
               {diff === 0 ? (
                 <p className="font-bold text-green-700">✅ EVEN TRADE</p>
               ) : Math.abs(diff) < 5 ? (
-                <p className="font-bold text-yellow-700">⚖️ RELATIVELY FAIR ({Math.abs(diff).toFixed(1)} point difference)</p>
+                <p className="font-bold text-yellow-700">⚖️ RELATIVELY FAIR ({safe(Math.abs(diff)).toFixed(1)} point difference)</p>
               ) : diff > 0 ? (
-                <p className="font-bold text-red-700">⚠️ {teamA?.name || "Team A"} wins by {diff.toFixed(1)} points</p>
+                <p className="font-bold text-red-700">⚠️ {teamA?.name || "Team A"} wins by {safe(diff).toFixed(1)} points</p>
               ) : (
-                <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {Math.abs(diff).toFixed(1)} points</p>
+                <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {safe(Math.abs(diff)).toFixed(1)} points</p>
               )}
               
               {/* Keeper impact notice */}
