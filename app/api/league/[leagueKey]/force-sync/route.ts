@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { syncLeagueRosters } from "@/lib/yahoo/roster";
 import { syncLeaguePlayerStats } from "@/lib/yahoo/playerStats";
 import { ensureLeaguePlayerValues } from "@/lib/yahoo/playerValues";
+import { buildAllTeamProfiles, storeTeamProfiles } from "@/lib/ai/teamProfile";
 
 export async function POST(
   request: NextRequest,
@@ -67,7 +68,7 @@ export async function POST(
     }
     
     // Step 4: Auto-populate keeper data from hardcoded list
-    console.log("[Force Sync] Step 4/4: Populating keeper data...");
+    console.log("[Force Sync] Step 4/5: Populating keeper data...");
     try {
       const { populateKeeperData } = await import("@/lib/keeper/populate");
       await populateKeeperData(league.id);
@@ -75,6 +76,17 @@ export async function POST(
     } catch (error) {
       console.error("[Force Sync] Keeper population failed:", error);
       // Don't fail the whole sync if keeper population fails
+    }
+    
+    // Step 5: Build and cache team profiles for AI suggestions
+    console.log("[Force Sync] Step 5/5: Building team profiles...");
+    try {
+      const profiles = await buildAllTeamProfiles(league.id);
+      await storeTeamProfiles(league.id, profiles);
+      console.log("[Force Sync] Team profiles built and cached");
+    } catch (error) {
+      console.error("[Force Sync] Team profile building failed:", error);
+      // Don't fail the whole sync if team profiles fail
     }
     
     // Update league timestamp to mark as fresh
@@ -87,7 +99,7 @@ export async function POST(
     
     return NextResponse.json({ 
       ok: true, 
-      message: "Teams, stats, values, and keepers refreshed successfully" 
+      message: "Teams, stats, values, keepers, and AI profiles refreshed successfully" 
     });
   } catch (error) {
     console.error("[Force Sync] Error:", error);

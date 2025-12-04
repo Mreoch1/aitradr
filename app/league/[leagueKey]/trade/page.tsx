@@ -879,7 +879,7 @@ export default function TradeBuilderPage() {
                 onClick={async () => {
                   setAiLoading(true);
                   try {
-                    const response = await fetch(`/api/league/${leagueKey}/ai-suggestions`, { 
+                    const response = await fetch(`/api/league/${leagueKey}/ai-suggestions-v2`, { 
                       method: 'POST' 
                     });
                     const data = await response.json();

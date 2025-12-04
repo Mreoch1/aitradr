@@ -8,6 +8,7 @@ import {
 } from "@/lib/yahoo/fantasyClient";
 import { syncLeaguePlayerStats } from "@/lib/yahoo/playerStats";
 import { ensureLeaguePlayerValues } from "@/lib/yahoo/playerValues";
+import { buildAllTeamProfiles, storeTeamProfiles } from "@/lib/ai/teamProfile";
 
 export async function POST(
   request: NextRequest,
@@ -63,11 +64,21 @@ export async function POST(
 
     if (league) {
       await ensureLeaguePlayerValues(league.id);
+      
+      // Rebuild team profiles after recalculating values
+      try {
+        const profiles = await buildAllTeamProfiles(league.id);
+        await storeTeamProfiles(league.id, profiles);
+        console.log("[Sync Stats] Team profiles rebuilt");
+      } catch (error) {
+        console.error("[Sync Stats] Team profile building failed:", error);
+        // Don't fail the whole sync if team profiles fail
+      }
     }
 
     return NextResponse.json({
       ok: true,
-      message: "Player stats synced and values recalculated",
+      message: "Player stats synced, values recalculated, and AI profiles refreshed",
     });
   } catch (error) {
     if (error instanceof YahooNotLinkedError) {
