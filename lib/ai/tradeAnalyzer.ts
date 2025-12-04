@@ -10,8 +10,10 @@ import {
   buildCategoryProfile,
   calculateCategoryGain,
   calculateTradeScore,
+  getStatValue,
   type CategoryProfile,
 } from "./categoryAnalyzer";
+import type { AnyStat } from "./categoryAnalyzer";
 
 type Position = "C" | "LW" | "RW" | "D" | "G";
 
@@ -187,14 +189,27 @@ function generatePotentialTrades(
     console.log(`[Trade Gen] Checking ${partnerTeam.name}...`);
     
     // Tradeable players (mid-tier, not injured long-term)
+    // ANTI-GARBAGE RULE: Filter out low-impact players unless they fill category needs
+    const isStarterLevel = (player: PlayerForAI) => player.value >= 90;
+    const fillsCategoryNeed = (player: PlayerForAI, weaknesses: AnyStat[]) => {
+      // Check if player contributes meaningfully to any weakness
+      if (!player.rawStats || weaknesses.length === 0) return false;
+      return weaknesses.some(weakness => {
+        const contribution = getStatValue(player, weakness);
+        return contribution > 0; // Has some contribution to weak category
+      });
+    };
+    
     const myTradeable = myTeam.roster
       .filter(p => p.value > 50 && p.value < 180)
       .filter(p => !p.status || p.status === "DTD")
+      .filter(p => isStarterLevel(p) || fillsCategoryNeed(p, myProfile.weaknesses))
       .sort((a, b) => b.value - a.value);
     
     const theirTradeable = partnerTeam.roster
       .filter(p => p.value > 50 && p.value < 180)
       .filter(p => !p.status || p.status === "DTD")
+      .filter(p => isStarterLevel(p) || fillsCategoryNeed(p, theirProfile.weaknesses))
       .sort((a, b) => b.value - a.value);
     
     console.log(`[Trade Gen]   My tradeable: ${myTradeable.length} players (from ${myTeam.roster.length} total)`);

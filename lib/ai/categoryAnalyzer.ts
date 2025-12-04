@@ -33,7 +33,7 @@ const GOALIE_STATS = [
 
 type SkaterStat = typeof SKATER_STATS[number];
 type GoalieStat = typeof GOALIE_STATS[number];
-type AnyStat = SkaterStat | GoalieStat;
+export type AnyStat = SkaterStat | GoalieStat;
 
 export interface CategoryProfile {
   teamName: string;
@@ -59,8 +59,9 @@ function normalizeStatName(name: string): string {
 /**
  * Extract stat value from player's raw stats array
  * PlayerForAI.rawStats is Array<{ statName: string, value: number }>
+ * Exported for use in trade analyzer anti-garbage filtering
  */
-function getStatValue(player: PlayerForAI, statKey: AnyStat): number {
+export function getStatValue(player: PlayerForAI, statKey: AnyStat): number {
   if (!player.rawStats || !Array.isArray(player.rawStats)) {
     return 0;
   }
@@ -132,8 +133,9 @@ export function buildCategoryProfile(
     
     categoryScores.set(stat, score);
     
-    if (score > 1.15) strengths.push(stat);
-    if (score < 0.90) weaknesses.push(stat);
+    // Strength/weakness thresholds per spec
+    if (score > 1.15) strengths.push(stat);  // Strong category
+    if (score < 0.85) weaknesses.push(stat); // Weak category (tightened from 0.90)
   }
   
   return {
