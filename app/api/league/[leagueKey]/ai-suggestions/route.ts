@@ -135,7 +135,7 @@ export async function POST(
           ? positionsArray.join("/")
           : (player.primaryPosition || "?");
         
-        // Calculate keeper bonus with control premium
+        // Calculate keeper bonus with control premium (conservative formula)
         let keeperBonus = 0;
         let adjustedValue = playerValue?.score || 0;
         
@@ -144,23 +144,23 @@ export async function POST(
           const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
           const years = Math.max(0, Math.min(3, entry.yearsRemaining));
           
-          // PART A: Surplus Bonus (underdraft value)
-          const surplus = Math.max(0, adjustedValue - draftRoundAvg);
+          // PART A: Surplus Bonus (underdraft value) - CONSERVATIVE
+          const surplusRaw = Math.max(0, adjustedValue - draftRoundAvg);
           const draftTier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-          const surplusCap = { A: 25, B: 40, C: 55 }[draftTier];
-          const cappedSurplus = Math.min(surplus, surplusCap);
-          const surplusWeights = [0, 0.6, 0.85, 1.0];
+          const surplusCap = { A: 25, B: 35, C: 40 }[draftTier];
+          const cappedSurplus = Math.min(surplusRaw, surplusCap);
+          const surplusWeights = [0, 0.45, 0.75, 1.0]; // More conservative
           const surplusBonus = cappedSurplus * surplusWeights[years];
           
-          // PART B: Control Premium (multi-year elite control)
+          // PART B: Control Premium (multi-year elite control) - MODERATE
           const playerTier = 
             adjustedValue >= 165 ? 'Franchise' :
             adjustedValue >= 150 ? 'Star' :
             adjustedValue >= 135 ? 'Core' : 'Normal';
           const controlPremium: Record<string, number[]> = {
-            Franchise: [0, 18, 36, 55],
-            Star:      [0, 12, 25, 38],
-            Core:      [0,  7, 14, 22],
+            Franchise: [0, 10, 28, 45],  // Moderate progression
+            Star:      [0,  7, 20, 32],
+            Core:      [0,  4, 12, 18],
             Normal:    [0,  0,  0,  0],
           };
           const controlBonus = controlPremium[playerTier][years];

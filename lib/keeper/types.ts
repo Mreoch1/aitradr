@@ -159,9 +159,9 @@ function classifyPlayerTier(baseValue: number): PlayerTier {
  * Elite players aren't fungible - multi-year control has massive trade gravity
  */
 const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
-  Franchise: [0, 18, 36, 55],  // McDavid, MacKinnon, Matthews tier
-  Star:      [0, 12, 25, 38],  // Elite but not irreplaceable
-  Core:      [0,  7, 14, 22],  // Solid players worth keeping
+  Franchise: [0, 10, 28, 45],  // McDavid, MacKinnon, Matthews tier - moderate but meaningful
+  Star:      [0,  7, 20, 32],  // Elite but not irreplaceable
+  Core:      [0,  4, 12, 18],  // Solid players worth keeping
   Normal:    [0,  0,  0,  0],  // No premium for role players
 };
 
@@ -186,20 +186,20 @@ export function calculateKeeperBonus(
   
   // PART A: Surplus Bonus (underdraft value)
   // How much better is this player than the draft round average?
-  const surplus = Math.max(0, baseValue - draftRoundAvg);
+  const surplusRaw = Math.max(0, baseValue - draftRoundAvg);
   
   // Cap surplus by draft tier to prevent late-round explosion
   const draftTier = getRoundTier(draftRound);
   const surplusCapByTier: Record<KeeperTier, number> = {
     'A': 25,  // Rounds 1-4: small cap
-    'B': 40,  // Rounds 5-10: medium cap
-    'C': 55,  // Rounds 11-16: large cap (reward late-round steals)
+    'B': 35,  // Rounds 5-10: medium cap (reduced from 40)
+    'C': 40,  // Rounds 11-16: reduced from 55 to prevent over-inflation
   };
-  const cappedSurplus = Math.min(surplus, surplusCapByTier[draftTier]);
+  const cappedSurplus = Math.min(surplusRaw, surplusCapByTier[draftTier]);
   
-  // Weight surplus by years remaining
-  // [0 years, 1 year, 2 years, 3 years] = [0, 0.60, 0.85, 1.00]
-  const surplusWeights = [0, 0.6, 0.85, 1.0];
+  // Weight surplus by years remaining (more conservative)
+  // [0 years, 1 year, 2 years, 3 years] = [0, 0.45, 0.75, 1.00]
+  const surplusWeights = [0, 0.45, 0.75, 1.0];
   const surplusBonus = cappedSurplus * surplusWeights[years];
   
   // PART B: Control Premium (multi-year elite control)

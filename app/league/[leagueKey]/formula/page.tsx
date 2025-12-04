@@ -193,8 +193,8 @@ export default async function FormulaPage({
                   surplusBonus = cappedSurplus × surplusWeight[years]
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
-                  <strong>Surplus Weights:</strong> 1yr=0.60x, 2yr=0.85x, 3yr=1.00x<br />
-                  <strong>Tier Caps:</strong> A=25, B=40, C=55 (prevents late-round explosion)
+                  <strong>Surplus Weights:</strong> 1yr=0.45x, 2yr=0.75x, 3yr=1.00x<br />
+                  <strong>Tier Caps:</strong> A=25, B=35, C=40 (conservative to prevent over-inflation)
                 </div>
               </div>
               <div className="rounded bg-white p-3">
@@ -205,9 +205,9 @@ export default async function FormulaPage({
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
                   <strong>Control Premium Table:</strong><br />
-                  Franchise: [0, 18, 36, 55] | Star: [0, 12, 25, 38]<br />
-                  Core: [0, 7, 14, 22] | Normal: [0, 0, 0, 0]<br />
-                  <em>This rewards multi-year control of elite players independent of draft slot.</em>
+                  Franchise: [0, 10, 28, 45] | Star: [0, 7, 20, 32]<br />
+                  Core: [0, 4, 12, 18] | Normal: [0, 0, 0, 0]<br />
+                  <em>Moderate progression - rewards multi-year control without over-inflation.</em>
                 </div>
               </div>
               <div className="rounded bg-white p-3">
@@ -232,16 +232,16 @@ export default async function FormulaPage({
             <div className="mt-3 space-y-2 text-sm text-purple-900">
               <div>
                 <strong>Example 1 - Celebrini (R14 Tier C, 1 yr, value 168):</strong><br />
-                Surplus: min(118, 55) = 55 × 0.60 = 33 | Control: Franchise[1yr] = 18<br />
-                <strong>Final: 168 + 33 + 18 = ~219</strong>
+                Surplus: min(58, 40) = 40 × 0.45 = 18 | Control: Star[1yr] = 7<br />
+                <strong>Final: 168 + 18 + 7 = ~193</strong>
               </div>
               <div>
-                <strong>Example 2 - McDavid (R1 Tier A, 3 yr, value 160):</strong><br />
-                Surplus: min(0, 25) = 0 × 1.00 = 0 | Control: Franchise[3yr] = 55<br />
-                <strong>Final: 160 + 0 + 55 = ~215</strong>
+                <strong>Example 2 - MacKinnon (R1 Tier A, 3 yr, value 176):</strong><br />
+                Surplus: min(0, 25) = 0 × 1.00 = 0 | Control: Franchise[3yr] = 45<br />
+                <strong>Final: 176 + 0 + 45 = ~221</strong>
               </div>
               <div className="text-xs text-purple-700 mt-2">
-                <em>Philosophy: "How expensive is this player to replace?" McDavid's multi-year control has massive value even with no surplus.</em>
+                <em>Philosophy: "How expensive is this player to replace?" MacKinnon's 3-year control properly valued. Gap: 221 - 193 = 28 points (MacKinnon wins).</em>
               </div>
             </div>
           </div>

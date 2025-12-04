@@ -306,15 +306,15 @@ export default function TradeBuilderPage() {
     const years = Math.max(0, Math.min(3, player.yearsRemaining));
     
     // PART A: Surplus Bonus (underdraft value)
-    const surplus = Math.max(0, baseValue - draftRoundAvg);
+    const surplusRaw = Math.max(0, baseValue - draftRoundAvg);
     
-    // Cap surplus by draft tier
+    // Cap surplus by draft tier (conservative to prevent over-inflation)
     const draftTier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-    const surplusCap = { A: 25, B: 40, C: 55 }[draftTier];
-    const cappedSurplus = Math.min(surplus, surplusCap);
+    const surplusCap = { A: 25, B: 35, C: 40 }[draftTier];
+    const cappedSurplus = Math.min(surplusRaw, surplusCap);
     
-    // Weight surplus by years: [0, 0.60, 0.85, 1.00]
-    const surplusWeights = [0, 0.6, 0.85, 1.0];
+    // Weight surplus by years: [0, 0.45, 0.75, 1.00] - more conservative
+    const surplusWeights = [0, 0.45, 0.75, 1.0];
     const surplusBonus = cappedSurplus * surplusWeights[years];
     
     // PART B: Control Premium (multi-year elite control)
@@ -324,9 +324,9 @@ export default function TradeBuilderPage() {
       baseValue >= 135 ? 'Core' : 'Normal';
     
     const controlPremium: Record<string, number[]> = {
-      Franchise: [0, 18, 36, 55],
-      Star:      [0, 12, 25, 38],
-      Core:      [0,  7, 14, 22],
+      Franchise: [0, 10, 28, 45],  // More moderate progression
+      Star:      [0,  7, 20, 32],
+      Core:      [0,  4, 12, 18],
       Normal:    [0,  0,  0,  0],
     };
     const controlBonus = controlPremium[playerTier][years];
@@ -552,23 +552,23 @@ export default function TradeBuilderPage() {
                   const roundAvg = pickValueMap.get(draftRound) ?? 100;
                   const years = Math.max(0, Math.min(3, player.yearsRemaining!));
                   
-                  // Surplus bonus
-                  const surplus = Math.max(0, player.valueScore - roundAvg);
+                  // Surplus bonus (conservative caps and weights)
+                  const surplusRaw = Math.max(0, player.valueScore - roundAvg);
                   const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-                  const cap = { A: 25, B: 40, C: 55 }[tier];
-                  const cappedSurplus = Math.min(surplus, cap);
-                  const surplusWeights = [0, 0.6, 0.85, 1.0];
+                  const cap = { A: 25, B: 35, C: 40 }[tier];
+                  const cappedSurplus = Math.min(surplusRaw, cap);
+                  const surplusWeights = [0, 0.45, 0.75, 1.0];
                   const surplusBonus = cappedSurplus * surplusWeights[years];
                   
-                  // Control premium
+                  // Control premium (moderate progression)
                   const playerTier = 
                     player.valueScore >= 165 ? 'Franchise' :
                     player.valueScore >= 150 ? 'Star' :
                     player.valueScore >= 135 ? 'Core' : 'Normal';
                   const controlPremium: Record<string, number[]> = {
-                    Franchise: [0, 18, 36, 55],
-                    Star:      [0, 12, 25, 38],
-                    Core:      [0,  7, 14, 22],
+                    Franchise: [0, 10, 28, 45],
+                    Star:      [0,  7, 20, 32],
+                    Core:      [0,  4, 12, 18],
                     Normal:    [0,  0,  0,  0],
                   };
                   const controlBonus = controlPremium[playerTier][years];
