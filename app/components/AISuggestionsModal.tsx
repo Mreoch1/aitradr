@@ -14,43 +14,47 @@ interface AISuggestionsModalProps {
 
 /**
  * Client-side validation for trade suggestions
- * Final safety filter to prevent rendering broken suggestions
+ * SOFT QUALITY PASS: Final safety filter to prevent rendering truly broken suggestions
  */
 function isRenderableSuggestion(s: TradeSuggestion): boolean {
   // Must have a partner team
   if (!s.tradeWithTeam || !s.tradeWithTeam.trim()) {
+    console.warn("[UI] Rejected render: Missing partner team");
     return false;
   }
   
   // Must have assets on both sides
   if (!s.youGive || s.youGive.length === 0) {
+    console.warn("[UI] Rejected render: No assets given");
     return false;
   }
   if (!s.youGet || s.youGet.length === 0) {
+    console.warn("[UI] Rejected render: No assets received");
     return false;
   }
   
-  // Check all assets for validity
+  // Kill "undefined" in asset names
   const allAssets = [...s.youGive, ...s.youGet];
   for (const asset of allAssets) {
-    // Asset must have a name
-    if (!asset.name || !asset.name.trim()) {
+    // Asset must have a name that doesn't contain "undefined"
+    if (!asset.name || !asset.name.trim() || asset.name.toLowerCase().includes("undefined")) {
+      console.warn("[UI] Rejected render: Asset name invalid or contains 'undefined'");
       return false;
     }
     
-    // Name must not contain "undefined"
-    if (asset.name.toLowerCase().includes("undefined")) {
-      return false;
-    }
-    
-    // Must have a valid value
+    // Must have a finite value (can be negative, zero, or positive)
     if (!Number.isFinite(asset.value)) {
+      console.warn("[UI] Rejected render: Asset has NaN or Infinity value");
       return false;
     }
   }
   
-  // At least one asset must have positive value
-  if (!allAssets.some(a => a.value > 0)) {
+  // Reject only if BOTH sides are truly worthless (< 5)
+  const giveHasValue = s.youGive.some(a => a.value > 5);
+  const getHasValue = s.youGet.some(a => a.value > 5);
+  
+  if (!giveHasValue && !getHasValue) {
+    console.warn("[UI] Rejected render: Both sides have value < 5");
     return false;
   }
   

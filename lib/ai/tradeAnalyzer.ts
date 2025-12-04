@@ -75,54 +75,56 @@ export interface TradeSuggestion {
 // ============================================================================
 
 /**
- * Validates that a trade asset has all required fields and valid data
- */
-function isValidAsset(asset: TradeAsset): boolean {
-  // Must have a name that's not empty or "undefined"
-  if (!asset.name || asset.name.trim() === "" || asset.name.toLowerCase().includes("undefined")) {
-    return false;
-  }
-  
-  // Must have a positive, finite value
-  if (!Number.isFinite(asset.value) || asset.value <= 0) {
-    return false;
-  }
-  
-  // If it's a pick, must have a valid round number
-  if (asset.type === "pick") {
-    if (!asset.round || !Number.isFinite(asset.round) || asset.round < 1 || asset.round > 16) {
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-/**
  * Validates that a trade suggestion has valid structure and data
+ * SOFT QUALITY PASS: Only rejects true garbage, allows legitimate trades
  */
 export function isValidTradeSuggestion(suggestion: TradeSuggestion): boolean {
   // Must have a partner team name
   if (!suggestion.tradeWithTeam || suggestion.tradeWithTeam.trim() === "") {
+    console.warn("[Validation] Rejected: Missing partner team");
     return false;
   }
   
-  // Both sides must have at least one asset
+  // Must move at least one asset on each side
   if (!suggestion.youGive || suggestion.youGive.length === 0) {
+    console.warn("[Validation] Rejected: No assets given");
     return false;
   }
   if (!suggestion.youGet || suggestion.youGet.length === 0) {
+    console.warn("[Validation] Rejected: No assets received");
     return false;
   }
   
-  // All assets on both sides must be valid
   const allAssets = [...suggestion.youGive, ...suggestion.youGet];
-  if (!allAssets.every(isValidAsset)) {
+  
+  // Kill "Round undefined Pick" - asset name contains "undefined"
+  if (allAssets.some(a => !a.name || a.name.toLowerCase().includes("undefined"))) {
+    console.warn("[Validation] Rejected: Asset name contains 'undefined'");
     return false;
   }
   
-  // At least one asset must have meaningful value (> 0)
-  if (!allAssets.some(a => a.value > 0)) {
+  // Kill NaN/Infinity values
+  if (allAssets.some(a => !Number.isFinite(a.value))) {
+    console.warn("[Validation] Rejected: NaN or Infinity value");
+    return false;
+  }
+  
+  // Reject only if BOTH sides are useless (value < 5)
+  const giveHasValue = suggestion.youGive.some(a => a.value > 5);
+  const getHasValue = suggestion.youGet.some(a => a.value > 5);
+  
+  if (!giveHasValue && !getHasValue) {
+    console.warn("[Validation] Rejected: Both sides have value < 5");
+    return false;
+  }
+  
+  // Pick rule: only reject if it's labeled as a pick AND has no round
+  const badPick = allAssets.some(a => 
+    a.type === "pick" && (a.round == null || !Number.isFinite(a.round))
+  );
+  
+  if (badPick) {
+    console.warn("[Validation] Rejected: Pick missing round number");
     return false;
   }
   
@@ -605,18 +607,16 @@ export async function analyzeTrades(
       }
     }
     
-    console.log(`[AI] Generated ${suggestions.length} trade suggestions (before validation)`);
+    console.log(`[AI] ✅ Generated ${suggestions.length} trade suggestions (before validation)`);
     
-    // Filter out invalid suggestions (missing data, undefined values, etc.)
-    const validSuggestions = suggestions.filter(suggestion => {
-      const isValid = isValidTradeSuggestion(suggestion);
-      if (!isValid) {
-        console.warn(`[AI] Filtered out invalid suggestion with ${suggestion.tradeWithTeam || "UNKNOWN"}`);
-      }
-      return isValid;
-    });
+    // Filter out invalid suggestions (only true garbage, not close-value trades)
+    const validSuggestions = suggestions.filter(isValidTradeSuggestion);
     
-    console.log(`[AI] Returning ${validSuggestions.length} valid trade suggestions (filtered ${suggestions.length - validSuggestions.length} invalid)`);
+    console.log(`[AI] ✅ Returning ${validSuggestions.length} valid trade suggestions (filtered ${suggestions.length - validSuggestions.length} invalid)`);
+    
+    if (validSuggestions.length === 0 && suggestions.length > 0) {
+      console.error("[AI] ⚠️ ALL SUGGESTIONS FILTERED OUT - Validation may be too strict!");
+    }
     
     return validSuggestions;
   } catch (error) {

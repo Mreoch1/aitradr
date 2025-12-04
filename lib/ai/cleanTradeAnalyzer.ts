@@ -67,29 +67,35 @@ export interface TradeSuggestion {
 
 /**
  * Validates that a trade suggestion has valid structure and data
+ * SOFT QUALITY PASS: Only rejects true garbage, allows legitimate trades
  */
 function isValidSuggestion(suggestion: TradeSuggestion): boolean {
   // Must have a partner team name
   if (!suggestion.partnerTeam || suggestion.partnerTeam.trim() === "") {
+    console.warn("[Clean AI] Rejected: Missing partner team");
     return false;
   }
   
-  // Both sides must have at least one asset
+  // Must have assets on both sides
   if (!suggestion.youGive || suggestion.youGive.length === 0) {
+    console.warn("[Clean AI] Rejected: No assets given");
     return false;
   }
   if (!suggestion.youGet || suggestion.youGet.length === 0) {
+    console.warn("[Clean AI] Rejected: No assets received");
     return false;
   }
   
-  // No asset names should contain "undefined"
+  // Kill "undefined" in asset names
   const allAssets = [...suggestion.youGive, ...suggestion.youGet];
   if (allAssets.some(name => !name || name.toLowerCase().includes("undefined"))) {
+    console.warn("[Clean AI] Rejected: Asset name contains 'undefined'");
     return false;
   }
   
-  // Net value should be a finite number
+  // Net value should be a finite number (but can be negative, zero, or positive)
   if (!Number.isFinite(suggestion.netValue)) {
+    console.warn("[Clean AI] Rejected: NaN netValue");
     return false;
   }
   
@@ -313,18 +319,17 @@ export async function analyzeTrades(
     const jsonString = jsonMatch[1] || jsonMatch[0];
     const suggestions: TradeSuggestion[] = JSON.parse(jsonString);
 
-    console.log("[Clean AI] Generated", suggestions.length, "suggestions (before validation)");
+    console.log("[Clean AI] ✅ Generated", suggestions.length, "suggestions (before validation)");
     
-    // Filter out invalid suggestions (missing data, undefined values, etc.)
-    const validSuggestions = suggestions.filter(suggestion => {
-      const isValid = isValidSuggestion(suggestion);
-      if (!isValid) {
-        console.warn(`[Clean AI] Filtered out invalid suggestion with ${suggestion.partnerTeam || "UNKNOWN"}`);
-      }
-      return isValid;
-    });
+    // Filter out invalid suggestions (only true garbage, not close-value trades)
+    const validSuggestions = suggestions.filter(isValidSuggestion);
     
-    console.log("[Clean AI] Returning", validSuggestions.length, "valid suggestions (filtered", suggestions.length - validSuggestions.length, "invalid)");
+    console.log("[Clean AI] ✅ Returning", validSuggestions.length, "valid suggestions (filtered", suggestions.length - validSuggestions.length, "invalid)");
+    
+    if (validSuggestions.length === 0 && suggestions.length > 0) {
+      console.error("[Clean AI] ⚠️ ALL SUGGESTIONS FILTERED OUT - Validation may be too strict!");
+    }
+    
     return validSuggestions;
 
   } catch (error) {
