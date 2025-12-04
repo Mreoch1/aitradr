@@ -2,6 +2,7 @@
  * Quick script to sync a league by its key
  */
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import { buildAllTeamProfiles, storeTeamProfiles } from "../lib/ai/teamProfile";
 
 async function syncLeague() {

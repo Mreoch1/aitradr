@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toFixedSafe } from "@/lib/utils/numberFormat";
 
 interface SavedTrade {
   id: string;
@@ -118,7 +119,7 @@ export function SavedTradesModal({
                             `, ${trade.teamAPicks.length} pick(s)`}
                         </p>
                         <p className="font-mono text-gray-800">
-                          Value: {trade.teamAValue.toFixed(1)}
+                          Value: {toFixedSafe(trade.teamAValue, 1)}
                         </p>
                       </div>
 
@@ -133,7 +134,7 @@ export function SavedTradesModal({
                             `, ${trade.teamBPicks.length} pick(s)`}
                         </p>
                         <p className="font-mono text-gray-800">
-                          Value: {trade.teamBValue.toFixed(1)}
+                          Value: {toFixedSafe(trade.teamBValue, 1)}
                         </p>
                       </div>
                     </div>
@@ -144,11 +145,11 @@ export function SavedTradesModal({
                         <p className="font-bold text-green-700">✅ EVEN TRADE</p>
                       ) : winner ? (
                         <p className="font-bold text-red-700">
-                          ⚠️ {winner} wins by {Math.abs(netGain).toFixed(1)} points
+                          ⚠️ {winner} wins by {toFixedSafe(Math.abs(netGain), 1)} points
                         </p>
                       ) : (
                         <p className="font-bold text-yellow-700">
-                          ⚖️ Close ({Math.abs(netGain).toFixed(1)} pt difference)
+                          ⚖️ Close ({toFixedSafe(Math.abs(netGain), 1)} pt difference)
                         </p>
                       )}
                     </div>

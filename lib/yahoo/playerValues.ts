@@ -6,6 +6,7 @@
  */
 
 import prisma from "@/lib/prisma";
+import { toFixedSafe } from "@/lib/utils/numberFormat";
 
 // ===== TUNABLE CONSTANTS =====
 
@@ -664,7 +665,7 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
       create: { leagueId, round, score: finalValue },
     });
     
-    console.log(`[DraftPicks] Round ${round}: ${finalValue.toFixed(1)} ${avgValue !== finalValue ? `(floor applied, was ${avgValue.toFixed(1)})` : ''}`);
+    console.log(`[DraftPicks] Round ${round}: ${toFixedSafe(finalValue, 1)} ${avgValue !== finalValue ? `(floor applied, was ${toFixedSafe(avgValue, 1)})` : ''}`);
   }
 }
 
@@ -687,7 +688,7 @@ async function printTopPlayers(leagueId: string): Promise<void> {
   });
   
   topSkaters.forEach((pv, i) => {
-    console.log(`${i + 1}. ${pv.player.name} (${pv.player.primaryPosition}, ${pv.player.teamAbbr}) - Value: ${pv.score.toFixed(1)}`);
+    console.log(`${i + 1}. ${pv.player.name} (${pv.player.primaryPosition}, ${pv.player.teamAbbr}) - Value: ${toFixedSafe(pv.score, 1)}`);
   });
   
   console.log("\n===== TOP 15 GOALIES =====");
@@ -705,7 +706,7 @@ async function printTopPlayers(leagueId: string): Promise<void> {
   });
   
   topGoalies.forEach((pv, i) => {
-    console.log(`${i + 1}. ${pv.player.name} (G, ${pv.player.teamAbbr}) - Value: ${pv.score.toFixed(1)}`);
+    console.log(`${i + 1}. ${pv.player.name} (G, ${pv.player.teamAbbr}) - Value: ${toFixedSafe(pv.score, 1)}`);
   });
   
   console.log("\n");

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TradeSuggestion } from "@/lib/ai/tradeAnalyzer";
+import { toFixedSafe } from "@/lib/utils/numberFormat";
 
 interface AISuggestionsModalProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export function AISuggestionsModal({
                           <span className="text-red-800">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-red-700">{item.value.toFixed(1)}</span>
+                          <span className="font-semibold text-red-700">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
@@ -107,7 +108,7 @@ export function AISuggestionsModal({
                           <span className="text-green-800">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-green-700">{item.value.toFixed(1)}</span>
+                          <span className="font-semibold text-green-700">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
@@ -127,7 +128,7 @@ export function AISuggestionsModal({
                     <span className={`text-2xl font-bold ${
                       currentSuggestion.netGain > 0 ? "text-green-700" : "text-gray-700"
                     }`}>
-                      {currentSuggestion.netGain > 0 ? "+" : ""}{currentSuggestion.netGain.toFixed(1)}
+                      {currentSuggestion.netGain > 0 ? "+" : ""}{toFixedSafe(currentSuggestion.netGain, 1)}
                     </span>
                   </div>
                   <p className="mt-2 text-sm">

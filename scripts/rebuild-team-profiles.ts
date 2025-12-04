@@ -9,6 +9,7 @@
  */
 
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import { buildAllTeamProfiles, storeTeamProfiles } from "../lib/ai/teamProfile";
 
 async function rebuildProfiles() {
@@ -51,7 +52,7 @@ async function rebuildProfiles() {
           summary.surplusScore > 0.7 ? "✅ SURPLUS" :
           summary.surplusScore < -0.7 ? "⚠️  SHORTAGE" :
           "➖ NEUTRAL";
-        console.log(`    ${pos}: ${summary.count.toFixed(1)} (${summary.surplusScore > 0 ? '+' : ''}${summary.surplusScore.toFixed(1)}) ${status}`);
+        console.log(`    ${pos}: ${toFixedSafe(summary.count, 1)} (${summary.surplusScore > 0 ? '+' : ''}${toFixedSafe(summary.surplusScore, 1)}) ${status}`);
       }
       
       console.log("  Weak Categories:");

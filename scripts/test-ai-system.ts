@@ -14,6 +14,7 @@
  */
 
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import { loadTeamProfiles } from "../lib/ai/teamProfile";
 import { calculateKeeperBonus } from "../lib/keeper/types";
 
@@ -76,11 +77,11 @@ async function testAISystem() {
     const ageHours = age / 1000 / 60 / 60;
     
     if (ageHours > 24) {
-      console.log(`   ⚠️  WARNING: Oldest profile is ${ageHours.toFixed(1)}h old`);
+      console.log(`   ⚠️  WARNING: Oldest profile is ${toFixedSafe(ageHours, 1)}h old`);
       console.log(`   Team: ${oldestProfile.teamName}`);
       console.log("   Consider running Force Sync to refresh");
     } else {
-      console.log(`   ✅ PASSED: Profiles are fresh (${ageHours.toFixed(1)}h old)`);
+      console.log(`   ✅ PASSED: Profiles are fresh (${toFixedSafe(ageHours, 1)}h old)`);
     }
     passed++;
 
@@ -104,7 +105,7 @@ async function testAISystem() {
         
         // Allow small variance (0.5) for rounding
         if (Math.abs(totalPosCount - expectedSkaters) > 0.5) {
-          console.log(`   ⚠️  ${profile.teamName}: Position sum (${totalPosCount.toFixed(1)}) != skaters (${expectedSkaters.toFixed(1)})`);
+          console.log(`   ⚠️  ${profile.teamName}: Position sum (${toFixedSafe(totalPosCount, 1)}) != skaters (${toFixedSafe(expectedSkaters, 1)})`);
           dualEligCorrect = false;
         }
       }
@@ -201,8 +202,8 @@ async function testAISystem() {
     } else {
       console.log("   ✅ PASSED: Profile structure is valid");
       console.log(`   Sample: ${sampleProfile.teamName}`);
-      console.log(`   - Position count (C): ${sampleProfile.positions.C.count.toFixed(1)}`);
-      console.log(`   - Category z-score (G): ${sampleProfile.categories.G.toFixed(2)}`);
+      console.log(`   - Position count (C): ${toFixedSafe(sampleProfile.positions.C.count, 1)}`);
+      console.log(`   - Category z-score (G): ${toFixedSafe(sampleProfile.categories.G, 2)}`);
       console.log(`   - Keepers: ${sampleProfile.keepers.expiring.length} expiring, ${sampleProfile.keepers.fresh.length} fresh`);
       passed++;
     }

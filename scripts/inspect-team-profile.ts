@@ -8,6 +8,7 @@
  */
 
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import type { TeamProfile } from "../lib/ai/teamProfile";
 
 async function inspectProfile() {
@@ -69,7 +70,7 @@ async function inspectProfile() {
         summary.surplusScore < -0.7 ? "❌ SHORTAGE" :
         "➖ NEUTRAL";
       console.log(
-        `${pos.padEnd(4)} | ${summary.count.toFixed(1).padStart(5)} | ${(summary.surplusScore > 0 ? '+' : '') + summary.surplusScore.toFixed(1).padStart(4)} | ${status}`
+        `${pos.padEnd(4)} | ${toFixedSafe(summary.count, 1).padStart(5)} | ${(summary.surplusScore > 0 ? '+' : '') + toFixedSafe(summary.surplusScore, 1).padStart(4)} | ${status}`
       );
     }
     console.log(`\n🔀 Flex Skaters (multi-position): ${profile.flexSkaters}`);
@@ -88,7 +89,7 @@ async function inspectProfile() {
       const z = zScore as number;
       const status = z > 0.85 ? "💪 STRONG" : z < -0.85 ? "⚠️  WEAK" : "➖ NEUTRAL";
       console.log(
-        `${cat.padEnd(8)} | ${(z > 0 ? '+' : '') + z.toFixed(2).padStart(6)} | ${status}`
+        `${cat.padEnd(8)} | ${(z > 0 ? '+' : '') + toFixedSafe(z, 2).padStart(6)} | ${status}`
       );
     }
 
@@ -118,7 +119,7 @@ async function inspectProfile() {
       posCounts[posStr] = (posCounts[posStr] || 0) + 1;
       
       if (positions.length > 1) {
-        multiPosPlayers.push(`${player.name} (${posStr}, ${value.toFixed(0)})`);
+        multiPosPlayers.push(`${player.name} (${posStr}, ${toFixedSafe(value, 0)})`);
       }
     }
 

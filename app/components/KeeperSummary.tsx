@@ -1,6 +1,7 @@
 "use client";
 
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
+import { toFixedSafe } from "@/lib/utils/numberFormat";
 
 interface KeeperSummaryProps {
   team: TradeData["teams"][0];
@@ -53,9 +54,9 @@ export function KeeperSummary({ team, draftPickValues }: KeeperSummaryProps) {
                 </span>
               </div>
               <div className="text-right">
-                <span className="font-bold text-blue-700">{keeper.valueScore.toFixed(0)}</span>
+                <span className="font-bold text-blue-700">{toFixedSafe(keeper.valueScore, 0)}</span>
                 {bonus > 0 && (
-                  <span className="ml-1 text-purple-600">+{bonus.toFixed(0)}</span>
+                  <span className="ml-1 text-purple-600">+{toFixedSafe(bonus, 0)}</span>
                 )}
               </div>
             </div>
@@ -66,9 +67,9 @@ export function KeeperSummary({ team, draftPickValues }: KeeperSummaryProps) {
       <div className="mt-3 pt-2 border-t-2 border-purple-300 flex justify-between text-sm font-bold">
         <span className="text-purple-900">Total</span>
         <span className="text-blue-700">
-          {totalValue.toFixed(0)}
+          {toFixedSafe(totalValue, 0)}
           {totalBonus > 0 && (
-            <span className="text-purple-600"> +{totalBonus.toFixed(0)}</span>
+            <span className="text-purple-600"> +{toFixedSafe(totalBonus, 0)}</span>
           )}
         </span>
       </div>

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 
 interface YahooStatusResponse {
   linked: boolean;

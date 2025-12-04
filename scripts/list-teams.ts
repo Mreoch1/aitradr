@@ -8,6 +8,7 @@
  */
 
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 
 async function listTeams() {
   const leagueId = process.argv[2];

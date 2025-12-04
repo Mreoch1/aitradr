@@ -6,6 +6,7 @@
  */
 
 import { prisma } from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 
 // Hard-coded draft pick values (descending scale from round 1 to 16)
 const DRAFT_PICK_VALUES: Record<number, number> = {

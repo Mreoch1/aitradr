@@ -13,6 +13,7 @@ import {
   getStatValue,
   type CategoryProfile,
 } from "./categoryAnalyzer";
+import { toFixedSafe } from "@/lib/utils/numberFormat";
 import type { AnyStat } from "./categoryAnalyzer";
 
 type Position = "C" | "LW" | "RW" | "D" | "G";
@@ -311,7 +312,7 @@ function generatePotentialTrades(
         // 4. Only suggest if trade score is positive (net benefit)
         if (tradeScore < 0) continue;
         
-        console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${valueDiff.toFixed(1)}, cat=${categoryGain.toFixed(1)}, keeper=${keeperImpact.toFixed(1)}, market=${marketPenalty}, score=${tradeScore.toFixed(1)}`);
+        console.log(`[Trade Gen]   ${myPlayer.name}${myPlayer.isKeeper ? ' [K]' : ''} <-> ${theirPlayer.name}${theirPlayer.isKeeper ? ' [K]' : ''}: value=${toFixedSafe(valueDiff, 1)}, cat=${toFixedSafe(categoryGain, 1)}, keeper=${toFixedSafe(keeperImpact, 1)}, market=${marketPenalty}, score=${toFixedSafe(tradeScore, 1)}`);
         
         const payload: TradePayload = {
           userTeam: myTeamSummary,
@@ -409,11 +410,11 @@ Weak Positions: ${payload.partnerTeam.weakPositions.join(", ") || "None"}
 Surplus Positions: ${payload.partnerTeam.surplusPositions.join(", ") || "None"}
 
 TRADE:
-You Send: ${payload.trade.send.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
-You Receive: ${payload.trade.receive.map(p => `${p.name} [${p.positions.join("/")}] (${p.value.toFixed(1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
+You Send: ${payload.trade.send.map(p => `${p.name} [${p.positions.join("/")}] (${toFixedSafe(p.value, 1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
+You Receive: ${payload.trade.receive.map(p => `${p.name} [${p.positions.join("/")}] (${toFixedSafe(p.value, 1)})${p.status ? ` [${p.status}]` : ""}`).join(", ")}
 
-Net Value Change: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${payload.trade.netChangeUser.toFixed(1)} points
-Category Improvement Score: ${categoryGain.toFixed(1)}${categoryGain > 5 ? " (significant)" : ""}
+Net Value Change: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${toFixedSafe(payload.trade.netChangeUser, 1)} points
+Category Improvement Score: ${toFixedSafe(categoryGain, 1)}${categoryGain > 5 ? " (significant)" : ""}
 
 Explain in 2-3 sentences why this trade makes sense based on position balance and value.`;
 
@@ -509,7 +510,7 @@ export async function analyzeTrades(
         }
         seenTrades.add(tradeKey);
         
-        console.log(`[AI] Explaining trade with ${partner.name} (score: ${tradeScore.toFixed(1)})...`);
+        console.log(`[AI] Explaining trade with ${partner.name} (score: ${toFixedSafe(tradeScore, 1)})...`);
         const { reasoning } = await explainTrade(payload, categoryGain);
         
         // FIX #8: Risk-based confidence calculation

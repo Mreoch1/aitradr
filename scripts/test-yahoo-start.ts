@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 
 async function testYahooStart() {
   const baseUrl = "http://localhost:3000";

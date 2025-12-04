@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import { KEEPERS_2024, KEEPERS_2025 } from "../lib/keeper/keeperData2025";
 import { calculateYearsRemaining, calculateKeeperRound } from "../lib/keeper/types";
 

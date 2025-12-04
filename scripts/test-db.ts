@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { toFixedSafe } from "../lib/utils/numberFormat";
 import prisma from "../lib/prisma";
 
 async function main() {
