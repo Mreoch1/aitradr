@@ -8,6 +8,7 @@ export const KEEPERS_2025 = [
   // Round 1
   { player: "Cale Makar", team: "Bye week", round: 1 },
   { player: "Connor McDavid", team: "Smok'n Pipes", round: 1 },
+  { player: "Rasmus Dahlin", team: "Bye week", round: 1 },  // ADDED from Yahoo page
   
   // Round 2
   { player: "Kirill Kaprizov", team: "The Brain Re", round: 2 },
@@ -20,7 +21,6 @@ export const KEEPERS_2025 = [
   
   // Round 5
   { player: "Wyatt Johnston", team: "Inglorious B", round: 5 },
-  { player: "Jesper Bratt", team: "Bye week", round: 5 },
   { player: "Robert Thomas", team: "The Brain Re", round: 5 },
   
   // Round 6
@@ -33,7 +33,7 @@ export const KEEPERS_2025 = [
   { player: "Tom Wilson", team: "mismanagewhome?", round: 8 },
   
   // Round 9
-  { player: "Sam Reinhart", team: "Goon Squad", round: 9 },
+  { player: "Sam Reinhart", team: "Goon Squad", round: 9 },  // Correct - currently on Goon Squad
   { player: "Jason Robertson", team: "The Brain Re", round: 9 },
   
   // Round 10
@@ -76,7 +76,6 @@ export const KEEPERS_2024 = [
   { player: "Kyle Connor", team: "Ike and Ike", round: 3 },
   
   // Round 5
-  { player: "Jesper Bratt", team: "Bye week", round: 5 },
   { player: "Wyatt Johnston", team: "Inglorious B", round: 5 },
   { player: "Robert Thomas", team: "The Brain Re", round: 5 },
   
