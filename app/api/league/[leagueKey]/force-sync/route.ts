@@ -54,7 +54,7 @@ export async function POST(
     }
     
     // Step 3: Calculate player values using z-scores
-    console.log("[Force Sync] Step 3/3: Calculating player values...");
+    console.log("[Force Sync] Step 3/4: Calculating player values...");
     try {
       await ensureLeaguePlayerValues(league.id);
       console.log("[Force Sync] Player values calculated");
@@ -64,6 +64,17 @@ export async function POST(
         { ok: false, error: "Failed to calculate player values. Check Vercel logs for details." },
         { status: 500 }
       );
+    }
+    
+    // Step 4: Auto-populate keeper data from hardcoded list
+    console.log("[Force Sync] Step 4/4: Populating keeper data...");
+    try {
+      const { populateKeeperData } = await import("@/lib/keeper/populate");
+      await populateKeeperData(league.id);
+      console.log("[Force Sync] Keeper data populated");
+    } catch (error) {
+      console.error("[Force Sync] Keeper population failed:", error);
+      // Don't fail the whole sync if keeper population fails
     }
     
     // Update league timestamp to mark as fresh
@@ -76,7 +87,7 @@ export async function POST(
     
     return NextResponse.json({ 
       ok: true, 
-      message: "Teams, stats, and values refreshed successfully" 
+      message: "Teams, stats, values, and keepers refreshed successfully" 
     });
   } catch (error) {
     console.error("[Force Sync] Error:", error);

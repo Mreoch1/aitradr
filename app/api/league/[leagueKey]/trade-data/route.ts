@@ -221,6 +221,24 @@ export async function GET(
     } catch (error) {
       console.error("[Trade Data] Error checking/ensuring player values:", error);
     }
+    
+    // Auto-populate keeper data if missing
+    try {
+      const keeperCount = await prisma.rosterEntry.count({
+        where: { leagueId: league.id, isKeeper: true }
+      });
+      console.log("[Trade Data] Found", keeperCount, "keepers in database");
+      
+      if (keeperCount === 0) {
+        console.log("[Trade Data] No keepers found, auto-populating from hardcoded list...");
+        const { populateKeeperData } = await import("@/lib/keeper/populate");
+        await populateKeeperData(league.id);
+        console.log("[Trade Data] Keeper data auto-populated");
+      }
+    } catch (error) {
+      console.error("[Trade Data] Error checking/populating keepers:", error);
+      // Don't fail - keepers are bonus feature
+    }
 
     // Fetch all teams in this league
     console.log("[Trade Data] Querying teams from database for league:", league.id);

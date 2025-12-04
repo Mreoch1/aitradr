@@ -900,43 +900,6 @@ export default function TradeBuilderPage() {
                 💾 VIEW SAVED TRADES
               </button>
               
-              {/* Populate Keepers button - only show if no keepers detected */}
-              {(() => {
-                const hasKeepers = normalizedTradeData.teams.some(team => 
-                  team.roster.some(p => p.isKeeper)
-                );
-                if (!hasKeepers) {
-                  return (
-                    <button
-                      onClick={async () => {
-                        if (!confirm("Populate keeper data from 2024-2025 draft history? This will mark 29 keepers.")) return;
-                        try {
-                          const response = await fetch(`/api/league/${leagueKey}/populate-keepers`, { method: 'POST' });
-                          const data = await response.json();
-                          if (data.ok) {
-                            alert("✅ " + data.message + "\n\nPage will reload to show keeper data.");
-                            window.location.reload();
-                          } else {
-                            alert("❌ Failed: " + data.error);
-                          }
-                        } catch (error) {
-                          console.error("Populate keepers failed:", error);
-                          alert("❌ Failed to populate keepers");
-                        }
-                      }}
-                      className="rounded-lg px-6 py-3 font-mono text-sm font-bold shadow-lg"
-                      style={{
-                        backgroundColor: '#9333ea',
-                        color: 'white'
-                      }}
-                    >
-                      🔒 POPULATE KEEPERS
-                    </button>
-                  );
-                }
-                return null;
-              })()}
-              
               {/* Only show Refresh Teams button when there are sync issues */}
               {hasSyncIssues && (
                 <button
