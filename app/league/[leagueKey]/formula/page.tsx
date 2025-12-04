@@ -200,23 +200,28 @@ export default async function FormulaPage({
               <div className="rounded bg-white p-3">
                 <strong className="text-blue-700">Part B: Control Premium (Multi-Year Elite Control):</strong>
                 <div className="mt-2 font-mono text-xs text-gray-700">
-                  tier = Franchise (165+), Star (150+), Core (135+), Normal<br />
+                  tier = Generational (172+), Franchise (160+), Star (150+), Core (135+), Normal<br />
                   controlBonus = CONTROL_PREMIUM[tier][yearsRemaining]
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
                   <strong>Control Premium Table:</strong><br />
-                  Franchise: [0, 10, 28, 45] | Star: [0, 7, 20, 32]<br />
-                  Core: [0, 4, 12, 18] | Normal: [0, 0, 0, 0]<br />
-                  <em>Moderate progression - rewards multi-year control without over-inflation.</em>
+                  Generational: [0, 20, 45, 70] | Franchise: [0, 14, 32, 50]<br />
+                  Star: [0, 10, 22, 34] | Core: [0, 5, 12, 18] | Normal: [0, 0, 0, 0]<br />
+                  <em>Steeper progression for true generational talents (McDavid, MacKinnon).</em>
                 </div>
               </div>
               <div className="rounded bg-white p-3">
-                <strong className="text-green-700">Final Formula:</strong>
+                <strong className="text-green-700">Part C: Tier Caps + Trade Weight:</strong>
                 <div className="mt-2 font-mono text-xs text-gray-700">
-                  keeperValue = baseValue + surplusBonus + controlBonus
+                  keeperBonus = min(surplusBonus + controlBonus, tierCap)<br />
+                  tradeBonus = keeperBonus × 0.40<br />
+                  tradeValue = baseValue + tradeBonus
                 </div>
                 <div className="mt-2 text-gray-600 text-xs">
-                  No expiration multipliers. Value falls naturally as years remaining decrease.
+                  <strong>Tier Bonus Caps:</strong> Gen:70, Fran:50, Star:34, Core:22, Normal:15<br />
+                  <strong>Final Value Caps:</strong> Gen:250, Fran:230, Star:190, Core:175, Normal:165<br />
+                  <strong>40% Trade Weight:</strong> Full bonus shown in UI (+K badge), but only 40% applied to trades.<br />
+                  <em>Prevents late-round steals from overtaking raw talent.</em>
                 </div>
               </div>
               <div className="rounded bg-white p-3">
@@ -231,17 +236,22 @@ export default async function FormulaPage({
             </div>
             <div className="mt-3 space-y-2 text-sm text-purple-900">
               <div>
-                <strong>Example 1 - Celebrini (R14 Tier C, 1 yr, value 168):</strong><br />
-                Surplus: min(58, 40) = 40 × 0.45 = 18 | Control: Star[1yr] = 7<br />
-                <strong>Final: 168 + 18 + 7 = ~193</strong>
+                <strong>Ex 1 - Celebrini (R14, 1yr, base 168, Star tier):</strong><br />
+                Display Bonus: 18+7=25 | Trade Bonus: 25×0.40=10<br />
+                <strong>Trade Value: 168 + 10 = ~178</strong>
               </div>
               <div>
-                <strong>Example 2 - MacKinnon (R1 Tier A, 3 yr, value 176):</strong><br />
-                Surplus: min(0, 25) = 0 × 1.00 = 0 | Control: Franchise[3yr] = 45<br />
-                <strong>Final: 176 + 0 + 45 = ~221</strong>
+                <strong>Ex 2 - Reinhart (R9, 2yr, base 148, Star tier):</strong><br />
+                Display Bonus: 26+22=48 (capped at 34) | Trade: 34×0.40=14<br />
+                <strong>Trade Value: 148 + 14 = ~162</strong>
+              </div>
+              <div>
+                <strong>Ex 3 - McDavid (R1, 3yr, base 160, Generational tier):</strong><br />
+                Display Bonus: 0+70=70 | Trade: 70×0.40=28<br />
+                <strong>Trade Value: 160 + 28 = ~188</strong>
               </div>
               <div className="text-xs text-purple-700 mt-2">
-                <em>Philosophy: "How expensive is this player to replace?" MacKinnon's 3-year control properly valued. Gap: 221 - 193 = 28 points (MacKinnon wins).</em>
+                <em>40% trade weight prevents keeper economics from overtaking raw talent. McDavid (188) &gt; Celebrini (178) &gt; Reinhart (162).</em>
               </div>
             </div>
           </div>

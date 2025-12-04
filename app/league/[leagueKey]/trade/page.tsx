@@ -317,17 +317,19 @@ export default function TradeBuilderPage() {
     const surplusWeights = [0, 0.45, 0.75, 1.0];
     const surplusBonus = cappedSurplus * surplusWeights[years];
     
-    // PART B: Control Premium (multi-year elite control)
+    // PART B: Control Premium (multi-year elite control) - steeper for generational
     const playerTier = 
-      baseValue >= 165 ? 'Franchise' :
+      baseValue >= 172 ? 'Generational' :
+      baseValue >= 160 ? 'Franchise' :
       baseValue >= 150 ? 'Star' :
       baseValue >= 135 ? 'Core' : 'Normal';
     
     const controlPremium: Record<string, number[]> = {
-      Franchise: [0, 10, 28, 45],
-      Star:      [0,  7, 20, 32],
-      Core:      [0,  4, 12, 18],
-      Normal:    [0,  0,  0,  0],
+      Generational: [0, 20, 45, 70],
+      Franchise:    [0, 14, 32, 50],
+      Star:         [0, 10, 22, 34],
+      Core:         [0,  5, 12, 18],
+      Normal:       [0,  0,  0,  0],
     };
     const controlBonus = controlPremium[playerTier][years];
     
@@ -336,26 +338,31 @@ export default function TradeBuilderPage() {
     
     // PART D: Apply tier-based keeper bonus cap (prevents tier jumping)
     const tierBonusCap: Record<string, number> = {
-      Franchise: 45,
-      Star: 30,
+      Generational: 70,
+      Franchise: 50,
+      Star: 34,
       Core: 22,
       Normal: 15,
     };
-    const keeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+    const keeperBonusDisplay = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
     
-    // PART E: Calculate provisional keeper value
-    let keeperValue = baseValue + keeperBonus;
+    // PART E: Apply trade weight (40%) - keeper is tiebreaker, not main driver
+    const keeperBonusTrade = keeperBonusDisplay * 0.4;
     
-    // PART F: Apply final value cap by tier (hard ceiling)
+    // PART F: Calculate keeper-adjusted trade value
+    let tradeValue = baseValue + keeperBonusTrade;
+    
+    // PART G: Apply final value cap by tier (hard ceiling)
     const finalCap: Record<string, number> = {
+      Generational: 250,
       Franchise: 230,
       Star: 190,
       Core: 175,
       Normal: 165,
     };
-    keeperValue = Math.min(keeperValue, finalCap[playerTier]);
+    tradeValue = Math.min(tradeValue, finalCap[playerTier]);
     
-    return keeperValue;
+    return tradeValue;
   };
 
   const playerValueMap = new Map<string, number>();
@@ -584,14 +591,16 @@ export default function TradeBuilderPage() {
                   
                   // Control premium (moderate progression)
                   const playerTier = 
-                    player.valueScore >= 165 ? 'Franchise' :
+                    player.valueScore >= 172 ? 'Generational' :
+                    player.valueScore >= 160 ? 'Franchise' :
                     player.valueScore >= 150 ? 'Star' :
                     player.valueScore >= 135 ? 'Core' : 'Normal';
                   const controlPremium: Record<string, number[]> = {
-                    Franchise: [0, 10, 28, 45],
-                    Star:      [0,  7, 20, 32],
-                    Core:      [0,  4, 12, 18],
-                    Normal:    [0,  0,  0,  0],
+                    Generational: [0, 20, 45, 70],
+                    Franchise:    [0, 14, 32, 50],
+                    Star:         [0, 10, 22, 34],
+                    Core:         [0,  5, 12, 18],
+                    Normal:       [0,  0,  0,  0],
                   };
                   const controlBonus = controlPremium[playerTier][years];
                   
@@ -599,14 +608,16 @@ export default function TradeBuilderPage() {
                   
                   // Apply tier-based keeper bonus cap
                   const tierBonusCap: Record<string, number> = {
-                    Franchise: 45,
-                    Star: 30,
+                    Generational: 70,
+                    Franchise: 50,
+                    Star: 34,
                     Core: 22,
                     Normal: 15,
                   };
-                  const finalKeeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+                  const displayBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
                   
-                  return finalKeeperBonus.toFixed(0);
+                  // Display full bonus (not trade-weighted)
+                  return displayBonus.toFixed(0);
                 })()} K
               </span>
             )}
@@ -763,7 +774,7 @@ export default function TradeBuilderPage() {
                   The Mooninites
           </h1>
               </div>
-            </div>
+        </div>
             
             {/* Right side - Trade Builder info */}
             <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:text-right">
@@ -1603,14 +1614,14 @@ export default function TradeBuilderPage() {
                 >
                   💾 SAVE THIS TRADE
                 </button>
-              </div>
-            )}
           </div>
+            )}
+        </div>
               </>
             );
           })()}
-        </div>
       </div>
+    </div>
       
       {/* AI Suggestions Modal */}
       <AISuggestionsModal

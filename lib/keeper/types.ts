@@ -144,48 +144,56 @@ export function applyExpirationPenalty(value: number, yearsRemaining: number): n
  * Player tier classification by base value
  * Used for control premium calculation
  */
-type PlayerTier = 'Franchise' | 'Star' | 'Core' | 'Normal';
+type PlayerTier = 'Generational' | 'Franchise' | 'Star' | 'Core' | 'Normal';
 
 function classifyPlayerTier(baseValue: number): PlayerTier {
-  if (baseValue >= 165) return 'Franchise';
-  if (baseValue >= 150) return 'Star';
-  if (baseValue >= 135) return 'Core';
+  if (baseValue >= 172) return 'Generational';  // McDavid, MacKinnon, top-3 only
+  if (baseValue >= 160) return 'Franchise';      // Elite tier
+  if (baseValue >= 150) return 'Star';           // Strong but not top
+  if (baseValue >= 135) return 'Core';           // Solid
   return 'Normal';
 }
 
 /**
  * Control Premium: value of locking elite players for multiple years
  * Index: [0 years, 1 year, 2 years, 3 years]
- * Elite players aren't fungible - multi-year control has massive trade gravity
+ * Steeper progression for true generational talents
  */
 const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
-  Franchise: [0, 10, 28, 45],  // McDavid, MacKinnon, Matthews tier - moderate but meaningful
-  Star:      [0,  7, 20, 32],  // Elite but not irreplaceable
-  Core:      [0,  4, 12, 18],  // Solid players worth keeping
-  Normal:    [0,  0,  0,  0],  // No premium for role players
+  Generational: [0, 20, 45, 70],  // McDavid, MacKinnon - massive multi-year value
+  Franchise:    [0, 14, 32, 50],  // Elite tier
+  Star:         [0, 10, 22, 34],  // Strong but not irreplaceable
+  Core:         [0,  5, 12, 18],  // Solid players worth keeping
+  Normal:       [0,  0,  0,  0],  // No premium for role players
 };
 
 /**
- * Tiered keeper bonus caps - prevent non-franchise players from reaching franchise level
- * No matter how good the keeper economics, a Star can't become a Franchise
+ * Tiered keeper bonus caps - prevent lower tiers from accumulating franchise-level bonuses
  */
 const TIER_BONUS_CAP: Record<PlayerTier, number> = {
-  Franchise: 45,  // Can get full control premium
-  Star: 30,       // Limited even with perfect keeper economics
-  Core: 22,       // Meaningful but not elite
-  Normal: 15,     // Small bonus only
+  Generational: 70,  // Can get full steep control premium
+  Franchise: 50,     // High but reasonable
+  Star: 34,          // Limited even with perfect keeper economics
+  Core: 22,          // Meaningful but not elite
+  Normal: 15,        // Small bonus only
 };
 
 /**
- * Final value caps by tier - prevent tier jumping via keeper bonuses
- * Absolute ceiling based on player quality tier
+ * Final value caps by tier - absolute ceiling to prevent tier jumping
  */
 const FINAL_VALUE_CAP: Record<PlayerTier, number> = {
-  Franchise: 230,  // Practically unreachable
-  Star: 190,       // Ceiling for Star tier
-  Core: 175,       // Ceiling for Core tier
-  Normal: 165,     // Ceiling for Normal tier
+  Generational: 250,  // Essentially uncapped
+  Franchise: 230,     // Very high
+  Star: 190,          // Hard ceiling for Star tier
+  Core: 175,          // Ceiling for Core tier
+  Normal: 165,        // Ceiling for Normal tier
 };
+
+/**
+ * Trade weight for keeper bonus - displays full bonus but only applies 40% to trades
+ * This prevents late-round steals from overtaking raw talent in trade calculations
+ */
+export const KEEPER_TRADE_WEIGHT = 0.4;
 
 /**
  * New keeper bonus formula with surplus + control premium
@@ -242,6 +250,7 @@ export function calculateKeeperBonus(
   // Prevents tier jumping - Star players cannot reach Franchise values
   finalValue = Math.min(finalValue, FINAL_VALUE_CAP[playerTier]);
   
-  return keeperBonus; // Return only bonus for now to maintain compatibility
+  // Return both display bonus (full) and trade bonus (40% weighted)
+  return keeperBonus; // For now, return display bonus - trade weight applied at call site
 }
 

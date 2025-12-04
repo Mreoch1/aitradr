@@ -152,16 +152,18 @@ export async function POST(
           const surplusWeights = [0, 0.45, 0.75, 1.0]; // More conservative
           const surplusBonus = cappedSurplus * surplusWeights[years];
           
-          // PART B: Control Premium (multi-year elite control) - MODERATE
+          // PART B: Control Premium (steeper for generational)
           const playerTier = 
-            adjustedValue >= 165 ? 'Franchise' :
+            adjustedValue >= 172 ? 'Generational' :
+            adjustedValue >= 160 ? 'Franchise' :
             adjustedValue >= 150 ? 'Star' :
             adjustedValue >= 135 ? 'Core' : 'Normal';
           const controlPremium: Record<string, number[]> = {
-            Franchise: [0, 10, 28, 45],
-            Star:      [0,  7, 20, 32],
-            Core:      [0,  4, 12, 18],
-            Normal:    [0,  0,  0,  0],
+            Generational: [0, 20, 45, 70],
+            Franchise:    [0, 14, 32, 50],
+            Star:         [0, 10, 22, 34],
+            Core:         [0,  5, 12, 18],
+            Normal:       [0,  0,  0,  0],
           };
           const controlBonus = controlPremium[playerTier][years];
           
@@ -169,17 +171,23 @@ export async function POST(
           
           // Apply tier-based keeper bonus cap
           const tierBonusCap: Record<string, number> = {
-            Franchise: 45,
-            Star: 30,
+            Generational: 70,
+            Franchise: 50,
+            Star: 34,
             Core: 22,
             Normal: 15,
           };
-          keeperBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+          const keeperBonusDisplay = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
           
-          adjustedValue += keeperBonus;
+          // Apply 40% trade weight - keeper is tiebreaker, not main driver
+          const keeperBonusTrade = keeperBonusDisplay * 0.4;
+          keeperBonus = keeperBonusDisplay; // Store display bonus for logging
+          
+          adjustedValue += keeperBonusTrade; // Use trade-weighted value (not full bonus)
           
           // Apply final value cap by tier
           const finalCap: Record<string, number> = {
+            Generational: 250,
             Franchise: 230,
             Star: 190,
             Core: 175,
