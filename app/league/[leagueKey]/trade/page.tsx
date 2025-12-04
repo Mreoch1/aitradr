@@ -58,7 +58,7 @@ function getStatValue(stats: { statName: string; value: number }[] | null | unde
   // Find exact match from list of possible names
   for (const yahooName of possibleNames) {
     const match = stats.find((s) => s.statName === yahooName);
-    if (match) return match.value;
+    if (match) return match.value ?? 0;
   }
   
   return 0;
