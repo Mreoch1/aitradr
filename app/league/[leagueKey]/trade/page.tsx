@@ -294,7 +294,7 @@ export default function TradeBuilderPage() {
 
   // Helper: Calculate keeper-adjusted value with control premium
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
-    const baseValue = player.valueScore;
+    const baseValue = player.valueScore ?? 0;
     
     // If not a keeper, return base value
     if (!player.isKeeper || !player.originalDraftRound || !player.yearsRemaining) {
@@ -331,7 +331,7 @@ export default function TradeBuilderPage() {
       Core:         [0,  5, 12, 18],
       Normal:       [0,  0,  0,  0],
     };
-    const controlBonus = controlPremium[playerTier][years];
+    const controlBonus = controlPremium[playerTier]?.[years] ?? 0;
     
     // PART C: Raw keeper bonus
     const keeperRawBonus = surplusBonus + controlBonus;
@@ -344,7 +344,7 @@ export default function TradeBuilderPage() {
       Core: 22,
       Normal: 15,
     };
-    const keeperBonusDisplay = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+    const keeperBonusDisplay = Math.min(keeperRawBonus, tierBonusCap[playerTier] ?? 0);
     
     // PART E: Apply trade weight (40%) - keeper is tiebreaker, not main driver
     const keeperBonusTrade = keeperBonusDisplay * 0.4;
@@ -360,7 +360,7 @@ export default function TradeBuilderPage() {
       Core: 175,
       Normal: 165,
     };
-    tradeValue = Math.min(tradeValue, finalCap[playerTier]);
+    tradeValue = Math.min(tradeValue, finalCap[playerTier] ?? 999);
     
     return tradeValue;
   };
@@ -573,16 +573,17 @@ export default function TradeBuilderPage() {
         </td>
         <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
           <div className="flex flex-col items-center">
-            <span>{player.valueScore.toFixed(1)}</span>
+            <span>{(player.valueScore ?? 0).toFixed(1)}</span>
             {player.isKeeper && player.originalDraftRound && player.yearsRemaining && player.yearsRemaining > 0 && (
               <span className="text-xs text-purple-600 font-semibold">
                 +{(() => {
+                  const baseValue = player.valueScore ?? 0;
                   const draftRound = player.originalDraftRound!;
                   const roundAvg = pickValueMap.get(draftRound) ?? 100;
                   const years = Math.max(0, Math.min(3, player.yearsRemaining!));
                   
                   // Surplus bonus (conservative caps and weights)
-                  const surplusRaw = Math.max(0, player.valueScore - roundAvg);
+                  const surplusRaw = Math.max(0, baseValue - roundAvg);
                   const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
                   const cap = { A: 25, B: 35, C: 40 }[tier];
                   const cappedSurplus = Math.min(surplusRaw, cap);
@@ -591,10 +592,10 @@ export default function TradeBuilderPage() {
                   
                   // Control premium (moderate progression)
                   const playerTier = 
-                    player.valueScore >= 172 ? 'Generational' :
-                    player.valueScore >= 160 ? 'Franchise' :
-                    player.valueScore >= 150 ? 'Star' :
-                    player.valueScore >= 135 ? 'Core' : 'Normal';
+                    baseValue >= 172 ? 'Generational' :
+                    baseValue >= 160 ? 'Franchise' :
+                    baseValue >= 150 ? 'Star' :
+                    baseValue >= 135 ? 'Core' : 'Normal';
                   const controlPremium: Record<string, number[]> = {
                     Generational: [0, 20, 45, 70],
                     Franchise:    [0, 14, 32, 50],
@@ -602,7 +603,7 @@ export default function TradeBuilderPage() {
                     Core:         [0,  5, 12, 18],
                     Normal:       [0,  0,  0,  0],
                   };
-                  const controlBonus = controlPremium[playerTier][years];
+                  const controlBonus = controlPremium[playerTier]?.[years] ?? 0;
                   
                   const keeperRawBonus = surplusBonus + controlBonus;
                   
@@ -614,10 +615,10 @@ export default function TradeBuilderPage() {
                     Core: 22,
                     Normal: 15,
                   };
-                  const displayBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier]);
+                  const displayBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier] ?? 0);
                   
                   // Display full bonus (not trade-weighted)
-                  return displayBonus.toFixed(0);
+                  return (displayBonus ?? 0).toFixed(0);
                 })()} K
               </span>
             )}
