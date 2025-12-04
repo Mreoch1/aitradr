@@ -164,10 +164,14 @@ export default function TradeBuilderPage() {
   useEffect(() => {
     async function fetchTradeData() {
       try {
+        console.log("[Trade Page] Fetching trade data for league:", leagueKey);
         const response = await fetch(`/api/league/${leagueKey}/trade-data`);
+        console.log("[Trade Page] Response status:", response.status);
         const result = await response.json();
+        console.log("[Trade Page] Response ok:", result.ok);
 
         if (!result.ok) {
+          console.error("[Trade Page] API error:", result.error);
           if (handleTokenExpiration(result, `/league/${leagueKey}/trade`)) {
             return;
           }
@@ -175,8 +179,14 @@ export default function TradeBuilderPage() {
           return;
         }
 
+        console.log("[Trade Page] Trade data loaded:", {
+          teams: result.data.teams?.length,
+          picks: result.data.draftPickValues?.length,
+          players: result.data.teams?.reduce((sum: number, t: any) => sum + (t.roster?.length ?? 0), 0)
+        });
         setTradeData(result.data);
       } catch (err) {
+        console.error("[Trade Page] Fetch error:", err);
         setError(err instanceof Error ? err.message : "Failed to load trade data");
       } finally {
         setLoading(false);
@@ -275,24 +285,40 @@ export default function TradeBuilderPage() {
   }
 
   // Ensure all teams have draftPicks array
-  const normalizedTradeData: TradeData = {
-    ...tradeData,
-    teams: tradeData.teams.map((team) => ({
-      ...team,
-      draftPicks: team.draftPicks || [],
-    })),
-  };
+  let normalizedTradeData: TradeData;
+  try {
+    console.log("[Trade Page] Normalizing trade data, teams count:", tradeData.teams?.length);
+    normalizedTradeData = {
+      ...tradeData,
+      teams: tradeData.teams.map((team) => ({
+        ...team,
+        draftPicks: team.draftPicks || [],
+      })),
+    };
+    console.log("[Trade Page] Trade data normalized successfully");
+  } catch (err) {
+    console.error("[Trade Page] Error normalizing trade data:", err);
+    throw err;
+  }
 
   const teamA = normalizedTradeData.teams.find((t) => t.id === sideA.teamId);
   const teamB = normalizedTradeData.teams.find((t) => t.id === sideB.teamId);
+  console.log("[Trade Page] Teams selected - A:", teamA?.name, "B:", teamB?.name);
 
   // Build pick value map first (needed for keeper bonus calculation)
   const pickValueMap = new Map<number, number>();
-  (normalizedTradeData.draftPickValues || []).forEach((pick) => {
-    if (pick && pick.round !== undefined && pick.score !== undefined) {
-      pickValueMap.set(pick.round, pick.score);
-    }
-  });
+  try {
+    console.log("[Trade Page] Building pick value map, picks count:", normalizedTradeData.draftPickValues?.length);
+    (normalizedTradeData.draftPickValues || []).forEach((pick) => {
+      if (pick && pick.round !== undefined && pick.score !== undefined) {
+        pickValueMap.set(pick.round, pick.score);
+      }
+    });
+    console.log("[Trade Page] Pick value map built, size:", pickValueMap.size);
+  } catch (err) {
+    console.error("[Trade Page] Error building pick value map:", err);
+    throw err;
+  }
 
   // Helper: Calculate keeper-adjusted value with control premium
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
@@ -368,16 +394,29 @@ export default function TradeBuilderPage() {
   };
 
   const playerValueMap = new Map<string, number>();
-  (normalizedTradeData.teams || []).forEach((team) => {
-    (team.roster || []).forEach((player) => {
-      if (!player) return; // Skip undefined players
-      // Use keeper-adjusted value for trade calculations
-      const tradeValue = getPlayerTradeValue(player);
-      if (player.playerId) {
-        playerValueMap.set(player.playerId, tradeValue);
-      }
+  try {
+    console.log("[Trade Page] Building player value map...");
+    let playerCount = 0;
+    (normalizedTradeData.teams || []).forEach((team) => {
+      (team.roster || []).forEach((player) => {
+        if (!player) return; // Skip undefined players
+        try {
+          // Use keeper-adjusted value for trade calculations
+          const tradeValue = getPlayerTradeValue(player);
+          if (player.playerId) {
+            playerValueMap.set(player.playerId, tradeValue);
+            playerCount++;
+          }
+        } catch (playerErr) {
+          console.error("[Trade Page] Error calculating value for player:", player.name, playerErr);
+        }
+      });
     });
-  });
+    console.log("[Trade Page] Player value map built, players processed:", playerCount);
+  } catch (err) {
+    console.error("[Trade Page] Error building player value map:", err);
+    throw err;
+  }
 
   const togglePendingPlayer = (side: "A" | "B", playerId: string) => {
     setPendingSelections((prev) => ({
