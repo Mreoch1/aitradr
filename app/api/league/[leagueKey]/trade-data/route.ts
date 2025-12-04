@@ -239,6 +239,25 @@ export async function GET(
       console.error("[Trade Data] Error checking/populating keepers:", error);
       // Don't fail - keepers are bonus feature
     }
+    
+    // Auto-build team profiles if missing (needed for AI suggestions)
+    try {
+      const profileCount = await prisma.teamProfile.count({
+        where: { leagueId: league.id }
+      });
+      console.log("[Trade Data] Found", profileCount, "team profiles in database");
+      
+      if (profileCount === 0) {
+        console.log("[Trade Data] No team profiles found, building AI cache...");
+        const { buildAllTeamProfiles, storeTeamProfiles } = await import("@/lib/ai/teamProfile");
+        const profiles = await buildAllTeamProfiles(league.id);
+        await storeTeamProfiles(league.id, profiles);
+        console.log("[Trade Data] Team profiles built and cached");
+      }
+    } catch (error) {
+      console.error("[Trade Data] Error checking/building team profiles:", error);
+      // Don't fail the whole request if profile building fails
+    }
 
     // Fetch all teams in this league
     console.log("[Trade Data] Querying teams from database for league:", league.id);
