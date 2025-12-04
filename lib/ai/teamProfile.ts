@@ -322,7 +322,7 @@ export async function loadTeamProfiles(leagueId: string): Promise<TeamProfile[]>
 
   return records.map(r => {
     // Handle both string and object formats
-    let profileData = r.profileData;
+    let profileData: any = r.profileData;
     if (typeof profileData === 'string') {
       try {
         profileData = JSON.parse(profileData);
@@ -331,6 +331,42 @@ export async function loadTeamProfiles(leagueId: string): Promise<TeamProfile[]>
         throw new Error(`Invalid profile data for team ${r.teamId}`);
       }
     }
-    return profileData as any as TeamProfile;
+    
+    // MIGRATION: Handle old profile format (pre-refactor)
+    // Old format had skaterCategories/goalieCategories, new has flat categories
+    if (profileData.skaterCategories && !profileData.categories) {
+      console.log("[Team Profile] Migrating old profile format for team:", profileData.teamName);
+      
+      // Flatten old nested structure into new flat structure
+      const categories: any = {
+        G: 0, A: 0, P: 0, plusMinus: 0, PIM: 0, PPP: 0,
+        SHP: 0, GWG: 0, SOG: 0, FW: 0, HIT: 0, BLK: 0,
+        W: 0, GAA: 0, SV: 0, SVPct: 0, SHO: 0
+      };
+      
+      // Extract z-scores from old format
+      for (const [key, value] of Object.entries(profileData.skaterCategories)) {
+        if (value && typeof value === 'object' && 'zScore' in value) {
+          categories[key] = (value as any).zScore;
+        }
+      }
+      
+      if (profileData.goalieCategories) {
+        for (const [key, value] of Object.entries(profileData.goalieCategories)) {
+          if (value && typeof value === 'object' && 'zScore' in value) {
+            categories[key] = (value as any).zScore;
+          }
+        }
+      }
+      
+      profileData.categories = categories;
+      
+      // Also ensure keepers object exists
+      if (!profileData.keepers) {
+        profileData.keepers = { expiring: [], fresh: [], elite: [] };
+      }
+    }
+    
+    return profileData as TeamProfile;
   });
 }
