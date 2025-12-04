@@ -74,41 +74,22 @@ async function inspectProfile() {
     }
     console.log(`\n🔀 Flex Skaters (multi-position): ${profile.flexSkaters}`);
 
-    // Category Analysis - Skaters
-    console.log("\n🏒 SKATER CATEGORIES");
+    // Category Analysis
+    console.log("\n📊 CATEGORY Z-SCORES");
     console.log("─".repeat(60));
-    console.log("Category | Z-Score | Strength");
+    console.log("Category | Z-Score | Status");
     console.log("─".repeat(60));
     
-    const sortedSkaterCats = Object.entries(profile.skaterCategories)
-      .sort(([, a], [, b]) => a.zScore - b.zScore); // Weak first
+    const sortedCats = Object.entries(profile.categories)
+      .filter(([cat]) => !["GAA", "SV", "SVPct", "W", "SHO"].includes(cat) || profile.categories[cat as keyof typeof profile.categories] !== 0)
+      .sort(([, a], [, b]) => (a as number) - (b as number));
     
-    for (const [cat, summary] of sortedSkaterCats) {
-      const icon = 
-        summary.strength === "strong" ? "💪" :
-        summary.strength === "weak" ? "⚠️ " :
-        "➖";
+    for (const [cat, zScore] of sortedCats) {
+      const z = zScore as number;
+      const status = z > 0.85 ? "💪 STRONG" : z < -0.85 ? "⚠️  WEAK" : "➖ NEUTRAL";
       console.log(
-        `${cat.padEnd(8)} | ${(summary.zScore > 0 ? '+' : '') + summary.zScore.toFixed(2).padStart(6)} | ${icon} ${summary.strength.toUpperCase()}`
+        `${cat.padEnd(8)} | ${(z > 0 ? '+' : '') + z.toFixed(2).padStart(6)} | ${status}`
       );
-    }
-
-    // Category Analysis - Goalies
-    if (Object.values(profile.goalieCategories).some(c => c.zScore !== 0)) {
-      console.log("\n🥅 GOALIE CATEGORIES");
-      console.log("─".repeat(60));
-      console.log("Category | Z-Score | Strength");
-      console.log("─".repeat(60));
-      
-      for (const [cat, summary] of Object.entries(profile.goalieCategories)) {
-        const icon = 
-          summary.strength === "strong" ? "💪" :
-          summary.strength === "weak" ? "⚠️ " :
-          "➖";
-        console.log(
-          `${cat.padEnd(8)} | ${(summary.zScore > 0 ? '+' : '') + summary.zScore.toFixed(2).padStart(6)} | ${icon} ${summary.strength.toUpperCase()}`
-        );
-      }
     }
 
     // Roster Breakdown
@@ -157,9 +138,9 @@ async function inspectProfile() {
     console.log("\n💡 STRATEGIC RECOMMENDATIONS");
     console.log("─".repeat(60));
     
-    const weakCats = Object.entries(profile.skaterCategories)
-      .filter(([_, cat]) => cat.strength === "weak")
-      .sort(([, a], [, b]) => a.zScore - b.zScore)
+    const weakCats = Object.entries(profile.categories)
+      .filter(([_, z]) => (z as number) < -0.85)
+      .sort(([, a], [, b]) => (a as number) - (b as number))
       .map(([name]) => name);
     
     const shortages = Object.entries(profile.positions)
@@ -185,6 +166,12 @@ async function inspectProfile() {
     if (weakCats.length === 0 && shortages.length === 0) {
       console.log("\n✨ Team looks balanced! No major weaknesses detected.");
     }
+    
+    // Keeper analysis
+    console.log("\n🔒 KEEPER ANALYSIS");
+    console.log(`   Expiring keepers: ${profile.keepers.expiring.length}`);
+    console.log(`   Fresh keepers (2+ years): ${profile.keepers.fresh.length}`);
+    console.log(`   Elite keepers (value >= 160): ${profile.keepers.elite.length}`);
 
   } catch (error) {
     console.error("❌ Error inspecting profile:", error);

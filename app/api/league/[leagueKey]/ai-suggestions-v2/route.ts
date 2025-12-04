@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
-import { loadTeamProfiles, type Player } from "@/lib/ai/teamProfile";
-import { analyzeTrades } from "@/lib/ai/profileBasedTradeAnalyzer";
-import { calculateKeeperBonus, getRoundTier } from "@/lib/keeper/types";
+import { loadTeamProfiles } from "@/lib/ai/teamProfile";
+import { analyzeTrades, type PlayerForAI, type TeamForAI } from "@/lib/ai/cleanTradeAnalyzer";
+import { calculateKeeperBonus } from "@/lib/keeper/types";
 
 export async function POST(
   request: NextRequest,
@@ -17,9 +17,9 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    console.log("[AI Suggestions V2] Starting analysis for league:", leagueKey);
+    console.log("[AI V2] Starting for league:", leagueKey);
 
-    // Find the league
+    // Find league
     const normalizedLeagueKey = leagueKey.replace(/\.1\./g, '.l.');
     const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
     const league = await prisma.league.findFirst({
@@ -34,187 +34,164 @@ export async function POST(
     });
 
     if (!league) {
-      return NextResponse.json(
-        { ok: false, error: "League not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ ok: false, error: "League not found" }, { status: 404 });
     }
 
-    // Get current user's Yahoo ID to identify their team
+    // Get user's Yahoo ID
     const yahooAccount = await prisma.yahooAccount.findUnique({
       where: { userId: session.userId },
       select: { yahooUserId: true }
     });
     
     if (!yahooAccount) {
-      return NextResponse.json(
-        { ok: false, error: "Yahoo account not linked" },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: "Yahoo account not linked" }, { status: 400 });
     }
-
-    // Find user's team by matching Yahoo manager ID
-    const teams = await prisma.team.findMany({
-      where: { leagueId: league.id },
-    });
-    
-    const myTeam = teams.find(t => t.yahooManagerId === yahooAccount.yahooUserId);
-    if (!myTeam) {
-      return NextResponse.json(
-        { ok: false, error: "Your team could not be identified. Try clicking 'Refresh Teams' first." },
-        { status: 400 }
-      );
-    }
-
-    console.log("[AI Suggestions V2] User's team:", myTeam.name, "ID:", myTeam.id);
 
     // Load cached team profiles
-    console.log("[AI Suggestions V2] Loading team profiles...");
+    console.log("[AI V2] Loading cached profiles...");
     const profiles = await loadTeamProfiles(league.id);
     
     if (profiles.length === 0) {
       return NextResponse.json(
-        { 
-          ok: false, 
-          error: "Team profiles not found. Please run 'Force Sync' first to build the AI cache." 
-        },
+        { ok: false, error: "Team profiles not found. Data is still syncing. Try again in 30 seconds." },
         { status: 400 }
       );
     }
 
-    console.log("[AI Suggestions V2] Loaded", profiles.length, "team profiles");
+    console.log("[AI V2] Loaded", profiles.length, "cached profiles");
 
-    // Build player pool with full data
-    console.log("[AI Suggestions V2] Building player pool...");
-    const playersFromDB = await prisma.player.findMany({
-      include: {
-        rosterEntries: {
-          where: { leagueId: league.id },
-        },
-        playerValues: {
-          where: { leagueId: league.id },
-        },
-        playerStats: {
-          where: { leagueId: league.id },
-        },
-      },
-    });
-
-    // Get draft pick values for keeper bonus calculation
+    // Get draft pick values for keeper calculations
     const draftPickValues = await prisma.draftPickValue.findMany({
       where: { leagueId: league.id },
       orderBy: { round: 'asc' }
     });
     const pickValueMap = new Map(draftPickValues.map(pv => [pv.round, pv.score]));
 
-    // Transform to Player objects
-    const players: Player[] = [];
-    
-    for (const dbPlayer of playersFromDB) {
-      // Find roster entry for this player
-      const rosterEntry = dbPlayer.rosterEntries[0];
-      if (!rosterEntry) continue; // Skip players not on any roster
+    // Fetch all teams with rosters
+    const teams = await prisma.team.findMany({
+      where: { leagueId: league.id },
+      include: {
+        rosterEntries: {
+          include: {
+            player: {
+              include: {
+                playerValues: { where: { leagueId: league.id } },
+                playerStats: { where: { leagueId: league.id } },
+              },
+            },
+          },
+        },
+      },
+    });
 
-      const playerValue = dbPlayer.playerValues[0];
-      if (!playerValue) continue; // Skip players without values
-
-      // Parse positions
-      let positions: ("C" | "LW" | "RW" | "D" | "G")[] = [];
-      try {
-        const parsed = typeof dbPlayer.positions === 'string' 
-          ? JSON.parse(dbPlayer.positions) 
-          : dbPlayer.positions;
-        if (Array.isArray(parsed)) {
-          positions = parsed.filter((p: string) => 
-            ["C", "LW", "RW", "D", "G"].includes(p)
-          ) as ("C" | "LW" | "RW" | "D" | "G")[];
-        }
-      } catch (e) {
-        console.error("[AI V2] Failed to parse positions for", dbPlayer.name);
-      }
-
-      const isGoalie = positions.includes("G");
-
-      // Calculate keeper-adjusted value
-      let valueBase = playerValue.score;
-      let valueKeeper = valueBase;
-
-      if (rosterEntry.isKeeper && rosterEntry.originalDraftRound && rosterEntry.yearsRemaining !== null) {
-        const draftRoundAvg = pickValueMap.get(rosterEntry.originalDraftRound) ?? 100;
-        const keeperBonus = calculateKeeperBonus(
-          valueBase,
-          rosterEntry.originalDraftRound,
-          draftRoundAvg,
-          rosterEntry.yearsRemaining
-        );
-        valueKeeper = valueBase + keeperBonus; // Use full keeper bonus for AI
-      }
-
-      // Build category object
-      const categories: any = {};
-      for (const stat of dbPlayer.playerStats) {
-        const name = stat.statName.toLowerCase();
-        const value = stat.value;
-
-        if (!isGoalie) {
-          if (name.includes("goal") && !name.includes("against")) categories.G = value;
-          if (name.includes("assist")) categories.A = value;
-          if (name.includes("point") && !name.includes("power") && !name.includes("short")) categories.P = value;
-          if (name.includes("plus/minus") || name.includes("+/-")) categories.plusMinus = value;
-          if (name.includes("penalty")) categories.PIM = value;
-          if (name.includes("power play")) categories.PPP = value;
-          if (name.includes("shorthanded")) categories.SHP = value;
-          if (name.includes("game-winning")) categories.GWG = value;
-          if (name.includes("shot") && !name.includes("shootout")) categories.SOG = value;
-          if (name.includes("faceoff")) categories.FW = value;
-          if (name.includes("hit")) categories.HIT = value;
-          if (name.includes("block")) categories.BLK = value;
-        } else {
-          if (name.includes("win")) categories.W = value;
-          if (name.includes("goals against average") || name === "gaa") categories.GAA = value;
-          if (name.includes("save") && !name.includes("%")) categories.SV = value;
-          if (name.includes("save %") || name.includes("save percentage")) categories.SVPct = value;
-          if (name.includes("shutout")) categories.SHO = value;
-        }
-      }
-
-      players.push({
-        id: dbPlayer.id,
-        name: dbPlayer.name,
-        teamId: rosterEntry.teamId,
-        nhlTeam: dbPlayer.teamAbbr || "?",
-        positions,
-        isGoalie,
-        valueBase,
-        valueKeeper,
-        categories,
-      });
+    // Find user's team
+    const myTeam = teams.find(t => t.yahooManagerId === yahooAccount.yahooUserId);
+    if (!myTeam) {
+      return NextResponse.json(
+        { ok: false, error: "Your team not found. Try refreshing teams first." },
+        { status: 400 }
+      );
     }
 
-    console.log("[AI Suggestions V2] Built player pool:", players.length, "players");
+    console.log("[AI V2] User's team:", myTeam.name);
 
-    // Call AI with team profiles and player pool
-    console.log("[AI Suggestions V2] Calling AI analyzer...");
-    const suggestions = await analyzeTrades(myTeam.id, profiles, players);
-    console.log("[AI Suggestions V2] Received", suggestions.length, "suggestions");
+    // Build TeamForAI objects
+    const teamsForAI: TeamForAI[] = teams.map(team => {
+      const profile = profiles.find(p => p.teamId === team.id);
+      if (!profile) {
+        throw new Error(`Profile not found for team ${team.name}`);
+      }
+
+      const roster: PlayerForAI[] = team.rosterEntries.map(entry => {
+        const player = entry.player;
+        const baseValue = player.playerValues[0]?.score ?? 0;
+        
+        let keeperValue = baseValue;
+        if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining !== null) {
+          const draftRoundAvg = pickValueMap.get(entry.originalDraftRound) ?? 100;
+          const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, draftRoundAvg, entry.yearsRemaining);
+          keeperValue = baseValue + bonus;
+        }
+
+        // Parse positions
+        let positions: string[] = [];
+        try {
+          const parsed = typeof player.positions === 'string' ? JSON.parse(player.positions) : player.positions;
+          if (Array.isArray(parsed)) {
+            positions = parsed.filter(p => ["C", "LW", "RW", "D", "G"].includes(p));
+          }
+        } catch (e) {}
+
+        const isGoalie = positions.includes("G");
+
+        // Build categories from stats
+        const categories: any = {};
+        for (const stat of player.playerStats) {
+          const name = stat.statName.toLowerCase();
+          const val = stat.value ?? 0;
+          if (!isGoalie) {
+            if (name.includes("goal") && !name.includes("against")) categories.G = val;
+            if (name.includes("assist")) categories.A = val;
+            if (name.includes("point") && !name.includes("power") && !name.includes("short")) categories.P = val;
+            if (name.includes("plus/minus") || name.includes("+/-")) categories.plusMinus = val;
+            if (name.includes("penalty")) categories.PIM = val;
+            if (name.includes("power play") || name.includes("powerplay")) categories.PPP = val;
+            if (name.includes("shorthanded") || name.includes("short handed")) categories.SHP = val;
+            if (name.includes("game-winning") || name.includes("game winning")) categories.GWG = val;
+            if (name.includes("shot") && !name.includes("shootout")) categories.SOG = val;
+            if (name.includes("faceoff")) categories.FW = val;
+            if (name.includes("hit")) categories.HIT = val;
+            if (name.includes("block")) categories.BLK = val;
+          } else {
+            if (name.includes("win")) categories.W = val;
+            if (name.includes("goals against average") || name === "gaa") categories.GAA = val;
+            if (name.includes("save") && !name.includes("%") && !name.includes("percentage")) categories.SV = val;
+            if (name.includes("save %") || name.includes("save percentage")) categories.SVPct = val;
+            if (name.includes("shutout")) categories.SHO = val;
+          }
+        }
+
+        return {
+          id: player.id,
+          name: player.name,
+          positions,
+          nhlTeam: player.teamAbbr || "?",
+          valueBase: baseValue,
+          valueKeeper: keeperValue,
+          isKeeper: entry.isKeeper || false,
+          yearsRemaining: entry.yearsRemaining ?? undefined,
+          originalDraftRound: entry.originalDraftRound ?? undefined,
+          categories,
+        };
+      });
+
+      return {
+        id: team.id,
+        name: team.name,
+        roster,
+        profile,
+      };
+    });
+
+    const myTeamForAI = teamsForAI.find(t => t.id === myTeam.id)!;
+
+    console.log("[AI V2] Calling AI with", teamsForAI.length, "teams");
+    const suggestions = await analyzeTrades(myTeamForAI, teamsForAI);
+    console.log("[AI V2] Received", suggestions.length, "suggestions");
 
     return NextResponse.json({
       ok: true,
       suggestions,
       myTeamName: myTeam.name,
       profilesUsed: true,
-      profileTimestamp: profiles[0]?.lastUpdated,
+      profileAge: profiles[0]?.lastUpdated,
     });
 
   } catch (error) {
-    console.error("[AI Suggestions V2] Error:", error);
+    console.error("[AI V2] Error:", error);
     return NextResponse.json(
-      { 
-        ok: false, 
-        error: error instanceof Error ? error.message : "AI analysis failed" 
-      },
+      { ok: false, error: error instanceof Error ? error.message : "AI analysis failed" },
       { status: 500 }
     );
   }
 }
-

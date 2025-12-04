@@ -14,8 +14,7 @@
  */
 
 import prisma from "../lib/prisma";
-import { loadTeamProfiles, type Player } from "../lib/ai/teamProfile";
-import { buildAIPayload } from "../lib/ai/profileBasedTradeAnalyzer";
+import { loadTeamProfiles } from "../lib/ai/teamProfile";
 import { calculateKeeperBonus } from "../lib/keeper/types";
 
 async function testAISystem() {
@@ -122,16 +121,16 @@ async function testAISystem() {
     }
 
     // Test 5: Category analysis
-    console.log("\n5️⃣  Testing category strength analysis...");
+    console.log("\n5️⃣  Testing category z-score analysis...");
     let categoryAnalysisWorks = true;
     
     for (const profile of profiles) {
-      const weakCats = Object.entries(profile.skaterCategories)
-        .filter(([_, cat]) => cat.strength === "weak")
+      const weakCats = Object.entries(profile.categories)
+        .filter(([_, z]) => (z as number) < -0.85)
         .length;
       
-      const strongCats = Object.entries(profile.skaterCategories)
-        .filter(([_, cat]) => cat.strength === "strong")
+      const strongCats = Object.entries(profile.categories)
+        .filter(([_, z]) => (z as number) > 0.85)
         .length;
       
       // Every team should have at least one weak or strong category (not all neutral)
@@ -142,7 +141,7 @@ async function testAISystem() {
     }
     
     if (categoryAnalysisWorks) {
-      console.log("   ✅ PASSED: Category strength classification working");
+      console.log("   ✅ PASSED: Category z-score analysis working");
       passed++;
     } else {
       console.log("   ❌ FAILED: Category analysis may have issues");
@@ -182,93 +181,30 @@ async function testAISystem() {
       passed++;
     }
 
-    // Test 7: AI Payload generation
-    console.log("\n7️⃣  Testing AI payload generation...");
+    // Test 7: Profile structure validation
+    console.log("\n7️⃣  Validating profile structure...");
     
-    // Get draft pick values for keeper bonus calculation
-    const draftPickValues = await prisma.draftPickValue.findMany({
-      where: { leagueId },
-      orderBy: { round: 'asc' }
-    });
-    const pickValueMap = new Map(draftPickValues.map(pv => [pv.round, pv.score]));
-
-    // Build player pool
-    const players: Player[] = [];
-    for (const dbPlayer of rosteredPlayers) {
-      const rosterEntry = dbPlayer.rosterEntries[0];
-      const playerValue = dbPlayer.playerValues[0];
-      if (!rosterEntry || !playerValue) continue;
-
-      let positions: ("C" | "LW" | "RW" | "D" | "G")[] = [];
-      try {
-        const parsed = typeof dbPlayer.positions === 'string' 
-          ? JSON.parse(dbPlayer.positions) 
-          : dbPlayer.positions;
-        if (Array.isArray(parsed)) {
-          positions = parsed.filter((p: string) => 
-            ["C", "LW", "RW", "D", "G"].includes(p)
-          ) as ("C" | "LW" | "RW" | "D" | "G")[];
-        }
-      } catch (e) {}
-
-      const isGoalie = positions.includes("G");
-      let valueBase = playerValue.score;
-      let valueKeeper = valueBase;
-
-      if (rosterEntry.isKeeper && rosterEntry.originalDraftRound && rosterEntry.yearsRemaining !== null) {
-        const draftRoundAvg = pickValueMap.get(rosterEntry.originalDraftRound) ?? 100;
-        const keeperBonus = calculateKeeperBonus(
-          valueBase,
-          rosterEntry.originalDraftRound,
-          draftRoundAvg,
-          rosterEntry.yearsRemaining
-        );
-        valueKeeper = valueBase + keeperBonus;
-      }
-
-      const categories: any = {};
-      for (const stat of dbPlayer.playerStats) {
-        const name = stat.statName.toLowerCase();
-        const value = stat.value;
-        if (!isGoalie) {
-          if (name.includes("goal") && !name.includes("against")) categories.G = value;
-          if (name.includes("assist")) categories.A = value;
-        } else {
-          if (name.includes("win")) categories.W = value;
-        }
-      }
-
-      players.push({
-        id: dbPlayer.id,
-        name: dbPlayer.name,
-        teamId: rosterEntry.teamId,
-        nhlTeam: dbPlayer.teamAbbr || "?",
-        positions,
-        isGoalie,
-        valueBase,
-        valueKeeper,
-        categories,
-      });
-    }
-
-    if (players.length === 0) {
-      console.log("   ❌ FAILED: No players in player pool");
+    const sampleProfile = profiles[0];
+    const hasPositions = sampleProfile && sampleProfile.positions && sampleProfile.positions.C;
+    const hasCategories = sampleProfile && sampleProfile.categories && typeof sampleProfile.categories.G === 'number';
+    const hasKeepers = sampleProfile && sampleProfile.keepers;
+    
+    if (!hasPositions) {
+      console.log("   ❌ FAILED: Profile missing position data");
+      failed++;
+    } else if (!hasCategories) {
+      console.log("   ❌ FAILED: Profile missing category data");
+      failed++;
+    } else if (!hasKeepers) {
+      console.log("   ❌ FAILED: Profile missing keeper data");
       failed++;
     } else {
-      const targetTeamId = league.teams[0].id;
-      const payload = buildAIPayload(profiles, players, targetTeamId);
-      
-      console.log(`   Players in payload: ${payload.players.length}`);
-      console.log(`   Teams in payload: ${payload.teamProfiles.length}`);
-      console.log(`   Categories tracked: ${payload.league.categories.skater.length} skater, ${payload.league.categories.goalie.length} goalie`);
-      
-      if (payload.players.length > 0 && payload.teamProfiles.length > 0) {
-        console.log("   ✅ PASSED: AI payload builds successfully");
-        passed++;
-      } else {
-        console.log("   ❌ FAILED: AI payload is incomplete");
-        failed++;
-      }
+      console.log("   ✅ PASSED: Profile structure is valid");
+      console.log(`   Sample: ${sampleProfile.teamName}`);
+      console.log(`   - Position count (C): ${sampleProfile.positions.C.count.toFixed(1)}`);
+      console.log(`   - Category z-score (G): ${sampleProfile.categories.G.toFixed(2)}`);
+      console.log(`   - Keepers: ${sampleProfile.keepers.expiring.length} expiring, ${sampleProfile.keepers.fresh.length} fresh`);
+      passed++;
     }
 
     // Summary

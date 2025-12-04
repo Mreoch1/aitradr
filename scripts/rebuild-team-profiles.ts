@@ -55,8 +55,8 @@ async function rebuildProfiles() {
       }
       
       console.log("  Weak Categories:");
-      const weakCats = Object.entries(profile.skaterCategories)
-        .filter(([_, cat]) => cat.strength === "weak")
+      const weakCats = Object.entries(profile.categories)
+        .filter(([_, z]) => (z as number) < -0.85)
         .map(([name]) => name);
       console.log(`    ${weakCats.length > 0 ? weakCats.join(", ") : "None"}`);
       
