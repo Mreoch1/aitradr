@@ -320,5 +320,17 @@ export async function loadTeamProfiles(leagueId: string): Promise<TeamProfile[]>
     where: { leagueId },
   });
 
-  return records.map(r => r.profileData as any as TeamProfile);
+  return records.map(r => {
+    // Handle both string and object formats
+    let profileData = r.profileData;
+    if (typeof profileData === 'string') {
+      try {
+        profileData = JSON.parse(profileData);
+      } catch (e) {
+        console.error("[Team Profile] Failed to parse profileData for team:", r.teamId);
+        throw new Error(`Invalid profile data for team ${r.teamId}`);
+      }
+    }
+    return profileData as any as TeamProfile;
+  });
 }

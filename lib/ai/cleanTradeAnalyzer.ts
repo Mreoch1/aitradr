@@ -209,6 +209,13 @@ export async function analyzeTrades(
   const payload = buildPayload(myTeam, allTeams);
 
   console.log("[Clean AI] Analyzing trades for:", myTeam.name);
+  
+  // Validate profile structure
+  if (!myTeam.profile || !myTeam.profile.categories || !myTeam.profile.positions) {
+    console.error("[Clean AI] Invalid profile structure:", myTeam.profile);
+    throw new Error("Team profile is missing required data. Please refresh your data.");
+  }
+  
   console.log("[Clean AI] Weak categories:", 
     Object.entries(myTeam.profile.categories)
       .filter(([_, z]) => z < -0.85)

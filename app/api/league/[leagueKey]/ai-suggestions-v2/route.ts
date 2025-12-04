@@ -101,6 +101,12 @@ export async function POST(
       if (!profile) {
         throw new Error(`Profile not found for team ${team.name}`);
       }
+      
+      // Validate profile structure
+      if (!profile.categories || !profile.positions || !profile.keepers) {
+        console.error("[AI V2] Invalid profile structure for team:", team.name, profile);
+        throw new Error(`Profile structure invalid for team ${team.name}. Try refreshing data.`);
+      }
 
       const roster: PlayerForAI[] = team.rosterEntries.map(entry => {
         const player = entry.player;
