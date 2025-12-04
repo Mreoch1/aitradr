@@ -508,8 +508,8 @@ export default function TradeBuilderPage() {
     })),
   ];
 
-  const teamAReceiveTotal = teamBSends.reduce((sum, item) => sum + item.value, 0);
-  const teamBReceiveTotal = teamASends.reduce((sum, item) => sum + item.value, 0);
+  const teamAReceiveTotal = teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0);
+  const teamBReceiveTotal = teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0);
   const diff = teamAReceiveTotal - teamBReceiveTotal;
 
   // Sortable header component
@@ -1221,7 +1221,7 @@ export default function TradeBuilderPage() {
                       >
                         <div className="flex flex-col items-center leading-tight">
                           <span className="text-[10px] font-bold">R{pick.round}</span>
-                          <span className="text-[9px]">{pick.score.toFixed(0)}</span>
+                          <span className="text-[9px]">{(pick.score ?? 0).toFixed(0)}</span>
                         </div>
                       </button>
                     );
@@ -1373,7 +1373,7 @@ export default function TradeBuilderPage() {
                       >
                         <div className="flex flex-col items-center leading-tight">
                           <span className="text-[10px] font-bold">R{pick.round}</span>
-                          <span className="text-[9px]">{pick.score.toFixed(0)}</span>
+                          <span className="text-[9px]">{(pick.score ?? 0).toFixed(0)}</span>
                         </div>
                       </button>
                     );
@@ -1389,8 +1389,8 @@ export default function TradeBuilderPage() {
         <div className="rounded border border-gray-300 theme-bg-primary p-6">
           <h2 className="mb-4 text-xl font-semibold theme-text-primary">Trade Summary</h2>
           {(() => {
-            const teamASendTotal = teamASends.reduce((sum, item) => sum + item.value, 0);
-            const teamBSendTotal = teamBSends.reduce((sum, item) => sum + item.value, 0);
+            const teamASendTotal = teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0);
+            const teamBSendTotal = teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0);
             
             return (
               <>
@@ -1430,7 +1430,7 @@ export default function TradeBuilderPage() {
                     <div className="flex justify-between font-semibold">
                       <span className="theme-text-primary">Total</span>
                       <span className="theme-text-primary">
-                        {teamASends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
+                        {teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -1472,7 +1472,7 @@ export default function TradeBuilderPage() {
                     <div className="flex justify-between font-semibold">
                       <span className="theme-text-primary">Total</span>
                       <span className="theme-text-primary">
-                        {teamBSends.reduce((sum, item) => sum + item.value, 0).toFixed(1)}
+                        {teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0).toFixed(1)}
                       </span>
                     </div>
                   </div>
