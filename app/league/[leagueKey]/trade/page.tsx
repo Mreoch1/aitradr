@@ -1400,6 +1400,9 @@ export default function TradeBuilderPage() {
           {(() => {
             const teamASendTotal = teamASends.reduce((sum, item) => sum + (item.value ?? 0), 0);
             const teamBSendTotal = teamBSends.reduce((sum, item) => sum + (item.value ?? 0), 0);
+            const teamAReceiveTotal = teamBSendTotal; // What Team A receives is what Team B sends
+            const teamBReceiveTotal = teamASendTotal; // What Team B receives is what Team A sends
+            const diff = teamAReceiveTotal - teamASendTotal; // Team A's net gain
             
             return (
               <>
