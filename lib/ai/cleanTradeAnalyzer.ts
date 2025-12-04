@@ -319,15 +319,25 @@ export async function analyzeTrades(
     const jsonString = jsonMatch[1] || jsonMatch[0];
     const suggestions: TradeSuggestion[] = JSON.parse(jsonString);
 
-    console.log("[Clean AI] ✅ Generated", suggestions.length, "suggestions (before validation)");
+    console.log("🔥 AI: Raw candidates generated:", suggestions.length);
+    
+    // Log first few suggestions for debugging
+    if (suggestions.length > 0) {
+      console.log("🔥 First suggestion sample:", JSON.stringify(suggestions[0], null, 2));
+    }
     
     // Filter out invalid suggestions (only true garbage, not close-value trades)
     const validSuggestions = suggestions.filter(isValidSuggestion);
     
-    console.log("[Clean AI] ✅ Returning", validSuggestions.length, "valid suggestions (filtered", suggestions.length - validSuggestions.length, "invalid)");
+    console.log("🔥 AI: Surviving after validation:", validSuggestions.length);
     
     if (validSuggestions.length === 0 && suggestions.length > 0) {
-      console.error("[Clean AI] ⚠️ ALL SUGGESTIONS FILTERED OUT - Validation may be too strict!");
+      console.error("🔥 ⚠️ ALL SUGGESTIONS FILTERED OUT!");
+      console.error("🔥 Sample rejected suggestion:", JSON.stringify(suggestions[0], null, 2));
+    }
+    
+    if (suggestions.length === 0) {
+      console.error("🔥 ⚠️ AI RETURNED ZERO SUGGESTIONS - Model didn't generate any trades!");
     }
     
     return validSuggestions;

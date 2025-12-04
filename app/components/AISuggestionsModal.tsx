@@ -73,7 +73,9 @@ export function AISuggestionsModal({
   if (!isOpen) return null;
 
   // Filter out invalid suggestions before rendering
+  console.log("🔥 UI: Received suggestions from API:", suggestions.length);
   const validSuggestions = suggestions.filter(isRenderableSuggestion);
+  console.log("🔥 UI: Renderable suggestions after filtering:", validSuggestions.length);
   
   // If no valid suggestions, show message
   if (validSuggestions.length === 0) {
@@ -84,8 +86,10 @@ export function AISuggestionsModal({
             ⚠️ NO VALID SUGGESTIONS
           </h2>
           <p className="mb-4 text-gray-700">
-            The AI couldn't find any valid trade opportunities at this time. 
-            This can happen if there are data issues or no mutually beneficial trades available.
+            {suggestions.length === 0 
+              ? "The AI didn't generate any trade candidates. This can happen if there are no mutually beneficial trades available based on your team's needs and other teams' strengths."
+              : `All ${suggestions.length} candidate trades failed validation rules. Check the browser console (F12) for details about why suggestions were filtered.`
+            }
           </p>
           <button
             onClick={onClose}

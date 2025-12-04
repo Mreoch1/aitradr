@@ -607,15 +607,25 @@ export async function analyzeTrades(
       }
     }
     
-    console.log(`[AI] ✅ Generated ${suggestions.length} trade suggestions (before validation)`);
+    console.log(`🔥 AI: Raw candidates generated: ${suggestions.length}`);
+    
+    // Log first few suggestions for debugging
+    if (suggestions.length > 0) {
+      console.log("🔥 First suggestion sample:", JSON.stringify(suggestions[0], null, 2));
+    }
     
     // Filter out invalid suggestions (only true garbage, not close-value trades)
     const validSuggestions = suggestions.filter(isValidTradeSuggestion);
     
-    console.log(`[AI] ✅ Returning ${validSuggestions.length} valid trade suggestions (filtered ${suggestions.length - validSuggestions.length} invalid)`);
+    console.log(`🔥 AI: Surviving after validation: ${validSuggestions.length}`);
     
     if (validSuggestions.length === 0 && suggestions.length > 0) {
-      console.error("[AI] ⚠️ ALL SUGGESTIONS FILTERED OUT - Validation may be too strict!");
+      console.error("🔥 ⚠️ ALL SUGGESTIONS FILTERED OUT!");
+      console.error("🔥 Sample rejected suggestion:", JSON.stringify(suggestions[0], null, 2));
+    }
+    
+    if (suggestions.length === 0) {
+      console.error("🔥 ⚠️ AI RETURNED ZERO SUGGESTIONS - Generator didn't produce any trades!");
     }
     
     return validSuggestions;
