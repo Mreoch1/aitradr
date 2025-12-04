@@ -12,6 +12,51 @@ interface AISuggestionsModalProps {
   onPreviewTrade: (suggestion: TradeSuggestion) => void;
 }
 
+/**
+ * Client-side validation for trade suggestions
+ * Final safety filter to prevent rendering broken suggestions
+ */
+function isRenderableSuggestion(s: TradeSuggestion): boolean {
+  // Must have a partner team
+  if (!s.tradeWithTeam || !s.tradeWithTeam.trim()) {
+    return false;
+  }
+  
+  // Must have assets on both sides
+  if (!s.youGive || s.youGive.length === 0) {
+    return false;
+  }
+  if (!s.youGet || s.youGet.length === 0) {
+    return false;
+  }
+  
+  // Check all assets for validity
+  const allAssets = [...s.youGive, ...s.youGet];
+  for (const asset of allAssets) {
+    // Asset must have a name
+    if (!asset.name || !asset.name.trim()) {
+      return false;
+    }
+    
+    // Name must not contain "undefined"
+    if (asset.name.toLowerCase().includes("undefined")) {
+      return false;
+    }
+    
+    // Must have a valid value
+    if (!Number.isFinite(asset.value)) {
+      return false;
+    }
+  }
+  
+  // At least one asset must have positive value
+  if (!allAssets.some(a => a.value > 0)) {
+    return false;
+  }
+  
+  return true;
+}
+
 export function AISuggestionsModal({
   isOpen,
   onClose,
@@ -23,7 +68,33 @@ export function AISuggestionsModal({
 
   if (!isOpen) return null;
 
-  const currentSuggestion = suggestions[currentIndex];
+  // Filter out invalid suggestions before rendering
+  const validSuggestions = suggestions.filter(isRenderableSuggestion);
+  
+  // If no valid suggestions, show message
+  if (validSuggestions.length === 0) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+        <div className="relative w-full max-w-md rounded-lg theme-bg-primary border-4 border-yellow-600 p-8">
+          <h2 className="mb-4 font-mono text-xl font-bold text-yellow-600">
+            ⚠️ NO VALID SUGGESTIONS
+          </h2>
+          <p className="mb-4 text-gray-700">
+            The AI couldn't find any valid trade opportunities at this time. 
+            This can happen if there are data issues or no mutually beneficial trades available.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full rounded bg-purple-600 px-4 py-2 font-bold text-white hover:bg-purple-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentSuggestion = validSuggestions[currentIndex];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
@@ -48,7 +119,7 @@ export function AISuggestionsModal({
 
         {/* Content */}
         <div className="p-6">
-          {suggestions.length === 0 ? (
+          {validSuggestions.length === 0 ? (
             <p className="text-center theme-text-secondary">No suggestions available</p>
           ) : (
             <>
@@ -62,11 +133,11 @@ export function AISuggestionsModal({
                   ← Previous
                 </button>
                 <span className="font-mono theme-text-primary">
-                  Suggestion {currentIndex + 1} of {suggestions.length}
+                  Suggestion {currentIndex + 1} of {validSuggestions.length}
                 </span>
                 <button
-                  onClick={() => setCurrentIndex(Math.min(suggestions.length - 1, currentIndex + 1))}
-                  disabled={currentIndex === suggestions.length - 1}
+                  onClick={() => setCurrentIndex(Math.min(validSuggestions.length - 1, currentIndex + 1))}
+                  disabled={currentIndex === validSuggestions.length - 1}
                   className="rounded bg-purple-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-gray-400"
                 >
                   Next →

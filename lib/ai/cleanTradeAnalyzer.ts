@@ -62,6 +62,41 @@ export interface TradeSuggestion {
 }
 
 // ============================================================================
+// VALIDATION
+// ============================================================================
+
+/**
+ * Validates that a trade suggestion has valid structure and data
+ */
+function isValidSuggestion(suggestion: TradeSuggestion): boolean {
+  // Must have a partner team name
+  if (!suggestion.partnerTeam || suggestion.partnerTeam.trim() === "") {
+    return false;
+  }
+  
+  // Both sides must have at least one asset
+  if (!suggestion.youGive || suggestion.youGive.length === 0) {
+    return false;
+  }
+  if (!suggestion.youGet || suggestion.youGet.length === 0) {
+    return false;
+  }
+  
+  // No asset names should contain "undefined"
+  const allAssets = [...suggestion.youGive, ...suggestion.youGet];
+  if (allAssets.some(name => !name || name.toLowerCase().includes("undefined"))) {
+    return false;
+  }
+  
+  // Net value should be a finite number
+  if (!Number.isFinite(suggestion.netValue)) {
+    return false;
+  }
+  
+  return true;
+}
+
+// ============================================================================
 // SYSTEM PROMPT (FOLLOWING USER SPEC)
 // ============================================================================
 
@@ -84,6 +119,18 @@ DO:
 - Consider keeper leverage (expiring vs fresh multi-year control)
 - Improve category balance
 - Respect positional constraints
+
+VALIDATION RULES (CRITICAL):
+You must NOT output a trade if:
+- The partner team name is missing or blank
+- Either side has zero assets
+- All assets on both sides have value <= 0
+- Any asset label contains the word "undefined"
+- A draft pick is missing its round number
+
+If a candidate trade in the input violates any of these rules, treat it as invalid and exclude it from your final suggestions.
+
+You should only produce suggestions that move at least one real player or a clearly defined draft pick with a valid round (1 to 16) and a positive value.
 
 ## Trade Generation
 
@@ -266,8 +313,19 @@ export async function analyzeTrades(
     const jsonString = jsonMatch[1] || jsonMatch[0];
     const suggestions: TradeSuggestion[] = JSON.parse(jsonString);
 
-    console.log("[Clean AI] Generated", suggestions.length, "suggestions");
-    return suggestions;
+    console.log("[Clean AI] Generated", suggestions.length, "suggestions (before validation)");
+    
+    // Filter out invalid suggestions (missing data, undefined values, etc.)
+    const validSuggestions = suggestions.filter(suggestion => {
+      const isValid = isValidSuggestion(suggestion);
+      if (!isValid) {
+        console.warn(`[Clean AI] Filtered out invalid suggestion with ${suggestion.partnerTeam || "UNKNOWN"}`);
+      }
+      return isValid;
+    });
+    
+    console.log("[Clean AI] Returning", validSuggestions.length, "valid suggestions (filtered", suggestions.length - validSuggestions.length, "invalid)");
+    return validSuggestions;
 
   } catch (error) {
     console.error("[Clean AI] Error:", error);

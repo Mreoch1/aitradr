@@ -54,13 +54,79 @@ export interface TeamForAI {
   totalValue: number;
 }
 
+export interface TradeAsset {
+  type: "player" | "pick";
+  name: string;
+  value: number;
+  round?: number; // For picks only
+}
+
 export interface TradeSuggestion {
   tradeWithTeam: string;
-  youGive: Array<{ type: "player" | "pick"; name: string; value: number }>;
-  youGet: Array<{ type: "player" | "pick"; name: string; value: number }>;
+  youGive: TradeAsset[];
+  youGet: TradeAsset[];
   netGain: number;
   reasoning: string;
   confidence: number; // 0-100
+}
+
+// ============================================================================
+// VALIDATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Validates that a trade asset has all required fields and valid data
+ */
+function isValidAsset(asset: TradeAsset): boolean {
+  // Must have a name that's not empty or "undefined"
+  if (!asset.name || asset.name.trim() === "" || asset.name.toLowerCase().includes("undefined")) {
+    return false;
+  }
+  
+  // Must have a positive, finite value
+  if (!Number.isFinite(asset.value) || asset.value <= 0) {
+    return false;
+  }
+  
+  // If it's a pick, must have a valid round number
+  if (asset.type === "pick") {
+    if (!asset.round || !Number.isFinite(asset.round) || asset.round < 1 || asset.round > 16) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Validates that a trade suggestion has valid structure and data
+ */
+export function isValidTradeSuggestion(suggestion: TradeSuggestion): boolean {
+  // Must have a partner team name
+  if (!suggestion.tradeWithTeam || suggestion.tradeWithTeam.trim() === "") {
+    return false;
+  }
+  
+  // Both sides must have at least one asset
+  if (!suggestion.youGive || suggestion.youGive.length === 0) {
+    return false;
+  }
+  if (!suggestion.youGet || suggestion.youGet.length === 0) {
+    return false;
+  }
+  
+  // All assets on both sides must be valid
+  const allAssets = [...suggestion.youGive, ...suggestion.youGet];
+  if (!allAssets.every(isValidAsset)) {
+    return false;
+  }
+  
+  // At least one asset must have meaningful value (> 0)
+  if (!allAssets.some(a => a.value > 0)) {
+    return false;
+  }
+  
+  return true;
 }
 
 interface PositionCounts {
@@ -539,9 +605,20 @@ export async function analyzeTrades(
       }
     }
     
-    console.log(`[AI] Generated ${suggestions.length} trade suggestions`);
+    console.log(`[AI] Generated ${suggestions.length} trade suggestions (before validation)`);
     
-    return suggestions;
+    // Filter out invalid suggestions (missing data, undefined values, etc.)
+    const validSuggestions = suggestions.filter(suggestion => {
+      const isValid = isValidTradeSuggestion(suggestion);
+      if (!isValid) {
+        console.warn(`[AI] Filtered out invalid suggestion with ${suggestion.tradeWithTeam || "UNKNOWN"}`);
+      }
+      return isValid;
+    });
+    
+    console.log(`[AI] Returning ${validSuggestions.length} valid trade suggestions (filtered ${suggestions.length - validSuggestions.length} invalid)`);
+    
+    return validSuggestions;
   } catch (error) {
     console.error("[AI] analyzeTrades error:", error);
     throw error;
