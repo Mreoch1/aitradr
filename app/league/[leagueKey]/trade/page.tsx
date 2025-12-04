@@ -1412,14 +1412,14 @@ export default function TradeBuilderPage() {
                               <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
                             )}
                           </span>
-                          <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
+                          <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
+                            <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
                           </div>
                         );
                       }
@@ -1454,14 +1454,14 @@ export default function TradeBuilderPage() {
                               <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
                             )}
                           </span>
-                          <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
+                          <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
                         </div>
                       );
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
                             <span className="text-gray-700">Round {item.id} Pick</span>
-                            <span className="theme-text-secondary">{item.value.toFixed(1)}</span>
+                            <span className="theme-text-secondary">{(item.value ?? 0).toFixed(1)}</span>
                           </div>
                         );
                       }
