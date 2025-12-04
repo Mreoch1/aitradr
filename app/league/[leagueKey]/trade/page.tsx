@@ -288,8 +288,10 @@ export default function TradeBuilderPage() {
 
   // Build pick value map first (needed for keeper bonus calculation)
   const pickValueMap = new Map<number, number>();
-  normalizedTradeData.draftPickValues.forEach((pick) => {
-    pickValueMap.set(pick.round, pick.score);
+  (normalizedTradeData.draftPickValues || []).forEach((pick) => {
+    if (pick && pick.round !== undefined && pick.score !== undefined) {
+      pickValueMap.set(pick.round, pick.score);
+    }
   });
 
   // Helper: Calculate keeper-adjusted value with control premium
@@ -366,11 +368,14 @@ export default function TradeBuilderPage() {
   };
 
   const playerValueMap = new Map<string, number>();
-  normalizedTradeData.teams.forEach((team) => {
-    team.roster.forEach((player) => {
+  (normalizedTradeData.teams || []).forEach((team) => {
+    (team.roster || []).forEach((player) => {
+      if (!player) return; // Skip undefined players
       // Use keeper-adjusted value for trade calculations
       const tradeValue = getPlayerTradeValue(player);
-      playerValueMap.set(player.playerId, tradeValue);
+      if (player.playerId) {
+        playerValueMap.set(player.playerId, tradeValue);
+      }
     });
   });
 
@@ -1133,7 +1138,8 @@ export default function TradeBuilderPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {sortPlayers(teamA.roster.filter((p) => p.position !== "G"), sortConfig.teamA).map((player, index) => {
+                          {sortPlayers((teamA.roster || []).filter((p) => p && p.position !== "G"), sortConfig.teamA).map((player, index) => {
+                            if (!player) return null;
                             const isPending = pendingSelections.A.includes(player.playerId);
                             const isConfirmed = sideA.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "A", isPending, isConfirmed, false, index);
@@ -1170,7 +1176,8 @@ export default function TradeBuilderPage() {
                     </tr>
                   </thead>
                   <tbody>
-                          {sortPlayers(teamA.roster.filter((p) => p.position === "G"), sortConfig.teamA).map((player, index) => {
+                          {sortPlayers((teamA.roster || []).filter((p) => p && p.position === "G"), sortConfig.teamA).map((player, index) => {
+                      if (!player) return null;
                       const isPending = pendingSelections.A.includes(player.playerId);
                       const isConfirmed = sideA.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "A", isPending, isConfirmed, true, index);
@@ -1285,7 +1292,8 @@ export default function TradeBuilderPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {sortPlayers(teamB.roster.filter((p) => p.position !== "G"), sortConfig.teamB).map((player, index) => {
+                          {sortPlayers((teamB.roster || []).filter((p) => p && p.position !== "G"), sortConfig.teamB).map((player, index) => {
+                            if (!player) return null;
                             const isPending = pendingSelections.B.includes(player.playerId);
                             const isConfirmed = sideB.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "B", isPending, isConfirmed, false, index);
@@ -1322,7 +1330,8 @@ export default function TradeBuilderPage() {
                     </tr>
                   </thead>
                   <tbody>
-                          {sortPlayers(teamB.roster.filter((p) => p.position === "G"), sortConfig.teamB).map((player, index) => {
+                          {sortPlayers((teamB.roster || []).filter((p) => p && p.position === "G"), sortConfig.teamB).map((player, index) => {
+                      if (!player) return null;
                       const isPending = pendingSelections.B.includes(player.playerId);
                       const isConfirmed = sideB.playerIds.includes(player.playerId);
                             return renderPlayerRow(player, "B", isPending, isConfirmed, true, index);
