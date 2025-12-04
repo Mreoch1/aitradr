@@ -50,10 +50,17 @@ export interface TeamForAI {
   profile: TeamProfile;
 }
 
+export interface TradeAsset {
+  type: "player" | "pick";
+  name: string;
+  value: number;
+  round?: number; // For picks
+}
+
 export interface TradeSuggestion {
   partnerTeam: string;
-  youGive: string[];
-  youGet: string[];
+  youGive: TradeAsset[];
+  youGet: TradeAsset[];
   netValue: number;
   categoryImpact: string[];
   keeperImpact: string;
@@ -88,8 +95,14 @@ function isValidSuggestion(suggestion: TradeSuggestion): boolean {
   
   // Kill "undefined" in asset names
   const allAssets = [...suggestion.youGive, ...suggestion.youGet];
-  if (allAssets.some(name => !name || name.toLowerCase().includes("undefined"))) {
+  if (allAssets.some(asset => !asset.name || asset.name.toLowerCase().includes("undefined"))) {
     console.warn("[Clean AI] Rejected: Asset name contains 'undefined'");
+    return false;
+  }
+  
+  // Kill NaN/Infinity values
+  if (allAssets.some(asset => !Number.isFinite(asset.value))) {
+    console.warn("[Clean AI] Rejected: Asset has NaN or Infinity value");
     return false;
   }
   
@@ -171,14 +184,18 @@ Each suggestion must explain:
 
 ## Output Format
 
-Return JSON array:
+Return JSON array with assets as objects (NOT strings):
 
 \`\`\`json
 [
   {
     "partnerTeam": "Team Name",
-    "youGive": ["Player A"],
-    "youGet": ["Player B"],
+    "youGive": [
+      { "type": "player", "name": "Player A", "value": 123.4 }
+    ],
+    "youGet": [
+      { "type": "player", "name": "Player B", "value": 128.6 }
+    ],
     "netValue": 5.2,
     "categoryImpact": ["Blocks +15%", "Hits +10%"],
     "keeperImpact": "Trading expiring keeper for fresh 3-year control",
@@ -187,6 +204,12 @@ Return JSON array:
   }
 ]
 \`\`\`
+
+For each asset in youGive/youGet:
+- type: "player" or "pick"
+- name: Player name, or round number (as string "3") for picks
+- value: Numeric value from input data
+- round: (picks only) Round number as integer
 
 Confidence levels: High | Medium | Speculative (use only these three)
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { TradeSuggestion } from "@/lib/ai/tradeAnalyzer";
+import type { TradeSuggestion } from "@/lib/ai/cleanTradeAnalyzer";
 import { toFixedSafe } from "@/lib/utils/numberFormat";
 
 interface AISuggestionsModalProps {
@@ -18,7 +18,7 @@ interface AISuggestionsModalProps {
  */
 function isRenderableSuggestion(s: TradeSuggestion): boolean {
   // Must have a partner team
-  if (!s.tradeWithTeam || !s.tradeWithTeam.trim()) {
+  if (!s.partnerTeam || !s.partnerTeam.trim()) {
     console.warn("[UI] Rejected render: Missing partner team");
     return false;
   }
@@ -157,7 +157,7 @@ export function AISuggestionsModal({
                 {/* Trade Partner */}
                 <div className="rounded-lg border-2 border-blue-500 bg-blue-50 p-4">
                   <h3 className="font-bold text-blue-900">
-                    Trade With: {currentSuggestion.tradeWithTeam}
+                    Trade With: {currentSuggestion.partnerTeam}
                   </h3>
                 </div>
 
@@ -196,24 +196,24 @@ export function AISuggestionsModal({
 
                 {/* Net Gain */}
                 <div className={`rounded-lg border-2 p-4 ${
-                  Math.abs(currentSuggestion.netGain) < 5
+                  Math.abs(currentSuggestion.netValue) < 5
                     ? "border-yellow-500 bg-yellow-50"
-                    : currentSuggestion.netGain > 0
+                    : currentSuggestion.netValue > 0
                     ? "border-green-500 bg-green-50"
                     : "border-gray-500 bg-gray-50"
                 }`}>
                   <div className="flex items-center justify-between">
                     <span className="font-bold">Net Gain:</span>
                     <span className={`text-2xl font-bold ${
-                      currentSuggestion.netGain > 0 ? "text-green-700" : "text-gray-700"
+                      currentSuggestion.netValue > 0 ? "text-green-700" : "text-gray-700"
                     }`}>
-                      {currentSuggestion.netGain > 0 ? "+" : ""}{toFixedSafe(currentSuggestion.netGain, 1)}
+                      {currentSuggestion.netValue > 0 ? "+" : ""}{toFixedSafe(currentSuggestion.netValue, 1)}
                     </span>
                   </div>
                   <p className="mt-2 text-sm">
-                    {Math.abs(currentSuggestion.netGain) < 5 
+                    {Math.abs(currentSuggestion.netValue) < 5 
                       ? "⚖️ Fair Trade" 
-                      : currentSuggestion.netGain > 0 
+                      : currentSuggestion.netValue > 0 
                       ? "✅ You Win" 
                       : "You Lose"}
                   </p>
@@ -223,7 +223,7 @@ export function AISuggestionsModal({
                 <div className="rounded-lg theme-bg-secondary p-4">
                   <h4 className="mb-2 font-bold theme-text-primary">💡 Why This Works:</h4>
                   <p className="whitespace-pre-line text-sm theme-text-secondary">
-                    {currentSuggestion.reasoning}
+                    {currentSuggestion.explanation}
                   </p>
                 </div>
 
