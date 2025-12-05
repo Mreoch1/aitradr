@@ -68,19 +68,26 @@ const SKATER_CATEGORIES = [
 ] as const;
 
 // Individual category weights - reflects fantasy market reality
+// FIX #1: Reduced grind category weights to prevent bangers from outranking scorers
 const CATEGORY_WEIGHTS_MAP: Record<string, number> = {
+  // Scoring categories (highest value)
   "goals": 1.5,
   "assists": 1.3,
   "points": 0.7,           // Lower weight to avoid double-counting with G+A
   "powerplay points": 1.2,
   "shots on goal": 1.3,
+  
+  // Support categories (moderate value)
   "plus/minus": 1.0,
   "shorthanded points": 1.0,
   "game-winning goals": 1.0,
-  "penalty minutes": 0.7,
-  "faceoffs won": 0.7,
-  "hits": 0.6,
-  "blocks": 0.6,
+  
+  // Grind categories (capped at 25% max contribution)
+  // Reduced from 0.6-0.7 to prevent Tom Wilson > Cole Caufield scenarios
+  "penalty minutes": 0.5,  // Reduced from 0.7
+  "faceoffs won": 0.5,     // Reduced from 0.7
+  "hits": 0.4,             // Reduced from 0.6
+  "blocks": 0.4,           // Reduced from 0.6
 };
 
 // Position scarcity multipliers - reflects roster construction reality
@@ -191,13 +198,14 @@ export async function calculateSkaterValue(
     }
   }
   
-  // Cap grind dominance: grind stats cannot exceed 40% of total value
+  // FIX #1: Cap grind dominance at 25% (reduced from 40%)
+  // Prevents bangers like Tom Wilson from outranking scorers like Cole Caufield
   const totalContribution = Math.abs(totalWeightedZ);
   if (totalContribution > 0) {
     const grindPercent = grindContribution / totalContribution;
-    if (grindPercent > 0.40) {
-      // Scale down total to enforce 40% cap
-      const excessGrind = grindContribution - (totalContribution * 0.40);
+    if (grindPercent > 0.25) {
+      // Scale down total to enforce 25% cap
+      const excessGrind = grindContribution - (totalContribution * 0.25);
       totalWeightedZ -= excessGrind * (totalWeightedZ > 0 ? 1 : -1);
     }
   }

@@ -155,9 +155,18 @@ function classifyPlayerTier(baseValue: number): PlayerTier {
 }
 
 /**
+ * Elite threshold for control premium eligibility
+ * Only players at or above this value receive control premium
+ * Prevents grinders like Tom Wilson from getting elite keeper bonuses
+ */
+const ELITE_THRESHOLD = 145;  // Top ~30 players
+
+/**
  * Control Premium: value of locking elite players for multiple years
  * Index: [0 years, 1 year, 2 years, 3 years]
  * Steeper progression for true generational talents
+ * 
+ * NOTE: Only applied to players with baseValue >= ELITE_THRESHOLD
  */
 const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
   Generational: [0, 20, 45, 70],  // McDavid, MacKinnon - massive multi-year value
@@ -233,11 +242,20 @@ export function calculateKeeperBonus(
   const surplusBonus = cappedSurplus * surplusWeights[years];
   
   // PART B: Control Premium (multi-year elite control)
+  // FIX #2: Only apply control premium to elite scorers (baseValue >= 145)
+  // This prevents Tom Wilson from getting elite keeper bonuses
   const playerTier = classifyPlayerTier(baseValue);
-  const controlBonus = CONTROL_PREMIUM[playerTier][years];
+  const controlBonus = baseValue >= ELITE_THRESHOLD 
+    ? CONTROL_PREMIUM[playerTier][years]
+    : 0;
   
-  // PART C: Raw keeper bonus (before tier cap)
-  const keeperRawBonus = surplusBonus + controlBonus;
+  // PART C: Raw keeper bonus (before caps)
+  let keeperRawBonus = surplusBonus + controlBonus;
+  
+  // FIX #3: Soft cap - no keeper bonus can exceed 45% of base value
+  // Prevents keeper inflation from dominating raw talent
+  const maxKeeperBonus = baseValue * 0.45;
+  keeperRawBonus = Math.min(keeperRawBonus, maxKeeperBonus);
   
   // PART D: Apply tier-based keeper bonus cap
   // Prevents Star/Core players from accumulating franchise-level bonuses
@@ -250,7 +268,7 @@ export function calculateKeeperBonus(
   // Prevents tier jumping - Star players cannot reach Franchise values
   finalValue = Math.min(finalValue, FINAL_VALUE_CAP[playerTier]);
   
-  // Return both display bonus (full) and trade bonus (40% weighted)
-  return keeperBonus; // For now, return display bonus - trade weight applied at call site
+  // Return display bonus - trade weight (40%) applied at call site
+  return keeperBonus;
 }
 
