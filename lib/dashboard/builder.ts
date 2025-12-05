@@ -313,12 +313,12 @@ export async function buildTeamDashboard(
         FOW: getStatValue(player.playerStats, "faceoffs won"),
       };
 
-      // Parse positions
+      // Parse positions (exclude G and Util)
       let posStr = "?";
       try {
         const parsed = typeof player.positions === 'string' ? JSON.parse(player.positions) : player.positions;
         if (Array.isArray(parsed)) {
-          posStr = parsed.filter(p => p !== "G").join("/");
+          posStr = parsed.filter(p => p !== "G" && p !== "Util").join("/");
         }
       } catch {}
 
