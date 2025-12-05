@@ -7,6 +7,7 @@
  */
 
 import type { TeamProfile } from "./teamProfile";
+import { computeConfidence, calculateCategoryScore } from "./confidenceScoring";
 
 // ============================================================================
 // TYPES
@@ -294,6 +295,11 @@ For each asset:
 
 Confidence: High | Medium | Speculative (only these three)
 
+Note: Confidence will be recalculated based on realism. Use these guidelines:
+- High: Fair trades (netValue between -5 and +15)
+- Medium: Moderate advantage (-5 to -12, or +15 to +30)
+- Speculative: Lopsided (> 30 point swing) or risky
+
 # TRADING PHILOSOPHY
 
 Think like a human GM:
@@ -301,11 +307,17 @@ Think like a human GM:
 - Trade stars for stars
 - Trade bangers only if category dominant
 - Prefer lineup optimization over raw value
-- Never recommend veto-bait
-- Consider league landscape
+- Never recommend veto-bait trades (> 50 value difference)
+- Consider league landscape and trade acceptance likelihood
 - Do not force trades
+- Fair trades > robbery attempts
 
-Return 3-5 best suggestions ranked by strategic fit.`;
+## Realism Filters:
+- Trades with > 90 value difference will be auto-filtered as unrealistic
+- Trades with > 50 value difference will be marked "Speculative"
+- Losing trades (netValue < 0) capped at "Medium" confidence
+
+Return 3-5 best suggestions ranked by strategic fit and realism.`;
 
 // ============================================================================
 // PAYLOAD BUILDER
@@ -455,7 +467,38 @@ export async function analyzeTrades(
       console.error("🔥 ⚠️ AI RETURNED ZERO SUGGESTIONS - Model didn't generate any trades!");
     }
     
-    return validSuggestions;
+    // Recalculate confidence using realistic scoring (not AI's opinion)
+    const suggestionsWithRealConfidence = validSuggestions.map(s => {
+      const categoryScore = calculateCategoryScore(s.categoryImpact || []);
+      const newConfidence = computeConfidence({
+        netValue: s.netValue,
+        categoryScore,
+      });
+      
+      if (newConfidence !== s.confidence) {
+        console.log(`[Clean AI] Confidence adjusted: ${s.partnerTeam} - AI: ${s.confidence}, Calculated: ${newConfidence}`);
+      }
+      
+      return {
+        ...s,
+        confidence: newConfidence,
+      };
+    });
+    
+    // Filter out unrealistic trades (huge lopsided wins that would never be accepted)
+    // If netValue > 80, confidence will be "Speculative" - consider not showing these at all
+    const realisticSuggestions = suggestionsWithRealConfidence.filter(s => {
+      // Block trades that are TOO lopsided (> 90 value difference)
+      if (Math.abs(s.netValue) > 90) {
+        console.warn("[Clean AI] Filtered: Trade too lopsided (netValue:", s.netValue, ")");
+        return false;
+      }
+      return true;
+    });
+    
+    console.log("🔥 AI: Final suggestions after realism filter:", realisticSuggestions.length);
+    
+    return realisticSuggestions;
 
   } catch (error) {
     console.error("[Clean AI] Error:", error);
