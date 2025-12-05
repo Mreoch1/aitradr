@@ -39,6 +39,52 @@ const GOALIE_CATEGORIES = [
 ];
 
 /**
+ * Helper to get stat value by exact name matching (like trade page)
+ */
+function getStatValue(stats: { statName: string; value: number }[], statName: string): number {
+  if (!stats || stats.length === 0) return 0;
+  
+  const lowerStatName = statName.toLowerCase().trim();
+  
+  // Map our internal stat names to Yahoo's actual stat names (case-sensitive as stored in DB)
+  const yahooStatNameMap: Record<string, string[]> = {
+    "goals": ["Goals"],
+    "assists": ["Assists"],
+    "points": ["Points"],
+    "plus/minus": ["Plus/Minus"],
+    "penalty minutes": ["Penalty Minutes"],
+    "power play points": ["Powerplay Points", "Power Play Points", "PowerPlay Points"],
+    "short handed points": ["Shorthanded Points", "Short Handed Points", "ShortHanded Points"],
+    "game winning goals": ["Game-Winning Goals", "Game Winning Goals"],
+    "shots on goal": ["Shots on Goal", "Shots On Goal"],
+    "faceoffs won": ["Faceoffs Won", "FaceOffs Won"],
+    "hits": ["Hits"],
+    "blocked shots": ["Blocks", "Blocked Shots"],
+    "wins": ["Wins"],
+    "losses": ["Losses"],
+    "goals against": ["Goals Against"],
+    "goals against average": ["Goals Against Average"],
+    "saves": ["Saves"],
+    "save percentage": ["Save Percentage", "Save %"],
+    "shutouts": ["Shutouts"],
+  };
+  
+  // Get possible Yahoo stat names
+  const possibleNames = yahooStatNameMap[lowerStatName];
+  if (!possibleNames) {
+    return 0;
+  }
+  
+  // Find exact match from list of possible names
+  for (const yahooName of possibleNames) {
+    const match = stats.find((s) => s.statName === yahooName);
+    if (match) return match.value ?? 0;
+  }
+  
+  return 0;
+}
+
+/**
  * Helper to calculate z-score
  */
 function calculateZScore(value: number, mean: number, stdDev: number, isNegative = false): number {
@@ -132,28 +178,23 @@ export async function buildTeamDashboard(
       const player = entry.player;
       const isGoalie = player.positions?.includes("G") || player.primaryPosition === "G";
 
-      for (const stat of player.playerStats) {
-        const name = stat.statName.toLowerCase();
-        const val = stat.value;
-
-        if (!isGoalie) {
-          if (name.includes("goal") && !name.includes("against")) totals.G += val;
-          if (name.includes("assist")) totals.A += val;
-          if (name.includes("point") && !name.includes("power") && !name.includes("short")) totals.P += val;
-          if (name.includes("power play") || name.includes("powerplay")) totals.PPP += val;
-          if (name.includes("shot") && !name.includes("shootout")) totals.SOG += val;
-          if (name.includes("plus/minus") || name.includes("+/-")) totals.plusMinus += val;
-          if (name.includes("penalty")) totals.PIM += val;
-          if (name.includes("hit")) totals.HIT += val;
-          if (name.includes("block")) totals.BLK += val;
-          if (name.includes("faceoff")) totals.FOW += val;
-        } else {
-          if (name.includes("win")) totals.W += val;
-          if (name.includes("goals against average") || name === "gaa") totals.GAA += val;
-          if (name.includes("save") && !name.includes("%") && !name.includes("percentage")) totals.SV += val;
-          if (name.includes("save %") || name.includes("save percentage")) totals.SVPCT += val;
-          if (name.includes("shutout")) totals.SHO += val;
-        }
+      if (!isGoalie) {
+        totals.G += getStatValue(player.playerStats, "goals");
+        totals.A += getStatValue(player.playerStats, "assists");
+        totals.P += getStatValue(player.playerStats, "points");
+        totals.PPP += getStatValue(player.playerStats, "power play points");
+        totals.SOG += getStatValue(player.playerStats, "shots on goal");
+        totals.plusMinus += getStatValue(player.playerStats, "plus/minus");
+        totals.PIM += getStatValue(player.playerStats, "penalty minutes");
+        totals.HIT += getStatValue(player.playerStats, "hits");
+        totals.BLK += getStatValue(player.playerStats, "blocked shots");
+        totals.FOW += getStatValue(player.playerStats, "faceoffs won");
+      } else {
+        totals.W += getStatValue(player.playerStats, "wins");
+        totals.GAA += getStatValue(player.playerStats, "goals against average");
+        totals.SV += getStatValue(player.playerStats, "saves");
+        totals.SVPCT += getStatValue(player.playerStats, "save percentage");
+        totals.SHO += getStatValue(player.playerStats, "shutouts");
       }
     }
 
@@ -258,26 +299,19 @@ export async function buildTeamDashboard(
       const player = entry.player;
       const baseValue = player.playerValues[0]?.score ?? 0;
 
-      // Parse stats
+      // Parse stats using exact matching
       const stats: PlayerStats = {
-        G: 0, A: 0, P: 0, PPP: 0, SOG: 0, plusMinus: 0,
-        PIM: 0, HIT: 0, BLK: 0, FOW: 0,
+        G: getStatValue(player.playerStats, "goals"),
+        A: getStatValue(player.playerStats, "assists"),
+        P: getStatValue(player.playerStats, "points"),
+        PPP: getStatValue(player.playerStats, "power play points"),
+        SOG: getStatValue(player.playerStats, "shots on goal"),
+        plusMinus: getStatValue(player.playerStats, "plus/minus"),
+        PIM: getStatValue(player.playerStats, "penalty minutes"),
+        HIT: getStatValue(player.playerStats, "hits"),
+        BLK: getStatValue(player.playerStats, "blocked shots"),
+        FOW: getStatValue(player.playerStats, "faceoffs won"),
       };
-
-      for (const stat of player.playerStats) {
-        const name = stat.statName.toLowerCase();
-        const val = stat.value;
-        if (name.includes("goal") && !name.includes("against")) stats.G = val;
-        if (name.includes("assist")) stats.A = val;
-        if (name.includes("point") && !name.includes("power") && !name.includes("short")) stats.P = val;
-        if (name.includes("power play") || name.includes("powerplay")) stats.PPP = val;
-        if (name.includes("shot") && !name.includes("shootout")) stats.SOG = val;
-        if (name.includes("plus/minus") || name.includes("+/-")) stats.plusMinus = val;
-        if (name.includes("penalty")) stats.PIM = val;
-        if (name.includes("hit")) stats.HIT = val;
-        if (name.includes("block")) stats.BLK = val;
-        if (name.includes("faceoff")) stats.FOW = val;
-      }
 
       // Parse positions
       let posStr = "?";
@@ -320,20 +354,15 @@ export async function buildTeamDashboard(
       const player = entry.player;
       const baseValue = player.playerValues[0]?.score ?? 0;
 
-      // Parse stats
+      // Parse stats using exact matching
       const stats: GoalieStats = {
-        W: 0, L: 0, GAA: 0, SV: 0, SVPCT: 0, SHO: 0,
+        W: getStatValue(player.playerStats, "wins"),
+        L: getStatValue(player.playerStats, "losses"),
+        GAA: getStatValue(player.playerStats, "goals against average"),
+        SV: getStatValue(player.playerStats, "saves"),
+        SVPCT: getStatValue(player.playerStats, "save percentage"),
+        SHO: getStatValue(player.playerStats, "shutouts"),
       };
-
-      for (const stat of player.playerStats) {
-        const name = stat.statName.toLowerCase();
-        const val = stat.value;
-        if (name.includes("win")) stats.W = val;
-        if (name.includes("goals against average") || name === "gaa") stats.GAA = val;
-        if (name.includes("save") && !name.includes("%") && !name.includes("percentage")) stats.SV = val;
-        if (name.includes("save %") || name.includes("save percentage")) stats.SVPCT = val;
-        if (name.includes("shutout")) stats.SHO = val;
-      }
 
       // Keeper info
       let keeper = undefined;
