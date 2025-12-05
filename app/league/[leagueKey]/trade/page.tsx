@@ -1029,6 +1029,14 @@ export default function TradeBuilderPage() {
                 </option>
               ))}
             </select>
+            {sideA.teamId && (
+              <Link
+                href={`/league/${leagueKey}/team/${sideA.teamId}`}
+                className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+              >
+                📊 View {teamA?.name || "Team A"} Dashboard →
+              </Link>
+            )}
           </div>
           <div>
             <label className="mb-2 block text-sm font-semibold text-gray-700">Team B</label>
@@ -1046,6 +1054,14 @@ export default function TradeBuilderPage() {
                 </option>
               ))}
             </select>
+            {sideB.teamId && (
+              <Link
+                href={`/league/${leagueKey}/team/${sideB.teamId}`}
+                className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+              >
+                📊 View {teamB?.name || "Team B"} Dashboard →
+              </Link>
+            )}
           </div>
         </div>
 
