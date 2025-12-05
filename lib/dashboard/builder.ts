@@ -239,14 +239,18 @@ export async function buildTeamDashboard(
   const physicalCategories = ["HIT", "BLK", "PIM"];
   const physicalScore = physicalCategories.reduce((sum, cat) => sum + (categorySummary[cat]?.zScore ?? 0), 0) / physicalCategories.length;
   
-  // Depth score: count dual-eligible players and positional coverage
+  // Depth score: count dual-eligible players (only actual positions, exclude IR/IR+/Util)
   const rosterSkaters = targetTeam.rosterEntries.filter(e => !e.player.positions?.includes("G"));
+  const actualPositions = ["C", "LW", "RW", "D"]; // Only real positions
   const dualEligible = rosterSkaters.filter(e => {
     const positions = e.player.positions;
     if (!positions) return false;
     try {
       const parsed = typeof positions === 'string' ? JSON.parse(positions) : positions;
-      return Array.isArray(parsed) && parsed.length > 1;
+      if (!Array.isArray(parsed)) return false;
+      // Filter to only actual positions (exclude IR, IR+, Util, G)
+      const realPositions = parsed.filter(p => actualPositions.includes(p));
+      return realPositions.length > 1; // Must have 2+ actual positions
     } catch {
       return false;
     }
@@ -313,12 +317,13 @@ export async function buildTeamDashboard(
         FOW: getStatValue(player.playerStats, "faceoffs won"),
       };
 
-      // Parse positions (exclude G and Util)
+      // Parse positions (exclude G, Util, IR, IR+)
+      const actualPositions = ["C", "LW", "RW", "D"];
       let posStr = "?";
       try {
         const parsed = typeof player.positions === 'string' ? JSON.parse(player.positions) : player.positions;
         if (Array.isArray(parsed)) {
-          posStr = parsed.filter(p => p !== "G" && p !== "Util").join("/");
+          posStr = parsed.filter(p => actualPositions.includes(p)).join("/") || "?";
         }
       } catch {}
 
@@ -340,6 +345,7 @@ export async function buildTeamDashboard(
         name: player.name,
         pos: posStr,
         nhlTeam: player.teamAbbr || "?",
+        status: player.status || null,
         stats,
         value: baseValue,
         keeper,
@@ -381,6 +387,7 @@ export async function buildTeamDashboard(
         id: player.id,
         name: player.name,
         nhlTeam: player.teamAbbr || "?",
+        status: player.status || null,
         stats,
         value: baseValue,
         keeper,

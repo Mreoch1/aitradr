@@ -52,8 +52,9 @@ export interface KeeperInfo {
 export interface DashboardSkater {
   id: string;
   name: string;
-  pos: string;            // "C", "LW/RW", etc
+  pos: string;            // "C", "LW/RW", etc (no IR/IR+/Util)
   nhlTeam: string;
+  status: string | null;  // "IR", "IR+", "O", etc
   stats: PlayerStats;
   value: number;
   keeper?: KeeperInfo;
@@ -63,6 +64,7 @@ export interface DashboardGoalie {
   id: string;
   name: string;
   nhlTeam: string;
+  status: string | null;  // "IR", "IR+", "O", etc
   stats: GoalieStats;
   value: number;
   keeper?: KeeperInfo;

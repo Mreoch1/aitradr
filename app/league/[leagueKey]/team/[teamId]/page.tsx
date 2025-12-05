@@ -239,7 +239,16 @@ export default function TeamDashboardPage() {
                 <tbody>
                   {dashboard.skaters.map((player, idx) => (
                     <tr key={player.id} className={idx % 2 === 0 ? "theme-bg-primary" : "theme-bg-secondary"}>
-                      <td className="px-2 py-2 font-medium">{player.name}</td>
+                      <td className="px-2 py-2 font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{player.name}</span>
+                          {player.status && (player.status === "IR" || player.status === "IR+") && (
+                            <span className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-red-600 rounded">
+                              {player.status}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-2 text-xs">{player.pos}</td>
                       <td className="px-2 py-2 text-xs">{player.nhlTeam}</td>
                       <td className="px-2 py-2 text-center">{player.stats.G}</td>
@@ -302,7 +311,16 @@ export default function TeamDashboardPage() {
                   <tbody>
                     {dashboard.goalies.map((goalie, idx) => (
                       <tr key={goalie.id} className={idx % 2 === 0 ? "theme-bg-primary" : "theme-bg-secondary"}>
-                        <td className="px-2 py-2 font-medium">{goalie.name}</td>
+                        <td className="px-2 py-2 font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{goalie.name}</span>
+                            {goalie.status && (goalie.status === "IR" || goalie.status === "IR+") && (
+                              <span className="inline-block px-1.5 py-0.5 text-xs font-bold text-white bg-red-600 rounded">
+                                {goalie.status}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-2 py-2 text-xs">{goalie.nhlTeam}</td>
                         <td className="px-2 py-2 text-center">{goalie.stats.W}</td>
                         <td className="px-2 py-2 text-center">{goalie.stats.L}</td>
