@@ -13,6 +13,7 @@ import { SavedTradesModal } from "@/app/components/SavedTradesModal";
 import type { TradeSuggestion } from "@/lib/ai/cleanTradeAnalyzer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 import { toFixedSafe } from "@/lib/utils/numberFormat";
+import { calculateKeeperBonus } from "@/lib/keeper/types";
 
 type TradeSide = {
   teamId: string | null;
@@ -321,7 +322,7 @@ export default function TradeBuilderPage() {
     throw err;
   }
 
-  // Helper: Calculate keeper-adjusted value with control premium
+  // Helper: Calculate keeper-adjusted value using shared keeper formula
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
     try {
       // BULLETPROOF: Ensure all values are valid numbers
@@ -333,69 +334,15 @@ export default function TradeBuilderPage() {
       }
       
       const draftRound = Number(player.originalDraftRound) || 1;
-      const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
-      const yearsRaw = Number(player.yearsRemaining) || 0;
-      const years = Math.max(0, Math.min(3, yearsRaw));
-    
-    // PART A: Surplus Bonus (underdraft value)
-    const surplusRaw = Math.max(0, baseValue - draftRoundAvg);
-    
-    // Cap surplus by draft tier (conservative to prevent over-inflation)
-    const draftTier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-    const surplusCap = { A: 25, B: 35, C: 40 }[draftTier];
-    const cappedSurplus = Math.min(surplusRaw, surplusCap);
-    
-    // Weight surplus by years: [0, 0.45, 0.75, 1.00] - more conservative
-    const surplusWeights = [0, 0.45, 0.75, 1.0];
-    const surplusBonus = cappedSurplus * (surplusWeights[years] ?? 0);
-    
-    // PART B: Control Premium (multi-year elite control) - steeper for generational
-    const playerTier = 
-      baseValue >= 172 ? 'Generational' :
-      baseValue >= 160 ? 'Franchise' :
-      baseValue >= 150 ? 'Star' :
-      baseValue >= 135 ? 'Core' : 'Normal';
-    
-    const controlPremium: Record<string, number[]> = {
-      Generational: [0, 20, 45, 70],
-      Franchise:    [0, 14, 32, 50],
-      Star:         [0, 10, 22, 34],
-      Core:         [0,  5, 12, 18],
-      Normal:       [0,  0,  0,  0],
-    };
-    const controlBonus = controlPremium[playerTier]?.[years] ?? 0;
-    
-    // PART C: Raw keeper bonus
-    const keeperRawBonus = surplusBonus + controlBonus;
-    
-    // PART D: Apply tier-based keeper bonus cap (prevents tier jumping)
-    const tierBonusCap: Record<string, number> = {
-      Generational: 70,
-      Franchise: 50,
-      Star: 34,
-      Core: 22,
-      Normal: 15,
-    };
-    const keeperBonusDisplay = Math.min(keeperRawBonus, tierBonusCap[playerTier] ?? 0);
-    
-    // PART E: Apply trade weight (40%) - keeper is tiebreaker, not main driver
-    const keeperBonusTrade = keeperBonusDisplay * 0.4;
-    
-    // PART F: Calculate keeper-adjusted trade value
-    let tradeValue = baseValue + keeperBonusTrade;
-    
-    // PART G: Apply final value cap by tier (hard ceiling)
-    const finalCap: Record<string, number> = {
-      Generational: 250,
-      Franchise: 230,
-      Star: 190,
-      Core: 175,
-      Normal: 165,
-    };
-    tradeValue = Math.min(tradeValue, finalCap[playerTier] ?? 999);
+      const draftRoundAvg = pickValueMap.get(draftRound) ?? 100; // Will be ignored by new formula
+      const yearsRemaining = Number(player.yearsRemaining) || 0;
+      
+      // Use unified keeper formula
+      const keeperBonus = calculateKeeperBonus(baseValue, draftRound, draftRoundAvg, yearsRemaining);
+      const totalValue = baseValue + keeperBonus;
       
       // Ensure result is a valid number
-      return (typeof tradeValue === 'number' && !isNaN(tradeValue)) ? tradeValue : baseValue;
+      return (typeof totalValue === 'number' && !isNaN(totalValue)) ? totalValue : baseValue;
     } catch (err) {
       console.error("[Trade Page] Error calculating trade value for", player.name, err);
       return Number(player.valueScore) || 0;
@@ -631,51 +578,15 @@ export default function TradeBuilderPage() {
               <span className="text-xs text-purple-600 font-semibold">
                 +{(() => {
                   try {
-                    // BULLETPROOF: Ensure all values are valid numbers
+                    // Use unified keeper formula
                     const baseValue = Number(player.valueScore) || 0;
                     const draftRound = Number(player.originalDraftRound) || 1;
-                    const roundAvg = pickValueMap.get(draftRound) ?? 100;
-                    const yearsRaw = Number(player.yearsRemaining) || 0;
-                    const years = Math.max(0, Math.min(3, yearsRaw));
+                    const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
+                    const yearsRemaining = Number(player.yearsRemaining) || 0;
                     
-                    // Surplus bonus (conservative caps and weights)
-                    const surplusRaw = Math.max(0, baseValue - roundAvg);
-                    const tier = draftRound <= 4 ? 'A' : draftRound <= 10 ? 'B' : 'C';
-                    const cap = { A: 25, B: 35, C: 40 }[tier];
-                    const cappedSurplus = Math.min(surplusRaw, cap);
-                    const surplusWeights = [0, 0.45, 0.75, 1.0];
-                    const surplusBonus = cappedSurplus * (surplusWeights[years] ?? 0);
+                    const keeperBonus = calculateKeeperBonus(baseValue, draftRound, draftRoundAvg, yearsRemaining);
                     
-                    // Control premium (moderate progression)
-                    const playerTier = 
-                      baseValue >= 172 ? 'Generational' :
-                      baseValue >= 160 ? 'Franchise' :
-                      baseValue >= 150 ? 'Star' :
-                      baseValue >= 135 ? 'Core' : 'Normal';
-                    const controlPremium: Record<string, number[]> = {
-                      Generational: [0, 20, 45, 70],
-                      Franchise:    [0, 14, 32, 50],
-                      Star:         [0, 10, 22, 34],
-                      Core:         [0,  5, 12, 18],
-                      Normal:       [0,  0,  0,  0],
-                    };
-                    const controlBonus = controlPremium[playerTier]?.[years] ?? 0;
-                    
-                    const keeperRawBonus = surplusBonus + controlBonus;
-                    
-                    // Apply tier-based keeper bonus cap
-                    const tierBonusCap: Record<string, number> = {
-                      Generational: 70,
-                      Franchise: 50,
-                      Star: 34,
-                      Core: 22,
-                      Normal: 15,
-                    };
-                    const displayBonus = Math.min(keeperRawBonus, tierBonusCap[playerTier] ?? 0);
-                    
-                    // BULLETPROOF: Ensure displayBonus is a valid number before toFixed
-                    const safeBonus = (typeof displayBonus === 'number' && !isNaN(displayBonus)) ? displayBonus : 0;
-                    return toFixedSafe(Math.max(0, safeBonus), 0);
+                    return toFixedSafe(Math.max(0, keeperBonus), 0);
                   } catch (err) {
                     console.error("[Trade Page] Error calculating keeper bonus for", player.name, err);
                     return "?";

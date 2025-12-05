@@ -140,69 +140,39 @@ export function applyExpirationPenalty(value: number, yearsRemaining: number): n
   return value;
 }
 
-/**
- * Player tier classification by base value
- * Used for control premium calculation
- */
-type PlayerTier = 'Generational' | 'Franchise' | 'Star' | 'Core' | 'Normal';
 
-function classifyPlayerTier(baseValue: number): PlayerTier {
-  if (baseValue >= 172) return 'Generational';  // McDavid, MacKinnon, top-3 only
-  if (baseValue >= 160) return 'Franchise';      // Elite tier
-  if (baseValue >= 150) return 'Star';           // Strong but not top
-  if (baseValue >= 135) return 'Core';           // Solid
-  return 'Normal';
+/**
+ * Round cost table - rough value curve for keeper surplus calculation
+ * Represents average expected value at each draft position
+ */
+const ROUND_COST_TABLE: Record<number, number> = {
+  1: 165,
+  2: 155,
+  3: 145,
+  4: 140,
+  5: 135,
+  6: 130,
+  7: 125,
+  8: 120,
+  9: 110,
+  10: 100,
+  11: 90,
+  12: 80,
+  13: 75,
+  14: 70,
+  15: 65,
+  16: 60,
+};
+
+function getRoundCost(round: number): number {
+  return ROUND_COST_TABLE[round] ?? 80;
 }
 
-/**
- * Elite threshold for control premium eligibility
- * Only players at or above this value receive control premium
- * Prevents grinders like Tom Wilson from getting elite keeper bonuses
- */
-const ELITE_THRESHOLD = 145;  // Top ~30 players
-
-/**
- * Control Premium: value of locking elite players for multiple years
- * Index: [0 years, 1 year, 2 years, 3 years]
- * Steeper progression for true generational talents
- * 
- * NOTE: Only applied to players with baseValue >= ELITE_THRESHOLD
- */
-const CONTROL_PREMIUM: Record<PlayerTier, [number, number, number, number]> = {
-  Generational: [0, 20, 45, 70],  // McDavid, MacKinnon - massive multi-year value
-  Franchise:    [0, 14, 32, 50],  // Elite tier
-  Star:         [0, 10, 22, 34],  // Strong but not irreplaceable
-  Core:         [0,  5, 12, 18],  // Solid players worth keeping
-  Normal:       [0,  0,  0,  0],  // No premium for role players
-};
-
-/**
- * Tiered keeper bonus caps - prevent lower tiers from accumulating franchise-level bonuses
- */
-const TIER_BONUS_CAP: Record<PlayerTier, number> = {
-  Generational: 70,  // Can get full steep control premium
-  Franchise: 50,     // High but reasonable
-  Star: 34,          // Limited even with perfect keeper economics
-  Core: 22,          // Meaningful but not elite
-  Normal: 15,        // Small bonus only
-};
-
-/**
- * Final value caps by tier - absolute ceiling to prevent tier jumping
- */
-const FINAL_VALUE_CAP: Record<PlayerTier, number> = {
-  Generational: 250,  // Essentially uncapped
-  Franchise: 230,     // Very high
-  Star: 190,          // Hard ceiling for Star tier
-  Core: 175,          // Ceiling for Core tier
-  Normal: 165,        // Ceiling for Normal tier
-};
-
-/**
- * Trade weight for keeper bonus - displays full bonus but only applies 40% to trades
- * This prevents late-round steals from overtaking raw talent in trade calculations
- */
-export const KEEPER_TRADE_WEIGHT = 0.4;
+function getKeeperTier(round: number): 'A' | 'B' | 'C' {
+  if (round <= 4) return 'A';   // Rounds 1-4
+  if (round <= 10) return 'B';  // Rounds 5-10
+  return 'C';                   // Rounds 11-16
+}
 
 /**
  * New keeper bonus formula with surplus + control premium
@@ -217,65 +187,32 @@ export const KEEPER_TRADE_WEIGHT = 0.4;
 export function calculateKeeperBonus(
   baseValue: number,
   draftRound: number,
-  draftRoundAvg: number,
+  _draftRoundAvg: number, // Keep parameter for compatibility but use ROUND_COST_TABLE instead
   yearsRemaining: number
 ): number {
-  // Clamp years remaining to valid range
-  const years = Math.max(0, Math.min(3, yearsRemaining));
+  // Use fixed round cost table instead of league-calculated average
+  const roundCost = getRoundCost(draftRound);
   
-  // PART A: Surplus Bonus (underdraft value)
-  // How much better is this player than the draft round average?
-  const surplusRaw = Math.max(0, baseValue - draftRoundAvg);
+  // Calculate surplus: how much better is this player than draft slot?
+  const surplus = Math.max(0, baseValue - roundCost);
   
-  // Cap surplus by draft tier to prevent late-round explosion
-  const draftTier = getRoundTier(draftRound);
-  const surplusCapByTier: Record<KeeperTier, number> = {
-    'A': 25,  // Rounds 1-4: small cap
-    'B': 35,  // Rounds 5-10: medium cap (reduced from 40)
-    'C': 40,  // Rounds 11-16: reduced from 55 to prevent over-inflation
-  };
-  const cappedSurplus = Math.min(surplusRaw, surplusCapByTier[draftTier]);
+  // Tier multiplier based on draft round
+  // Tier A (R1-4): tiny bonus (0.05) - first rounders are supposed to be good
+  // Tier B (R5-10): medium bonus (0.20) - mid-round value
+  // Tier C (R11-16): big bonus (0.40) - late-round steals rewarded
+  const tier = getKeeperTier(draftRound);
+  const tierMultiplier =
+    tier === 'A' ? 0.05 :
+    tier === 'B' ? 0.20 :
+    0.40; // Tier C
   
-  // Weight surplus by years remaining (more conservative)
-  // [0 years, 1 year, 2 years, 3 years] = [0, 0.45, 0.75, 1.00]
-  const surplusWeights = [0, 0.45, 0.75, 1.0];
-  const surplusBonus = cappedSurplus * surplusWeights[years];
+  // Year factor: simple linear scaling
+  // 1 year left = 1/3, 2 years = 2/3, 3 years = 3/3
+  const yearFactor = Math.max(0, Math.min(1, yearsRemaining / 3));
   
-  // PART B: Control Premium (multi-year elite control)
-  // FIX #2: Only apply control premium to elite scorers (baseValue >= 145)
-  // This prevents Tom Wilson from getting elite keeper bonuses
-  const playerTier = classifyPlayerTier(baseValue);
-  const controlBonus = baseValue >= ELITE_THRESHOLD 
-    ? CONTROL_PREMIUM[playerTier][years]
-    : 0;
+  // Final keeper bonus: surplus × tierMultiplier × yearFactor
+  const keeperBonus = surplus * tierMultiplier * yearFactor;
   
-  // PART C: Raw keeper bonus (before caps)
-  let keeperRawBonus = surplusBonus + controlBonus;
-  
-  // FIX #3: Soft cap - no keeper bonus can exceed 45% of base value
-  // Prevents keeper inflation from dominating raw talent
-  let maxKeeperBonus = baseValue * 0.45;
-  
-  // FIX #4: Stricter cap for non-elite players (baseValue < 135)
-  // Grinders and depth players get max 25% bonus
-  if (baseValue < 135) {
-    maxKeeperBonus = Math.min(maxKeeperBonus, baseValue * 0.25);
-  }
-  
-  keeperRawBonus = Math.min(keeperRawBonus, maxKeeperBonus);
-  
-  // PART D: Apply tier-based keeper bonus cap
-  // Prevents Star/Core players from accumulating franchise-level bonuses
-  const keeperBonus = Math.min(keeperRawBonus, TIER_BONUS_CAP[playerTier]);
-  
-  // PART E: Calculate provisional keeper value
-  let finalValue = baseValue + keeperBonus;
-  
-  // PART F: Apply final value cap by tier
-  // Prevents tier jumping - Star players cannot reach Franchise values
-  finalValue = Math.min(finalValue, FINAL_VALUE_CAP[playerTier]);
-  
-  // Return display bonus - trade weight (40%) applied at call site
   return keeperBonus;
 }
 
