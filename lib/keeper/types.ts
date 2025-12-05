@@ -175,45 +175,46 @@ function getKeeperTier(round: number): 'A' | 'B' | 'C' {
 }
 
 /**
- * New keeper bonus formula with surplus + control premium
- * Philosophy: "How expensive would this player be to replace?"
+ * Unified keeper bonus formula
+ * Formula: bonus = baseValue × draftBonus × keeperMultiplier
+ * 
+ * draftBonus = (round - 1) / 100
+ * keeperMultiplier = 0.6 (1yr), 0.8 (2yr), 1.0 (3yr)
+ * 
+ * Examples:
+ * - Celebrini (167.6, R14, 1yr): (14-1)/100 = 0.13 → 167.6 × 0.13 × 0.6 = 13.06 → 180.7 total
+ * - Tage (114.0, R13, 1yr): (13-1)/100 = 0.12 → 114.0 × 0.12 × 0.6 = 8.21 → 122.2 total
  * 
  * @param baseValue - Current player value from z-score engine
  * @param draftRound - Original draft round (1-16)
- * @param draftRoundAvg - Average player value for this draft round
- * @param yearsRemaining - Years of keeper eligibility remaining (0-3)
+ * @param _draftRoundAvg - Unused, kept for compatibility
+ * @param yearsRemaining - Years of keeper eligibility remaining (1, 2, or 3)
  * @returns Keeper bonus points
  */
 export function calculateKeeperBonus(
   baseValue: number,
   draftRound: number,
-  _draftRoundAvg: number, // Keep parameter for compatibility but use ROUND_COST_TABLE instead
+  _draftRoundAvg: number, // Unused, kept for compatibility
   yearsRemaining: number
 ): number {
-  // Use fixed round cost table instead of league-calculated average
-  const roundCost = getRoundCost(draftRound);
+  // Draft bonus: (round - 1) / 100
+  // R14 → (14-1)/100 = 0.13
+  // R13 → (13-1)/100 = 0.12
+  // R1 → (1-1)/100 = 0.00 (no bonus for first rounders)
+  const draftBonus = (draftRound - 1) / 100;
   
-  // Calculate surplus: how much better is this player than draft slot?
-  const surplus = Math.max(0, baseValue - roundCost);
+  // Keeper multiplier based on years remaining
+  // 1 year left = 0.6 (60%)
+  // 2 years left = 0.8 (80%)
+  // 3 years left = 1.0 (100%)
+  const keeperMultiplier =
+    yearsRemaining === 1 ? 0.6 :
+    yearsRemaining === 2 ? 0.8 :
+    yearsRemaining === 3 ? 1.0 :
+    0; // No bonus if 0 years remaining
   
-  // Tier multiplier based on draft round
-  // Tier A (R1-4): tiny bonus (0.05) - first rounders are supposed to be good
-  // Tier B (R5-10): medium bonus (0.20) - mid-round value
-  // Tier C (R11-16): moderate bonus (0.25) - late-round steals rewarded but not overpowered
-  // 
-  // Result: Celebrini (167.6, R14, 2yr) → +16.3 → ~184 total ✓
-  const tier = getKeeperTier(draftRound);
-  const tierMultiplier =
-    tier === 'A' ? 0.05 :
-    tier === 'B' ? 0.20 :
-    0.25; // Tier C
-  
-  // Year factor: simple linear scaling
-  // 1 year left = 1/3, 2 years = 2/3, 3 years = 3/3
-  const yearFactor = Math.max(0, Math.min(1, yearsRemaining / 3));
-  
-  // Final keeper bonus: surplus × tierMultiplier × yearFactor
-  const keeperBonus = surplus * tierMultiplier * yearFactor;
+  // Final bonus: baseValue × draftBonus × keeperMultiplier
+  const keeperBonus = baseValue * draftBonus * keeperMultiplier;
   
   return keeperBonus;
 }
