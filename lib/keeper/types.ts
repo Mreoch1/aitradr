@@ -254,7 +254,14 @@ export function calculateKeeperBonus(
   
   // FIX #3: Soft cap - no keeper bonus can exceed 45% of base value
   // Prevents keeper inflation from dominating raw talent
-  const maxKeeperBonus = baseValue * 0.45;
+  let maxKeeperBonus = baseValue * 0.45;
+  
+  // FIX #4: Stricter cap for non-elite players (baseValue < 135)
+  // Grinders and depth players get max 25% bonus
+  if (baseValue < 135) {
+    maxKeeperBonus = Math.min(maxKeeperBonus, baseValue * 0.25);
+  }
+  
   keeperRawBonus = Math.min(keeperRawBonus, maxKeeperBonus);
   
   // PART D: Apply tier-based keeper bonus cap

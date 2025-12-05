@@ -112,6 +112,19 @@ function isValidSuggestion(suggestion: TradeSuggestion): boolean {
     return false;
   }
   
+  // FIX #1: Hard Loss Floor - prevent massive losing trades
+  if (suggestion.netValue < -12) {
+    console.warn("[Clean AI] Rejected: Net loss > 12 points (", suggestion.netValue, ")");
+    return false;
+  }
+  
+  // Tighter floor for elite losses
+  const givingElitePlayers = suggestion.youGive.filter(a => a.value >= 140);
+  if (givingElitePlayers.length > 0 && suggestion.netValue < -7) {
+    console.warn("[Clean AI] Rejected: Trading elite player (>= 140) with net loss > 7 (", suggestion.netValue, ")");
+    return false;
+  }
+  
   // FIX #4: Elite Anchor Constraint
   // Prevent elite scorer downgrades (Caufield → Wilson scenarios)
   const ELITE_SCORING_THRESHOLD = 145;
@@ -177,16 +190,28 @@ Each trade must:
 
 # ELITE PROTECTION RULES
 
+## Hard Loss Floor (FIX #1):
+- NEVER suggest trades with netValue < -12
+- IF trading elite player (valueBase >= 140), netValue must be >= -7
+- No massive losing trades allowed
+
+## Offense Floor (FIX #2):
+- IF outgoing player valueBase >= 130
+- AND incoming player does NOT improve Goals, Assists, or PPP
+- THEN reject the trade
+- Elite scorers must only go for other scorers or multi-player packages
+
+## Elite Anchor Constraint (FIX #4):
 IF sending away elite scorer (valueBase >= 145) THEN:
 - Incoming package MUST be:
   - EITHER elite return (valueBase >= 135)
-  - OR net value loss <= 10%
-  - OR major category gain with real talent back
+  - OR multiple strong players (2+ players with collective value match)
+  - OR significant net gain (> 15 points)
 
 NEVER trade:
 - Elite scorer for banger only (Caufield → Wilson)
 - Franchise piece for depth (McDavid → Reinhart)
-- Top-line talent for pure hits/PIM player
+- Top-line talent for pure hits/PIM player (Hughes → Tom Wilson)
 
 # KEEPER LOGIC
 
@@ -209,10 +234,20 @@ IF Hits/PIM/Blocks dominate trade impact:
 
 Grinders cannot outrank offensive stars.
 
+## Category Compensation Cap (FIX #5):
+- Category gain may NOT compensate for more than 40% of value loss
+- Example: If valueLoss = 50, categoryGain can offset MAX 20 points
+- Anything beyond this = rejected
+- You cannot trade Jack Hughes for Tom Wilson just because "Hits +50%"
+
+## Banger Ceiling:
+- Pure grinders (primary value from HIT/PIM/BLK) max value = 130
+- No pure hitter should exceed 130 value
+
 NEVER allow:
 - Tom Wilson > Cole Caufield
+- Kiefer Sherwood > Artemi Panarin
 - Sam Reinhart > Connor McDavid
-- Brad Marchand > Nathan MacKinnon
 
 # REJECTION RULES
 

@@ -653,19 +653,29 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
     // Calculate average but apply floor based on round
     const avgValue = roundPlayers.reduce((sum, p) => sum + p.score, 0) / roundPlayers.length;
     
-    // Floor values by round - late picks still have value
-    let finalValue = avgValue;
-    if (round >= 14) {
-      // Rounds 14-16: Floor at 5-1 (bench/speculative value)
-      const lateFloor = Math.max(1, 8 - (round - 14) * 3);
-      finalValue = Math.max(avgValue, lateFloor);
-    } else if (round >= 10) {
-      // Rounds 10-13: Floor at 30 (still rosterable)
-      finalValue = Math.max(avgValue, 30);
-    } else if (round >= 7) {
-      // Rounds 7-9: Floor at 60 (depth value)
-      finalValue = Math.max(avgValue, 60);
-    }
+    // FIX #3: Pick value floor table - prevents picks from being undervalued
+    // Round 3 picks should never be below replacement level (45 is too low)
+    const PICK_FLOOR_TABLE: Record<number, number> = {
+      1: 155,
+      2: 145,
+      3: 135,
+      4: 125,
+      5: 115,
+      6: 105,
+      7: 95,
+      8: 90,
+      9: 85,
+      10: 80,
+      11: 75,
+      12: 70,
+      13: 65,
+      14: 60,
+      15: 55,
+      16: 50,
+    };
+    
+    const floor = PICK_FLOOR_TABLE[round] ?? 50;
+    const finalValue = Math.max(avgValue, floor);
     
     await prisma.draftPickValue.upsert({
       where: { leagueId_round: { leagueId, round } },
