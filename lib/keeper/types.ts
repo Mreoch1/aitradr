@@ -199,12 +199,14 @@ export function calculateKeeperBonus(
   // Tier multiplier based on draft round
   // Tier A (R1-4): tiny bonus (0.05) - first rounders are supposed to be good
   // Tier B (R5-10): medium bonus (0.20) - mid-round value
-  // Tier C (R11-16): big bonus (0.40) - late-round steals rewarded
+  // Tier C (R11-16): moderate bonus (0.25) - late-round steals rewarded but not overpowered
+  // 
+  // Result: Celebrini (167.6, R14, 2yr) → +16.3 → ~184 total ✓
   const tier = getKeeperTier(draftRound);
   const tierMultiplier =
     tier === 'A' ? 0.05 :
     tier === 'B' ? 0.20 :
-    0.40; // Tier C
+    0.25; // Tier C
   
   // Year factor: simple linear scaling
   // 1 year left = 1/3, 2 years = 2/3, 3 years = 3/3
