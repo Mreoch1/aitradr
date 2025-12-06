@@ -112,7 +112,7 @@ export default function TradeBuilderPage() {
   const [tradeData, setTradeData] = useState<TradeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const isInitialLoadRef = useRef(true);
   const [sideA, setSideA] = useState<TradeSide>({
     teamId: null,
     playerIds: [],
@@ -211,26 +211,31 @@ export default function TradeBuilderPage() {
       setRefreshLoading(false);
       
       // Clear team selections only on initial page load, not on subsequent data refreshes
-      if (isInitialLoad) {
+      if (isInitialLoadRef.current) {
         console.log("[Trade Page] Initial load - clearing team selections");
         setSideA({ teamId: null, playerIds: [], picks: [] });
         setSideB({ teamId: null, playerIds: [], picks: [] });
         setPendingSelections({ A: [], B: [] });
-        setIsInitialLoad(false);
+        isInitialLoadRef.current = false;
       } else {
         // Restore selections after data refresh (teams might have changed, so verify they still exist)
+        console.log("[Trade Page] Auto-refresh - preserving selections. Team A:", currentTeamAId, "Team B:", currentTeamBId);
         if (currentTeamAId && result.data.teams?.some((t: any) => t.id === currentTeamAId)) {
-          console.log("[Trade Page] Preserving Team A selection:", currentTeamAId);
+          console.log("[Trade Page] Restoring Team A selection:", currentTeamAId);
           setSideA(prev => ({ ...prev, teamId: currentTeamAId, picks: currentPicks.A }));
+        } else if (currentTeamAId) {
+          console.log("[Trade Page] Team A selection lost - team no longer exists:", currentTeamAId);
         }
         if (currentTeamBId && result.data.teams?.some((t: any) => t.id === currentTeamBId)) {
-          console.log("[Trade Page] Preserving Team B selection:", currentTeamBId);
+          console.log("[Trade Page] Restoring Team B selection:", currentTeamBId);
           setSideB(prev => ({ 
             ...prev, 
             teamId: currentTeamBId,
             playerIds: currentPlayerIds,
             picks: currentPicks.B
           }));
+        } else if (currentTeamBId) {
+          console.log("[Trade Page] Team B selection lost - team no longer exists:", currentTeamBId);
         }
       }
     } catch (err) {
