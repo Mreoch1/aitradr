@@ -347,41 +347,43 @@ export default function TradeBuilderPage() {
     );
   }
 
-  // Ensure all teams have draftPicks array
-  let normalizedTradeData: TradeData;
-  try {
-    console.log("[Trade Page] Normalizing trade data, teams count:", tradeData.teams?.length);
-    normalizedTradeData = {
-      ...tradeData,
-      teams: tradeData.teams.map((team) => ({
-        ...team,
-        draftPicks: team.draftPicks || [],
-      })),
-    };
-    console.log("[Trade Page] Trade data normalized successfully");
-  } catch (err) {
-    console.error("[Trade Page] Error normalizing trade data:", err);
-    throw err;
-  }
+  // Memoize normalized trade data to prevent re-computation on every render
+  const normalizedTradeData: TradeData = useMemo(() => {
+    if (!tradeData) {
+      return {} as TradeData;
+    }
+    
+    try {
+      return {
+        ...tradeData,
+        teams: tradeData.teams.map((team) => ({
+          ...team,
+          draftPicks: team.draftPicks || [],
+        })),
+      };
+    } catch (err) {
+      console.error("[Trade Page] Error normalizing trade data:", err);
+      return tradeData;
+    }
+  }, [tradeData]);
 
-  const teamA = normalizedTradeData.teams.find((t) => t.id === sideA.teamId);
-  const teamB = normalizedTradeData.teams.find((t) => t.id === sideB.teamId);
-  console.log("[Trade Page] Teams selected - A:", teamA?.name, "B:", teamB?.name);
+  // Memoize pick value map to prevent re-building on every render
+  const pickValueMap = useMemo(() => {
+    const map = new Map<number, number>();
+    try {
+      (normalizedTradeData.draftPickValues || []).forEach((pick) => {
+        if (pick && pick.round !== undefined && pick.score !== undefined) {
+          map.set(pick.round, pick.score);
+        }
+      });
+    } catch (err) {
+      console.error("[Trade Page] Error building pick value map:", err);
+    }
+    return map;
+  }, [normalizedTradeData.draftPickValues]);
 
-  // Build pick value map first (needed for keeper bonus calculation)
-  const pickValueMap = new Map<number, number>();
-  try {
-    console.log("[Trade Page] Building pick value map, picks count:", normalizedTradeData.draftPickValues?.length);
-    (normalizedTradeData.draftPickValues || []).forEach((pick) => {
-      if (pick && pick.round !== undefined && pick.score !== undefined) {
-        pickValueMap.set(pick.round, pick.score);
-      }
-    });
-    console.log("[Trade Page] Pick value map built, size:", pickValueMap.size);
-  } catch (err) {
-    console.error("[Trade Page] Error building pick value map:", err);
-    throw err;
-  }
+  const teamA = normalizedTradeData.teams?.find((t) => t.id === sideA.teamId);
+  const teamB = normalizedTradeData.teams?.find((t) => t.id === sideB.teamId);
 
   // Helper: Calculate keeper-adjusted value using shared keeper formula
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
