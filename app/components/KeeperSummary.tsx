@@ -54,7 +54,7 @@ export function KeeperSummary({ team, draftPickValues }: KeeperSummaryProps) {
                 </span>
               </div>
               <div className="text-right">
-                <span className="font-bold text-blue-700">{toFixedSafe(keeper.valueScore, 0)}</span>
+                <span className="font-bold text-blue-700 dark:text-blue-300">{toFixedSafe(keeper.valueScore, 0)}</span>
                 {bonus > 0 && (
                   <span className="ml-1 text-purple-600">+{toFixedSafe(bonus, 0)}</span>
                 )}
@@ -66,7 +66,7 @@ export function KeeperSummary({ team, draftPickValues }: KeeperSummaryProps) {
       
       <div className="mt-3 pt-2 border-t-2 border-purple-300 flex justify-between text-sm font-bold">
         <span className="text-purple-900">Total</span>
-        <span className="text-blue-700">
+        <span className="text-blue-700 dark:text-blue-300">
           {toFixedSafe(totalValue, 0)}
           {totalBonus > 0 && (
             <span className="text-purple-600"> +{toFixedSafe(totalBonus, 0)}</span>

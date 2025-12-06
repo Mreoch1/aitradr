@@ -17,7 +17,7 @@ export function ThemeSwitcher() {
       <select
         value={theme}
         onChange={(e) => setTheme(e.target.value as any)}
-        className="rounded border border-gray-300 bg-white px-3 py-1 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        className="rounded border border-gray-300 bg-white px-3 py-1 text-sm theme-text-primary focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
         aria-label="Select theme"
       >
         {themes.map((t) => (

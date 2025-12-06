@@ -137,7 +137,7 @@ export default function TeamDashboardPage() {
             
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <h3 className="mb-2 font-semibold text-green-700">✅ Strengths</h3>
+                <h3 className="mb-2 font-semibold text-green-700 dark:text-green-400">✅ Strengths</h3>
                 <ul className="list-inside list-disc space-y-1 text-sm theme-text-secondary">
                   {dashboard.narrative.strengths.map((s, i) => (
                     <li key={i}>{s}</li>
@@ -145,7 +145,7 @@ export default function TeamDashboardPage() {
                 </ul>
               </div>
               <div>
-                <h3 className="mb-2 font-semibold text-red-700">⚠️ Weaknesses</h3>
+                <h3 className="mb-2 font-semibold text-red-700 dark:text-red-400">⚠️ Weaknesses</h3>
                 <ul className="list-inside list-disc space-y-1 text-sm theme-text-secondary">
                   {dashboard.narrative.weaknesses.map((w, i) => (
                     <li key={i}>{w}</li>
@@ -361,7 +361,7 @@ export default function TeamDashboardPage() {
             
             <div className="space-y-4">
               <div>
-                <h3 className="mb-2 font-semibold text-green-700">Trade From (Surplus):</h3>
+                <h3 className="mb-2 font-semibold text-green-700 dark:text-green-400">Trade From (Surplus):</h3>
                 <p className="theme-text-secondary">
                   {Object.entries(dashboard.categorySummary)
                     .filter(([_, cat]) => cat.zScore > 0.5)
@@ -371,7 +371,7 @@ export default function TeamDashboardPage() {
               </div>
               
               <div>
-                <h3 className="mb-2 font-semibold text-red-700">Need to Fix (Weak):</h3>
+                <h3 className="mb-2 font-semibold text-red-700 dark:text-red-400">Need to Fix (Weak):</h3>
                 <p className="theme-text-secondary">
                   {Object.entries(dashboard.categorySummary)
                     .filter(([_, cat]) => cat.zScore < -0.5)
@@ -381,7 +381,7 @@ export default function TeamDashboardPage() {
               </div>
               
               <div>
-                <h3 className="mb-2 font-semibold text-blue-700">Ideal Trade Targets:</h3>
+                <h3 className="mb-2 font-semibold text-blue-700 dark:text-blue-300">Ideal Trade Targets:</h3>
                 <p className="theme-text-secondary">
                   Teams that are top 3 in your weak categories and bottom 4 in your strong categories
                 </p>
@@ -417,7 +417,7 @@ export default function TeamDashboardPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                        <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 dark:text-blue-300">
                           Fit: {toFixedSafe(rec.fitScore * 100, 0)}%
                         </div>
                         <div className="text-xs theme-text-secondary">

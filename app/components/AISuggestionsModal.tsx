@@ -85,7 +85,7 @@ export function AISuggestionsModal({
           <h2 className="mb-4 font-mono text-xl font-bold text-yellow-600">
             ⚠️ NO VALID SUGGESTIONS
           </h2>
-          <p className="mb-4 text-gray-700">
+          <p className="mb-4 theme-text-primary">
             {suggestions.length === 0 
               ? "The AI didn't generate any trade candidates. This can happen if there are no mutually beneficial trades available based on your team's needs and other teams' strengths."
               : `All ${suggestions.length} candidate trades failed validation rules. Check the browser console (F12) for details about why suggestions were filtered.`
@@ -190,7 +190,7 @@ export function AISuggestionsModal({
                           <span className="text-red-800">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-red-700">{toFixedSafe(item.value, 1)}</span>
+                          <span className="font-semibold text-red-700 dark:text-red-400">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
@@ -205,7 +205,7 @@ export function AISuggestionsModal({
                           <span className="text-green-800">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-green-700">{toFixedSafe(item.value, 1)}</span>
+                          <span className="font-semibold text-green-700 dark:text-green-400">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
@@ -223,7 +223,7 @@ export function AISuggestionsModal({
                   <div className="flex items-center justify-between">
                     <span className="font-bold">Net Gain:</span>
                     <span className={`text-2xl font-bold ${
-                      currentSuggestion.netValue > 0 ? "text-green-700" : "text-gray-700"
+                      currentSuggestion.netValue > 0 ? "text-green-700 dark:text-green-400" : "theme-text-primary"
                     }`}>
                       {currentSuggestion.netValue > 0 ? "+" : ""}{toFixedSafe(currentSuggestion.netValue, 1)}
                     </span>
@@ -265,7 +265,7 @@ export function AISuggestionsModal({
                     ></div>
                   </div>
                   <span className={`font-bold ${
-                    currentSuggestion.confidence === "High" ? "text-green-700" :
+                    currentSuggestion.confidence === "High" ? "text-green-700 dark:text-green-400" :
                     currentSuggestion.confidence === "Medium" ? "text-yellow-700" :
                     "text-orange-700"
                   }`}>

@@ -45,7 +45,7 @@ export function SavedTradesModal({
           </h2>
           <button
             onClick={onClose}
-            className="text-2xl text-gray-500 hover:text-gray-700"
+            className="text-2xl theme-text-secondary hover:theme-text-primary"
           >
             ✕
           </button>
@@ -54,7 +54,7 @@ export function SavedTradesModal({
         {/* Content */}
         <div className="p-4">
           {trades.length === 0 ? (
-            <p className="py-8 text-center text-gray-500">
+            <p className="py-8 text-center theme-text-secondary">
               No saved trades yet. Save a trade to see it here!
             </p>
           ) : (
@@ -79,7 +79,7 @@ export function SavedTradesModal({
                         <p className="text-sm text-gray-600">
                           {trade.teamAName} ↔ {trade.teamBName}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs theme-text-secondary">
                           Saved: {new Date(trade.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -110,7 +110,7 @@ export function SavedTradesModal({
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       {/* Team A */}
                       <div>
-                        <p className="mb-1 font-bold text-gray-700">
+                        <p className="mb-1 font-bold theme-text-primary">
                           {trade.teamAName} Sends:
                         </p>
                         <p className="text-gray-600">
@@ -125,7 +125,7 @@ export function SavedTradesModal({
 
                       {/* Team B */}
                       <div>
-                        <p className="mb-1 font-bold text-gray-700">
+                        <p className="mb-1 font-bold theme-text-primary">
                           {trade.teamBName} Sends:
                         </p>
                         <p className="text-gray-600">
@@ -142,9 +142,9 @@ export function SavedTradesModal({
                     {/* Verdict */}
                     <div className="mt-3 rounded-lg bg-white p-2 text-center">
                       {isGoodTrade ? (
-                        <p className="font-bold text-green-700">✅ EVEN TRADE</p>
+                        <p className="font-bold text-green-700 dark:text-green-400">✅ EVEN TRADE</p>
                       ) : winner ? (
-                        <p className="font-bold text-red-700">
+                        <p className="font-bold text-red-700 dark:text-red-400">
                           ⚠️ {winner} wins by {toFixedSafe(Math.abs(netGain), 1)} points
                         </p>
                       ) : (
