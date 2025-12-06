@@ -76,6 +76,19 @@ export interface TeamNarrative {
   summary: string;        // Paragraph summary
 }
 
+export interface PlayerRecommendation {
+  playerId: string;
+  name: string;
+  pos: string;
+  nhlTeam: string;
+  currentTeamId: string;
+  currentTeamName: string;
+  value: number;
+  fitScore: number; // Combined score for weak categories
+  categoryStats: Record<string, number>; // Stats for the weak categories
+  keeper?: KeeperInfo;
+}
+
 export interface TeamDashboard {
   leagueId: string;
   leagueKey: string;
@@ -102,5 +115,7 @@ export interface TeamDashboard {
   goalies: DashboardGoalie[];
 
   narrative: TeamNarrative;
+  
+  recommendations?: PlayerRecommendation[]; // Top 3 players to target
 }
 

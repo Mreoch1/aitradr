@@ -14,6 +14,7 @@ import type {
   PlayerStats,
   GoalieStats,
   TeamNarrative,
+  PlayerRecommendation,
 } from "./types";
 
 // Category definitions
@@ -398,6 +399,15 @@ export async function buildTeamDashboard(
   // Generate narrative
   const narrative = generateNarrative(categorySummary, grades);
 
+  // Generate player recommendations based on weak categories
+  const recommendations = await generatePlayerRecommendations(
+    leagueId,
+    teamId,
+    categorySummary,
+    teams,
+    pickValueMap
+  );
+
   return {
     leagueId,
     leagueKey,
@@ -409,6 +419,7 @@ export async function buildTeamDashboard(
     skaters,
     goalies,
     narrative,
+    recommendations,
   };
 }
 
@@ -436,6 +447,177 @@ function generateGradeReason(
     return `Needs help in ${weak.map(c => summary[c]?.abbrev).join(", ")}`;
   }
   return "Balanced across categories";
+}
+
+/**
+ * Generate player recommendations based on weak categories
+ */
+async function generatePlayerRecommendations(
+  leagueId: string,
+  currentTeamId: string,
+  categorySummary: Record<string, CategorySummary>,
+  allTeams: any[],
+  pickValueMap: Map<number, number>
+): Promise<PlayerRecommendation[]> {
+  // Identify weak categories (z-score < -0.5)
+  const weakCategories = Object.entries(categorySummary)
+    .filter(([_, cat]) => cat.zScore < -0.5)
+    .map(([code, _]) => code);
+
+  if (weakCategories.length === 0) {
+    return []; // No weak categories, no recommendations needed
+  }
+
+  console.log(`[Recommendations] Weak categories: ${weakCategories.join(", ")}`);
+
+  // Calculate league-wide stats for normalization
+  const allPlayerStats: Array<{
+    playerId: string;
+    playerName: string;
+    teamId: string;
+    teamName: string;
+    pos: string;
+    nhlTeam: string;
+    stats: Record<string, number>;
+    value: number;
+    keeper?: any;
+  }> = [];
+
+  for (const team of allTeams) {
+    // Skip current team's players
+    if (team.id === currentTeamId) continue;
+
+    for (const entry of team.rosterEntries) {
+      const player = entry.player;
+      const isGoalie = player.positions?.includes("G") || player.primaryPosition === "G";
+      
+      // Only consider skaters for now (can extend to goalies later)
+      if (isGoalie) continue;
+
+      const baseValue = player.playerValues[0]?.score ?? 0;
+      const stats: Record<string, number> = {
+        G: getStatValue(player.playerStats, "goals"),
+        A: getStatValue(player.playerStats, "assists"),
+        P: getStatValue(player.playerStats, "points"),
+        PPP: getStatValue(player.playerStats, "power play points"),
+        SOG: getStatValue(player.playerStats, "shots on goal"),
+        plusMinus: getStatValue(player.playerStats, "plus/minus"),
+        PIM: getStatValue(player.playerStats, "penalty minutes"),
+        HIT: getStatValue(player.playerStats, "hits"),
+        BLK: getStatValue(player.playerStats, "blocked shots"),
+        FOW: getStatValue(player.playerStats, "faceoffs won"),
+      };
+
+      // Parse positions
+      const actualPositions = ["C", "LW", "RW", "D"];
+      let posStr = "?";
+      try {
+        const parsed = typeof player.positions === 'string' ? JSON.parse(player.positions) : player.positions;
+        if (Array.isArray(parsed)) {
+          posStr = parsed.filter(p => actualPositions.includes(p)).join("/") || "?";
+        }
+      } catch {}
+
+      // Keeper info
+      let keeper = undefined;
+      if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining !== null) {
+        const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, pickValueMap.get(entry.originalDraftRound) ?? 100, entry.yearsRemaining);
+        keeper = {
+          round: entry.originalDraftRound,
+          yearsHeld: entry.keeperYearIndex ?? 0,
+          yearsRemaining: entry.yearsRemaining,
+          bonus,
+          totalValue: baseValue + bonus,
+        };
+      }
+
+      allPlayerStats.push({
+        playerId: player.id,
+        playerName: player.name,
+        teamId: team.id,
+        teamName: team.name,
+        pos: posStr,
+        nhlTeam: player.teamAbbr || "?",
+        stats,
+        value: baseValue,
+        keeper,
+      });
+    }
+  }
+
+  // Calculate fit scores: weighted by how weak the category is
+  // More negative z-score = more important to fix
+  const categoryWeights: Record<string, number> = {};
+  let totalWeight = 0;
+  for (const cat of weakCategories) {
+    const catInfo = categorySummary[cat];
+    if (catInfo) {
+      // Weight by absolute z-score (more negative = higher weight)
+      const weight = Math.abs(catInfo.zScore);
+      categoryWeights[cat] = weight;
+      totalWeight += weight;
+    }
+  }
+
+  // Normalize weights
+  for (const cat of weakCategories) {
+    if (categoryWeights[cat]) {
+      categoryWeights[cat] = categoryWeights[cat] / totalWeight;
+    }
+  }
+
+  // Calculate league-wide stats for normalization (percentile-based)
+  const categoryStats: Record<string, number[]> = {};
+  for (const cat of weakCategories) {
+    categoryStats[cat] = allPlayerStats.map(p => p.stats[cat] || 0).sort((a, b) => b - a);
+  }
+
+  const scoredPlayers = allPlayerStats.map(player => {
+    let fitScore = 0;
+    const playerCategoryStats: Record<string, number> = {};
+
+    for (const cat of weakCategories) {
+      const statValue = player.stats[cat] || 0;
+      playerCategoryStats[cat] = statValue;
+      
+      // Calculate percentile (0-1) where 1 = best in league
+      const sortedStats = categoryStats[cat];
+      if (sortedStats.length > 0) {
+        const rank = sortedStats.filter(s => s > statValue).length;
+        const percentile = 1 - (rank / sortedStats.length);
+        
+        // Weight by category importance
+        const weight = categoryWeights[cat] || 0;
+        fitScore += percentile * weight;
+      }
+    }
+
+    return {
+      ...player,
+      fitScore,
+      categoryStats: playerCategoryStats,
+    };
+  });
+
+  // Sort by fit score (descending) and take top 3
+  const topRecommendations = scoredPlayers
+    .sort((a, b) => b.fitScore - a.fitScore)
+    .slice(0, 3)
+    .map(p => ({
+      playerId: p.playerId,
+      name: p.playerName,
+      pos: p.pos,
+      nhlTeam: p.nhlTeam,
+      currentTeamId: p.teamId,
+      currentTeamName: p.teamName,
+      value: p.value,
+      fitScore: p.fitScore,
+      categoryStats: p.categoryStats,
+      keeper: p.keeper,
+    }));
+
+  console.log(`[Recommendations] Generated ${topRecommendations.length} recommendations`);
+  return topRecommendations;
 }
 
 /**

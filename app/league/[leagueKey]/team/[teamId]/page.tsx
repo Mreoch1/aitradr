@@ -356,7 +356,7 @@ export default function TeamDashboardPage() {
           )}
 
           {/* Trade Guidance */}
-          <div className="rounded-lg border border-gray-300 theme-bg-primary p-6">
+          <div className="mb-6 rounded-lg border border-gray-300 theme-bg-primary p-6">
             <h2 className="mb-4 text-xl font-semibold theme-text-primary">💡 Trade Guidance</h2>
             
             <div className="space-y-4">
@@ -388,6 +388,85 @@ export default function TeamDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Player Recommendations */}
+          {dashboard.recommendations && dashboard.recommendations.length > 0 && (
+            <div className="rounded-lg border border-gray-300 theme-bg-primary p-6">
+              <h2 className="mb-4 text-xl font-semibold theme-text-primary">
+                🎯 Top Trade Targets
+              </h2>
+              <p className="mb-4 text-sm theme-text-secondary">
+                Players across the league who excel in your weak categories:{" "}
+                {Object.entries(dashboard.categorySummary)
+                  .filter(([_, cat]) => cat.zScore < -0.5)
+                  .map(([_, cat]) => cat.abbrev)
+                  .join(", ")}
+              </p>
+              
+              <div className="grid gap-4 md:grid-cols-3">
+                {dashboard.recommendations.map((rec, idx) => (
+                  <div
+                    key={rec.playerId}
+                    className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 dark:border-blue-600 dark:bg-blue-900/20"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-lg theme-text-primary">{rec.name}</h3>
+                        <p className="text-xs theme-text-secondary">
+                          {rec.pos} • {rec.nhlTeam}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-blue-700">
+                          Fit: {toFixedSafe(rec.fitScore * 100, 0)}%
+                        </div>
+                        <div className="text-xs theme-text-secondary">
+                          Value: {toFixedSafe(rec.value, 1)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-2 rounded bg-white/50 p-2 dark:bg-gray-800/50">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                        Stats in Your Weak Categories:
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        {Object.entries(rec.categoryStats).map(([cat, value]) => {
+                          const catInfo = dashboard.categorySummary[cat];
+                          if (!catInfo) return null;
+                          return (
+                            <div key={cat} className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">{catInfo.abbrev}:</span>
+                              <span className="font-semibold theme-text-primary">{toFixedSafe(value, cat === "GAA" || cat === "SVPCT" ? 2 : 0)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">On: </span>
+                        <span className="font-semibold theme-text-primary">{rec.currentTeamName}</span>
+                      </div>
+                      {rec.keeper && (
+                        <div className="rounded bg-purple-200 px-2 py-1 font-semibold text-purple-800 dark:bg-purple-800 dark:text-purple-200">
+                          R{rec.keeper.round} • {rec.keeper.yearsRemaining}yr
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Link
+                      href={`/league/${leagueKey}/trade?teamB=${rec.currentTeamId}`}
+                      className="mt-3 block w-full rounded bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      Open Trade Builder →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </ThemeProvider>
