@@ -16,10 +16,10 @@ export default async function LeagueDetailPage({
 
   if (!leagueKey) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen theme-bg-primary">
         <div className="container mx-auto px-4 py-8">
-          <div className="rounded border border-red-200 bg-red-50 p-6">
-            <p className="text-red-600">League key is missing</p>
+          <div className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6">
+            <p className="text-red-600 dark:text-red-400">League key is missing</p>
           </div>
         </div>
       </div>
