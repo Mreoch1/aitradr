@@ -475,9 +475,7 @@ export async function analyzeTrades(
         categoryScore,
       });
       
-      if (newConfidence !== s.confidence) {
-        console.log(`[Clean AI] Confidence adjusted: ${s.partnerTeam} - AI: ${s.confidence}, Calculated: ${newConfidence}`);
-      }
+      console.log(`[Clean AI] Confidence for ${s.partnerTeam}: netValue=${s.netValue}, categoryScore=${categoryScore.toFixed(2)}, AI said "${s.confidence}", Calculated="${newConfidence}"`);
       
       return {
         ...s,
@@ -486,15 +484,15 @@ export async function analyzeTrades(
     });
     
     // Filter out unrealistic trades (huge lopsided wins that would never be accepted)
-    // Trades with > 30 net value are very unlikely to be accepted in real leagues
+    // Trades with > 40 net value are very unlikely to be accepted in real leagues
     const realisticSuggestions = suggestionsWithRealConfidence.filter(s => {
-      // Block trades that are TOO lopsided (> 50 value difference) - these are veto-bait
-      if (Math.abs(s.netValue) > 50) {
+      // Block trades that are TOO lopsided (> 40 value difference) - these are veto-bait
+      if (Math.abs(s.netValue) > 40) {
         console.warn("[Clean AI] Filtered: Trade too lopsided (netValue:", s.netValue, ") - unlikely to be accepted");
         return false;
       }
       
-      // For trades with > 30 net value, mark as Speculative but still show
+      // For trades with > 25 net value, mark as Speculative but still show
       // (confidence scoring already handles this)
       
       return true;

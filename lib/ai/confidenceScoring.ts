@@ -62,14 +62,17 @@ export function computeConfidence(context: TradeContext): "High" | "Medium" | "S
   
   // Realism guard: huge wins are unlikely to be accepted
   // Tighter thresholds for realistic trades
-  if (netValue > 25) {
-    confidence = Math.min(confidence, 0.5);   // > 25 point win = Medium max (unlikely)
+  if (netValue > 20) {
+    confidence = Math.min(confidence, 0.5);   // > 20 point win = Medium max (unlikely)
   }
-  if (netValue > 30) {
-    confidence = Math.min(confidence, 0.4);   // > 30 point win = Speculative (very unlikely)
+  if (netValue > 25) {
+    confidence = Math.min(confidence, 0.4);   // > 25 point win = Speculative (very unlikely)
+  }
+  if (netValue > 40) {
+    confidence = Math.min(confidence, 0.25);  // > 40 point win = Very Speculative (veto-bait)
   }
   if (netValue > 50) {
-    confidence = Math.min(confidence, 0.25);  // > 50 point win = Very Speculative (veto-bait)
+    confidence = Math.min(confidence, 0.15);  // > 50 point win = Essentially impossible
   }
   
   // Map confidence score to label
