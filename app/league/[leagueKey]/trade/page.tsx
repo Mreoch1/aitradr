@@ -263,6 +263,94 @@ export default function TradeBuilderPage() {
     setUrlParamsProcessed(true);
   }, [tradeData, searchParams, urlParamsProcessed, sideA.teamId]);
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // Memoize normalized trade data to prevent re-computation on every render
+  const normalizedTradeData: TradeData = useMemo(() => {
+    if (!tradeData) {
+      return {} as TradeData;
+    }
+    
+    try {
+      return {
+        ...tradeData,
+        teams: tradeData.teams.map((team) => ({
+          ...team,
+          draftPicks: team.draftPicks || [],
+        })),
+      };
+    } catch (err) {
+      console.error("[Trade Page] Error normalizing trade data:", err);
+      return tradeData;
+    }
+  }, [tradeData]);
+
+  // Memoize pick value map to prevent re-building on every render
+  const pickValueMap = useMemo(() => {
+    const map = new Map<number, number>();
+    try {
+      (normalizedTradeData.draftPickValues || []).forEach((pick) => {
+        if (pick && pick.round !== undefined && pick.score !== undefined) {
+          map.set(pick.round, pick.score);
+        }
+      });
+    } catch (err) {
+      console.error("[Trade Page] Error building pick value map:", err);
+    }
+    return map;
+  }, [normalizedTradeData.draftPickValues]);
+
+  // Helper: Calculate keeper-adjusted value using shared keeper formula
+  const getPlayerTradeValue = useCallback((player: TradeData["teams"][0]["roster"][0]): number => {
+    try {
+      // BULLETPROOF: Ensure all values are valid numbers
+      const baseValue = Number(player.valueScore) || 0;
+      
+      // If not a keeper, return base value
+      if (!player.isKeeper || !player.originalDraftRound || !player.yearsRemaining) {
+        return baseValue;
+      }
+      
+      const draftRound = Number(player.originalDraftRound) || 1;
+      const draftRoundAvg = pickValueMap.get(draftRound) ?? 100; // Will be ignored by new formula
+      const yearsRemaining = Number(player.yearsRemaining) || 0;
+      
+      // Use unified keeper formula
+      const keeperBonus = calculateKeeperBonus(baseValue, draftRound, draftRoundAvg, yearsRemaining);
+      const totalValue = baseValue + keeperBonus;
+      
+      // Ensure result is a valid number
+      return (typeof totalValue === 'number' && !isNaN(totalValue)) ? totalValue : baseValue;
+    } catch (err) {
+      console.error("[Trade Page] Error calculating trade value for", player.name, err);
+      return Number(player.valueScore) || 0;
+    }
+  }, [pickValueMap]);
+
+  // Memoize player value map to prevent re-building on every render
+  const playerValueMap = useMemo(() => {
+    const map = new Map<string, number>();
+    try {
+      (normalizedTradeData.teams || []).forEach((team) => {
+        (team.roster || []).forEach((player) => {
+          if (!player) return; // Skip undefined players
+          try {
+            // Use keeper-adjusted value for trade calculations
+            const tradeValue = getPlayerTradeValue(player);
+            if (player.playerId) {
+              map.set(player.playerId, tradeValue);
+            }
+          } catch (playerErr) {
+            console.error("[Trade Page] Error calculating value for player:", player.name, playerErr);
+          }
+        });
+      });
+    } catch (err) {
+      console.error("[Trade Page] Error building player value map:", err);
+    }
+    return map;
+  }, [normalizedTradeData.teams, getPlayerTradeValue]);
+
+  // NOW we can do conditional returns after all hooks are called
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
