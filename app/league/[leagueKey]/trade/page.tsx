@@ -224,11 +224,16 @@ export default function TradeBuilderPage() {
 
     const teamBId = searchParams.get('teamB');
     const playerId = searchParams.get('playerId');
+    const hasUrlParams = teamBId || playerId;
 
-    // Auto-select user's team (Team A) if not already selected
-    if (!sideA.teamId) {
+    // Only auto-select user's team (Team A) if:
+    // 1. No URL params (fresh visit, not from a link)
+    // 2. Team A is not already selected
+    // This prevents resetting on every refresh
+    if (!hasUrlParams && !sideA.teamId) {
       const myTeam = tradeData.teams.find(t => t.isOwner);
       if (myTeam) {
+        console.log("[Trade Page] Auto-selecting user's team:", myTeam.name);
         setSideA(prev => ({
           ...prev,
           teamId: myTeam.id,
@@ -236,11 +241,12 @@ export default function TradeBuilderPage() {
       }
     }
 
-    // Select Team B and add player if provided
+    // Select Team B and add player if provided via URL
     if (teamBId) {
       // Find the team
       const team = tradeData.teams.find(t => t.id === teamBId);
       if (team) {
+        console.log("[Trade Page] Selecting Team B from URL:", team.name);
         setSideB(prev => ({
           ...prev,
           teamId: teamBId,
@@ -250,6 +256,7 @@ export default function TradeBuilderPage() {
         if (playerId) {
           const player = team.roster.find(p => p.playerId === playerId);
           if (player) {
+            console.log("[Trade Page] Adding player to trade block from URL:", player.name);
             setSideB(prev => ({
               ...prev,
               teamId: teamBId,
