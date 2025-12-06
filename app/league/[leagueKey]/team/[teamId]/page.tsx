@@ -63,11 +63,11 @@ export default function TeamDashboardPage() {
 
   // Helper to get value tier color
   const getValueColor = (value: number): string => {
-    if (value >= 160) return "bg-purple-100 text-purple-900";
-    if (value >= 140) return "bg-blue-100 text-blue-900";
-    if (value >= 120) return "bg-green-100 text-green-900";
-    if (value >= 100) return "bg-yellow-100 text-yellow-900";
-    return "bg-gray-100 text-gray-900";
+    if (value >= 160) return "bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-200";
+    if (value >= 140) return "bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200";
+    if (value >= 120) return "bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200";
+    if (value >= 100) return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200";
+    return "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100";
   };
 
   if (loading) {
@@ -264,7 +264,7 @@ export default function TeamDashboardPage() {
                       <td className={`px-2 py-2 text-center font-bold ${getValueColor(player.keeper?.totalValue ?? player.value)}`}>
                         {toFixedSafe(player.value, 1)}
                         {player.keeper && player.keeper.bonus > 0 && (
-                          <div className="text-xs text-purple-600">+{toFixedSafe(player.keeper.bonus, 0)}</div>
+                          <div className="text-xs text-purple-600 dark:text-purple-400">+{toFixedSafe(player.keeper.bonus, 0)}</div>
                         )}
                       </td>
                       <td className="px-2 py-2 text-center text-xs">
@@ -331,7 +331,7 @@ export default function TeamDashboardPage() {
                         <td className={`px-2 py-2 text-center font-bold ${getValueColor(goalie.keeper?.totalValue ?? goalie.value)}`}>
                           {toFixedSafe(goalie.value, 1)}
                           {goalie.keeper && goalie.keeper.bonus > 0 && (
-                            <div className="text-xs text-purple-600">+{toFixedSafe(goalie.keeper.bonus, 0)}</div>
+                            <div className="text-xs text-purple-600 dark:text-purple-400">+{toFixedSafe(goalie.keeper.bonus, 0)}</div>
                           )}
                         </td>
                         <td className="px-2 py-2 text-center text-xs">

@@ -320,10 +320,10 @@ export default function TradeBuilderPage() {
       <div className="min-h-screen theme-bg-secondary">
         <div className="container mx-auto px-4 py-8">
           <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-            <p className="text-red-600">{error || "Failed to load trade data"}</p>
+            <p className="text-red-600 dark:text-red-400">{error || "Failed to load trade data"}</p>
             <Link
               href={`/league/${leagueKey}`}
-              className="mt-4 inline-block text-blue-600 hover:text-blue-800"
+              className="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:text-blue-800"
             >
               ← Back to League
             </Link>
@@ -564,7 +564,7 @@ export default function TradeBuilderPage() {
     label, 
     statKey, 
     team, 
-    className = "px-2 py-2 text-center font-semibold text-gray-700" 
+    className = "px-2 py-2 text-center font-semibold theme-text-primary" 
   }: { 
     label: string; 
     statKey: string; 
@@ -577,7 +577,7 @@ export default function TradeBuilderPage() {
     
     return (
       <th 
-        className={`${className} cursor-pointer hover:bg-gray-200 select-none`}
+        className={`${className} cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 select-none`}
         onClick={() => handleSort(team, statKey)}
         title={`Sort by ${label}`}
       >
@@ -618,11 +618,11 @@ export default function TradeBuilderPage() {
             className="h-4 w-4"
           />
         </td>
-        <td className="px-3 py-2 text-sm font-bold text-blue-700 bg-blue-50">
+        <td className="px-3 py-2 text-sm font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30">
           <div className="flex flex-col items-center">
             <span>{toFixedSafe(player.valueScore, 1)}</span>
             {player.isKeeper && player.originalDraftRound && player.yearsRemaining && player.yearsRemaining > 0 && (
-              <span className="text-xs text-purple-600 font-semibold">
+              <span className="text-xs text-purple-600 dark:text-purple-400 dark:text-purple-400 font-semibold">
                 +{(() => {
                   try {
                     // Use unified keeper formula
@@ -690,22 +690,22 @@ export default function TradeBuilderPage() {
         {isGoalieTable ? (
           // Goalie stats
           <>
-            <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-green-700 dark:text-green-400">
               {toFixedSafe(getStatValue(stats, "wins"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-medium text-red-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-red-700 dark:text-red-400">
               {toFixedSafe(getStatValue(stats, "losses"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "goals against"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "goals against average"), 2)}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700 dark:text-blue-300">
               {toFixedSafe(getStatValue(stats, "saves"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {(() => {
                 const svPct = getStatValue(stats, "save percentage");
                 // Yahoo stores SV% as a whole number like 915 for 91.5%
@@ -719,47 +719,47 @@ export default function TradeBuilderPage() {
                 }
               })()}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-medium text-purple-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-purple-700 dark:text-purple-400">
               {toFixedSafe(getStatValue(stats, "shutouts"), 0)}
             </td>
           </>
         ) : (
           // Skater stats
           <>
-            <td className="px-2 py-2 text-sm text-center font-medium text-green-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-green-700 dark:text-green-400">
               {toFixedSafe(getStatValue(stats, "goals"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-blue-700 dark:text-blue-300">
               {toFixedSafe(getStatValue(stats, "assists"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-semibold text-purple-700">
+            <td className="px-2 py-2 text-sm text-center font-semibold text-purple-700 dark:text-purple-400">
               {toFixedSafe(getStatValue(stats, "points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "plus/minus"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "penalty minutes"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center font-medium text-orange-700">
+            <td className="px-2 py-2 text-sm text-center font-medium text-orange-700 dark:text-orange-400">
               {toFixedSafe(getStatValue(stats, "power play points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "short handed points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "game winning goals"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "shots on goal"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "faceoffs won"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "hits"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center text-gray-700">
+            <td className="px-2 py-2 text-sm text-center theme-text-primary">
               {toFixedSafe(getStatValue(stats, "blocked shots"), 0)}
             </td>
           </>
@@ -787,7 +787,7 @@ export default function TradeBuilderPage() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold uppercase tracking-wider text-black" style={{ fontFamily: 'monospace', textShadow: '1px 1px 0px rgba(255,255,255,0.5)' }}>
+                <div className="text-xs font-bold uppercase tracking-wider theme-text-primary" style={{ fontFamily: 'monospace', textShadow: '1px 1px 0px rgba(255,255,255,0.5)' }}>
                   Brought to you by
                 </div>
                 <h1 className="text-lg font-bold uppercase text-white md:text-2xl" style={{ fontFamily: 'monospace', textShadow: '3px 3px 0px rgba(0,0,0,0.5), 0 0 10px rgba(0,255,0,0.5)' }}>
@@ -799,7 +799,7 @@ export default function TradeBuilderPage() {
             {/* Right side - Trade Builder info */}
             <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:text-right">
               <div className="flex-1 md:flex-none">
-                <div className="text-xs font-bold uppercase text-black md:text-sm" style={{ fontFamily: 'monospace' }}>
+                <div className="text-xs font-bold uppercase theme-text-primary md:text-sm" style={{ fontFamily: 'monospace' }}>
                   Trade Builder
                 </div>
                 <div className="text-sm font-bold text-white md:text-lg" style={{ fontFamily: 'monospace', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>
@@ -843,8 +843,8 @@ export default function TradeBuilderPage() {
         {normalizedTradeData.myTeamName ? (
           <div className="mb-6 space-y-4">
             <div className="rounded-lg border-2 border-green-500 bg-green-50 px-6 py-4 shadow-md">
-              <p className="text-center text-lg font-bold text-green-900">
-                🏒 Welcome, <span className="text-green-600">{normalizedTradeData.myTeamName}</span>!
+              <p className="text-center text-lg font-bold text-green-900 dark:text-green-300">
+                🏒 Welcome, <span className="text-green-600 dark:text-green-400">{normalizedTradeData.myTeamName}</span>!
               </p>
             </div>
             
@@ -867,10 +867,10 @@ export default function TradeBuilderPage() {
               if (!hasValues && allPlayers.length > 0) {
                 return (
                   <div className="rounded-lg border-2 border-red-500 bg-red-50 px-6 py-4 shadow-md">
-                    <p className="text-center text-base font-bold text-red-900">
+                    <p className="text-center text-base font-bold text-red-900 dark:text-red-300">
                       ⚠️ Player values not calculated yet!
                     </p>
-                    <p className="text-center text-sm text-red-700 mt-2">
+                    <p className="text-center text-sm text-red-700 dark:text-red-400 mt-2">
                       Click <strong>"🔄 Refresh Teams"</strong> below to sync data from Yahoo and calculate values.
                     </p>
                   </div>
@@ -1011,10 +1011,10 @@ export default function TradeBuilderPage() {
                       />
                     </div>
                   </div>
-                  <p className="text-center font-mono text-lg font-bold text-red-700 animate-pulse">
+                  <p className="text-center font-mono text-lg font-bold text-red-700 dark:text-red-400 animate-pulse">
                     ANALYZING TRADES...
                   </p>
-                  <p className="mt-2 text-center font-mono text-xs text-red-600">
+                  <p className="mt-2 text-center font-mono text-xs text-red-600 dark:text-red-400">
                     Scanning {normalizedTradeData.teams.reduce((sum, t) => sum + t.roster.length, 0)} players • 10-15 seconds
                   </p>
                   <div className="mt-4 flex items-center justify-center gap-2">
@@ -1061,7 +1061,7 @@ export default function TradeBuilderPage() {
         {/* Team Selectors */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">Team A</label>
+            <label className="mb-2 block text-sm font-semibold theme-text-primary">Team A</label>
             <select
               value={sideA.teamId || ""}
               onChange={(e) =>
@@ -1079,14 +1079,14 @@ export default function TradeBuilderPage() {
             {sideA.teamId && (
               <Link
                 href={`/league/${leagueKey}/team/${sideA.teamId}`}
-                className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+                className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 📊 View {teamA?.name || "Team A"} Dashboard →
               </Link>
             )}
           </div>
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">Team B</label>
+            <label className="mb-2 block text-sm font-semibold theme-text-primary">Team B</label>
             <select
               value={sideB.teamId || ""}
               onChange={(e) =>
@@ -1104,7 +1104,7 @@ export default function TradeBuilderPage() {
             {sideB.teamId && (
               <Link
                 href={`/league/${leagueKey}/team/${sideB.teamId}`}
-                className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+                className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 📊 View {teamB?.name || "Team B"} Dashboard →
               </Link>
@@ -1127,7 +1127,7 @@ export default function TradeBuilderPage() {
                 {teamA.roster.some((p) => p.position !== "G") && (
                   <>
                     <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200">
-                      <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
+                      <h3 className="text-sm font-semibold theme-text-primary">Skaters</h3>
                     </div>
                     {/* Top Scrollbar for Skaters */}
                     <div 
@@ -1148,23 +1148,23 @@ export default function TradeBuilderPage() {
                       <table className="w-full text-xs" style={{ minWidth: '900px' }}>
                   <thead className="theme-bg-secondary">
                     <tr>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
-                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
-                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
-                            <SortableHeader label="G" statKey="goals" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700" />
-                            <SortableHeader label="A" statKey="assists" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
-                            <SortableHeader label="P" statKey="points" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
-                            <SortableHeader label="+/-" statKey="plus/minus" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="PPP" statKey="power play points" team="teamA" className="px-2 py-2 text-center font-semibold text-orange-700" />
-                            <SortableHeader label="SHP" statKey="short handed points" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="GWG" statKey="game winning goals" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SOG" statKey="shots on goal" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="FW" statKey="faceoffs won" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="HIT" statKey="hits" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="BLK" statKey="blocked shots" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30" />
+                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold theme-text-primary" />
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Pos</th>
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Team</th>
+                            <SortableHeader label="G" statKey="goals" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700 dark:text-green-400" />
+                            <SortableHeader label="A" statKey="assists" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700 dark:text-blue-300" />
+                            <SortableHeader label="P" statKey="points" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700 dark:text-purple-400" />
+                            <SortableHeader label="+/-" statKey="plus/minus" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="PPP" statKey="power play points" team="teamA" className="px-2 py-2 text-center font-semibold text-orange-700 dark:text-orange-400" />
+                            <SortableHeader label="SHP" statKey="short handed points" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="GWG" statKey="game winning goals" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SOG" statKey="shots on goal" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="FW" statKey="faceoffs won" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="HIT" statKey="hits" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="BLK" statKey="blocked shots" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
                           </tr>
                         </thead>
                         <tbody>
@@ -1184,25 +1184,25 @@ export default function TradeBuilderPage() {
                 {teamA.roster.some((p) => p.position === "G") && (
                   <>
                     <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
-                      <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
+                      <h3 className="text-sm font-semibold theme-text-primary">Goalies</h3>
                     </div>
                     {/* Goalies Table */}
                     <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
                       <table className="w-full text-xs" style={{ minWidth: '600px' }}>
                         <thead className="theme-bg-secondary">
                           <tr>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
-                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
-                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
-                            <SortableHeader label="W" statKey="wins" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700" />
-                            <SortableHeader label="L" statKey="losses" team="teamA" className="px-2 py-2 text-center font-semibold text-red-700" />
-                            <SortableHeader label="GA" statKey="goals against" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="GAA" statKey="goals against average" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SV" statKey="saves" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700" />
-                            <SortableHeader label="SV%" statKey="save percentage" team="teamA" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SHO" statKey="shutouts" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamA" className="px-3 py-2 text-center font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30" />
+                            <SortableHeader label="Player" statKey="name" team="teamA" className="px-2 py-2 text-left font-semibold theme-text-primary" />
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Team</th>
+                            <SortableHeader label="W" statKey="wins" team="teamA" className="px-2 py-2 text-center font-semibold text-green-700 dark:text-green-400" />
+                            <SortableHeader label="L" statKey="losses" team="teamA" className="px-2 py-2 text-center font-semibold text-red-700 dark:text-red-400" />
+                            <SortableHeader label="GA" statKey="goals against" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="GAA" statKey="goals against average" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SV" statKey="saves" team="teamA" className="px-2 py-2 text-center font-semibold text-blue-700 dark:text-blue-300" />
+                            <SortableHeader label="SV%" statKey="save percentage" team="teamA" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SHO" statKey="shutouts" team="teamA" className="px-2 py-2 text-center font-semibold text-purple-700 dark:text-purple-400" />
                     </tr>
                   </thead>
                   <tbody>
@@ -1236,7 +1236,7 @@ export default function TradeBuilderPage() {
             {/* Draft Picks for Team A */}
             {teamA && normalizedTradeData.draftPickValues.length > 0 && (
               <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
-                <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                <h3 className="mb-2 text-sm font-semibold theme-text-primary">
                   Draft Picks {teamA?.draftPicks && teamA.draftPicks.length > 0 && `(${teamA.draftPicks.length} owned)`}
                 </h3>
                 <div className="grid grid-cols-8 gap-2">
@@ -1249,9 +1249,9 @@ export default function TradeBuilderPage() {
                         onClick={() => togglePick("A", pick.round)}
                         className={`rounded border px-2 py-1.5 text-xs font-mono whitespace-nowrap ${
                           isSelected
-                            ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
                             : isOwned
-                            ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
+                            ? "border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50"
                             : "border-gray-300 theme-bg-primary theme-text-secondary hover:theme-bg-secondary"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
@@ -1281,7 +1281,7 @@ export default function TradeBuilderPage() {
                 {teamB.roster.some((p) => p.position !== "G") && (
                   <>
                     <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200">
-                      <h3 className="text-sm font-semibold text-gray-700">Skaters</h3>
+                      <h3 className="text-sm font-semibold theme-text-primary">Skaters</h3>
                     </div>
                     {/* Top Scrollbar for Skaters */}
                     <div 
@@ -1302,23 +1302,23 @@ export default function TradeBuilderPage() {
                       <table className="w-full text-xs" style={{ minWidth: '900px' }}>
                   <thead className="theme-bg-secondary">
                     <tr>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
-                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
-                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
-                            <SortableHeader label="G" statKey="goals" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700" />
-                            <SortableHeader label="A" statKey="assists" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
-                            <SortableHeader label="P" statKey="points" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
-                            <SortableHeader label="+/-" statKey="plus/minus" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="PPP" statKey="power play points" team="teamB" className="px-2 py-2 text-center font-semibold text-orange-700" />
-                            <SortableHeader label="SHP" statKey="short handed points" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="GWG" statKey="game winning goals" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SOG" statKey="shots on goal" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="FW" statKey="faceoffs won" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="HIT" statKey="hits" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="BLK" statKey="blocked shots" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30" />
+                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold theme-text-primary" />
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Pos</th>
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Team</th>
+                            <SortableHeader label="G" statKey="goals" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700 dark:text-green-400" />
+                            <SortableHeader label="A" statKey="assists" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700 dark:text-blue-300" />
+                            <SortableHeader label="P" statKey="points" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700 dark:text-purple-400" />
+                            <SortableHeader label="+/-" statKey="plus/minus" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="PIM" statKey="penalty minutes" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="PPP" statKey="power play points" team="teamB" className="px-2 py-2 text-center font-semibold text-orange-700 dark:text-orange-400" />
+                            <SortableHeader label="SHP" statKey="short handed points" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="GWG" statKey="game winning goals" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SOG" statKey="shots on goal" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="FW" statKey="faceoffs won" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="HIT" statKey="hits" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="BLK" statKey="blocked shots" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
                           </tr>
                         </thead>
                         <tbody>
@@ -1338,25 +1338,25 @@ export default function TradeBuilderPage() {
                 {teamB.roster.some((p) => p.position === "G") && (
                   <>
                     <div className="theme-bg-secondary px-4 py-2 border-b border-gray-200 border-t border-gray-300 mt-4">
-                      <h3 className="text-sm font-semibold text-gray-700">Goalies</h3>
+                      <h3 className="text-sm font-semibold theme-text-primary">Goalies</h3>
                     </div>
                     {/* Goalies Table */}
                     <div className="overflow-x-auto" style={{ maxWidth: '100%', overflowX: 'scroll' }}>
                       <table className="w-full text-xs" style={{ minWidth: '600px' }}>
                         <thead className="theme-bg-secondary">
                           <tr>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Add</th>
-                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 bg-blue-100" />
-                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold text-gray-700" />
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Pos</th>
-                            <th className="px-2 py-2 text-left font-semibold text-gray-700">Team</th>
-                            <SortableHeader label="W" statKey="wins" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700" />
-                            <SortableHeader label="L" statKey="losses" team="teamB" className="px-2 py-2 text-center font-semibold text-red-700" />
-                            <SortableHeader label="GA" statKey="goals against" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="GAA" statKey="goals against average" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SV" statKey="saves" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700" />
-                            <SortableHeader label="SV%" statKey="save percentage" team="teamB" className="px-2 py-2 text-center font-semibold text-gray-700" />
-                            <SortableHeader label="SHO" statKey="shutouts" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700" />
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Add</th>
+                            <SortableHeader label="Value" statKey="value" team="teamB" className="px-3 py-2 text-center font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30" />
+                            <SortableHeader label="Player" statKey="name" team="teamB" className="px-2 py-2 text-left font-semibold theme-text-primary" />
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Pos</th>
+                            <th className="px-2 py-2 text-left font-semibold theme-text-primary">Team</th>
+                            <SortableHeader label="W" statKey="wins" team="teamB" className="px-2 py-2 text-center font-semibold text-green-700 dark:text-green-400" />
+                            <SortableHeader label="L" statKey="losses" team="teamB" className="px-2 py-2 text-center font-semibold text-red-700 dark:text-red-400" />
+                            <SortableHeader label="GA" statKey="goals against" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="GAA" statKey="goals against average" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SV" statKey="saves" team="teamB" className="px-2 py-2 text-center font-semibold text-blue-700 dark:text-blue-300" />
+                            <SortableHeader label="SV%" statKey="save percentage" team="teamB" className="px-2 py-2 text-center font-semibold theme-text-primary" />
+                            <SortableHeader label="SHO" statKey="shutouts" team="teamB" className="px-2 py-2 text-center font-semibold text-purple-700 dark:text-purple-400" />
                     </tr>
                   </thead>
                   <tbody>
@@ -1390,7 +1390,7 @@ export default function TradeBuilderPage() {
             {/* Draft Picks for Team B */}
             {teamB && normalizedTradeData.draftPickValues.length > 0 && (
               <div className="border-t border-gray-300 theme-bg-secondary px-4 py-3">
-                <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                <h3 className="mb-2 text-sm font-semibold theme-text-primary">
                   Draft Picks {teamB?.draftPicks && teamB.draftPicks.length > 0 && `(${teamB.draftPicks.length} owned)`}
                 </h3>
                 <div className="grid grid-cols-8 gap-2">
@@ -1403,9 +1403,9 @@ export default function TradeBuilderPage() {
                         onClick={() => togglePick("B", pick.round)}
                         className={`rounded border px-2 py-1.5 text-xs font-mono whitespace-nowrap ${
                           isSelected
-                            ? "border-blue-500 bg-blue-100 text-blue-700 font-semibold"
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
                             : isOwned
-                            ? "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
+                            ? "border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50"
                             : "border-gray-300 theme-bg-primary theme-text-secondary hover:theme-bg-secondary"
                         }`}
                         title={isOwned ? `Round ${pick.round} (Owned)` : `Round ${pick.round} (Not owned)`}
@@ -1438,20 +1438,20 @@ export default function TradeBuilderPage() {
               <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <h3 className="mb-2 text-lg font-medium text-gray-700">Team A Sends</h3>
+              <h3 className="mb-2 text-lg font-medium theme-text-primary">Team A Sends</h3>
               <div className="space-y-1">
                 {teamASends.length === 0 ? (
-                  <p className="text-sm text-gray-500">(Nothing selected)</p>
+                  <p className="text-sm theme-text-secondary">(Nothing selected)</p>
                 ) : (
                   teamASends.map((item) => {
                     if (item.type === "player") {
                       const player = teamA?.roster.find((p) => p.playerId === item.id);
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
-                          <span className="text-gray-700">
+                          <span className="theme-text-primary">
                             {player?.name || "Unknown Player"}
                             {player?.isKeeper && (
-                              <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
+                              <span className="ml-1 text-xs text-purple-600 dark:text-purple-400 font-bold">K</span>
                             )}
                           </span>
                           <span className="theme-text-secondary">{toFixedSafe(item.value, 1)}</span>
@@ -1460,7 +1460,7 @@ export default function TradeBuilderPage() {
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
-                            <span className="text-gray-700">Round {item.id} Pick</span>
+                            <span className="theme-text-primary">Round {item.id} Pick</span>
                             <span className="theme-text-secondary">{toFixedSafe(item.value, 1)}</span>
                           </div>
                         );
@@ -1480,20 +1480,20 @@ export default function TradeBuilderPage() {
               </div>
             </div>
             <div>
-              <h3 className="mb-2 text-lg font-medium text-gray-700">Team B Sends</h3>
+              <h3 className="mb-2 text-lg font-medium theme-text-primary">Team B Sends</h3>
               <div className="space-y-1">
                 {teamBSends.length === 0 ? (
-                  <p className="text-sm text-gray-500">(Nothing selected)</p>
+                  <p className="text-sm theme-text-secondary">(Nothing selected)</p>
                 ) : (
                   teamBSends.map((item) => {
                     if (item.type === "player") {
                       const player = teamB?.roster.find((p) => p.playerId === item.id);
                       return (
                         <div key={`player-${item.id}`} className="flex justify-between text-sm">
-                          <span className="text-gray-700">
+                          <span className="theme-text-primary">
                             {player?.name || "Unknown Player"}
                             {player?.isKeeper && (
-                              <span className="ml-1 text-xs text-purple-600 font-bold">K</span>
+                              <span className="ml-1 text-xs text-purple-600 dark:text-purple-400 font-bold">K</span>
                             )}
                           </span>
                           <span className="theme-text-secondary">{toFixedSafe(item.value, 1)}</span>
@@ -1502,7 +1502,7 @@ export default function TradeBuilderPage() {
                     } else {
                         return (
                           <div key={`pick-${item.id}`} className="flex justify-between text-sm">
-                            <span className="text-gray-700">Round {item.id} Pick</span>
+                            <span className="theme-text-primary">Round {item.id} Pick</span>
                             <span className="theme-text-secondary">{toFixedSafe(item.value, 1)}</span>
                           </div>
                         );
@@ -1530,22 +1530,22 @@ export default function TradeBuilderPage() {
               {/* Team A Analysis */}
               <div className="rounded-lg theme-bg-primary p-4 shadow">
                 <div className="mb-3 text-center">
-                  <h4 className="text-sm font-semibold text-gray-700">{teamA?.name || "Team A"}</h4>
+                  <h4 className="text-sm font-semibold theme-text-primary">{teamA?.name || "Team A"}</h4>
             </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gives Away:</span>
-                    <span className="font-semibold text-red-600">-{toFixedSafe(teamASendTotal, 1)}</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400">-{toFixedSafe(teamASendTotal, 1)}</span>
             </div>
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gets Back:</span>
-                    <span className="font-semibold text-green-600">+{toFixedSafe(teamAReceiveTotal, 1)}</span>
+                    <span className="font-semibold text-green-600 dark:text-green-400">+{toFixedSafe(teamAReceiveTotal, 1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
                       <span className="font-bold theme-text-primary">Net Change:</span>
                       <span className={`font-bold text-lg ${
-                        diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "theme-text-secondary"
+                        diff > 0 ? "text-green-600 dark:text-green-400" : diff < 0 ? "text-red-600 dark:text-red-400" : "theme-text-secondary"
                       }`}>
                         {diff > 0 ? "+" : ""}{toFixedSafe(diff, 1)}
                       </span>
@@ -1557,22 +1557,22 @@ export default function TradeBuilderPage() {
               {/* Team B Analysis */}
               <div className="rounded-lg theme-bg-primary p-4 shadow">
                 <div className="mb-3 text-center">
-                  <h4 className="text-sm font-semibold text-gray-700">{teamB?.name || "Team B"}</h4>
+                  <h4 className="text-sm font-semibold theme-text-primary">{teamB?.name || "Team B"}</h4>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gives Away:</span>
-                    <span className="font-semibold text-red-600">-{toFixedSafe(teamBSendTotal, 1)}</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400">-{toFixedSafe(teamBSendTotal, 1)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="theme-text-secondary">Gets Back:</span>
-                    <span className="font-semibold text-green-600">+{toFixedSafe(teamASendTotal, 1)}</span>
+                    <span className="font-semibold text-green-600 dark:text-green-400">+{toFixedSafe(teamASendTotal, 1)}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
                     <div className="flex justify-between">
                       <span className="font-bold theme-text-primary">Net Change:</span>
                       <span className={`font-bold text-lg ${
-                        diff < 0 ? "text-green-600" : diff > 0 ? "text-red-600" : "theme-text-secondary"
+                        diff < 0 ? "text-green-600 dark:text-green-400" : diff > 0 ? "text-red-600 dark:text-red-400" : "theme-text-secondary"
                       }`}>
                         {diff < 0 ? "+" : ""}{toFixedSafe(-diff, 1)}
                       </span>
@@ -1588,13 +1588,13 @@ export default function TradeBuilderPage() {
               backgroundColor: diff === 0 ? "#f0fdf4" : Math.abs(diff) < 5 ? "#fef9c3" : "#fef2f2"
             }}>
               {diff === 0 ? (
-                <p className="font-bold text-green-700">✅ EVEN TRADE</p>
+                <p className="font-bold text-green-700 dark:text-green-400">✅ EVEN TRADE</p>
               ) : Math.abs(diff) < 5 ? (
                 <p className="font-bold text-yellow-700">⚖️ RELATIVELY FAIR ({toFixedSafe(Math.abs(diff), 1)} point difference)</p>
               ) : diff > 0 ? (
-                <p className="font-bold text-red-700">⚠️ {teamA?.name || "Team A"} wins by {toFixedSafe(diff, 1)} points</p>
+                <p className="font-bold text-red-700 dark:text-red-400">⚠️ {teamA?.name || "Team A"} wins by {toFixedSafe(diff, 1)} points</p>
               ) : (
-                <p className="font-bold text-red-700">⚠️ {teamB?.name || "Team B"} wins by {toFixedSafe(Math.abs(diff), 1)} points</p>
+                <p className="font-bold text-red-700 dark:text-red-400">⚠️ {teamB?.name || "Team B"} wins by {toFixedSafe(Math.abs(diff), 1)} points</p>
               )}
               
               {/* Keeper impact notice */}
