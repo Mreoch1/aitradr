@@ -311,17 +311,20 @@ Think like a human GM:
 - Trade stars for stars
 - Trade bangers only if category dominant
 - Prefer lineup optimization over raw value
-- Never recommend veto-bait trades (> 50 value difference)
+- NEVER generate trades with netValue > 30 (will be filtered out)
+- Prioritize fair trades (netValue between -15 and +25)
 - Consider league landscape and trade acceptance likelihood
 - Do not force trades
 - Fair trades > robbery attempts
 
-## Realism Filters:
-- Trades with > 90 value difference will be auto-filtered as unrealistic
-- Trades with > 50 value difference will be marked "Speculative"
-- Losing trades (netValue < 0) capped at "Medium" confidence
+## CRITICAL REALISM REQUIREMENTS:
+- ABSOLUTE MAXIMUM netValue: 30 points (trades > 35 will be automatically rejected)
+- IDEAL RANGE: -15 to +25 netValue for realistic trades
+- Trades with > 30 netValue are UNREALISTIC and will be filtered out
+- Focus on strategic category improvements, not massive value wins
+- A trade that gives +100 value will NEVER be accepted - don't suggest it
 
-Return 5-7 best suggestions ranked by strategic fit and realism. More candidates allow the system to show diverse, quality trade options after filtering.`;
+Return 5-7 best suggestions with netValue between -15 and +30. Focus on realistic, mutually beneficial trades that both teams would accept.`;
 
 // ============================================================================
 // PAYLOAD BUILDER
