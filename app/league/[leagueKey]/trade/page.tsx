@@ -384,6 +384,33 @@ export default function TradeBuilderPage() {
 
   const teamA = normalizedTradeData.teams?.find((t) => t.id === sideA.teamId);
   const teamB = normalizedTradeData.teams?.find((t) => t.id === sideB.teamId);
+  
+  // Helper: Calculate keeper-adjusted value using shared keeper formula
+  const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
+    try {
+      // BULLETPROOF: Ensure all values are valid numbers
+      const baseValue = Number(player.valueScore) || 0;
+      
+      // If not a keeper, return base value
+      if (!player.isKeeper || !player.originalDraftRound || !player.yearsRemaining) {
+        return baseValue;
+      }
+      
+      const draftRound = Number(player.originalDraftRound) || 1;
+      const draftRoundAvg = pickValueMap.get(draftRound) ?? 100; // Will be ignored by new formula
+      const yearsRemaining = Number(player.yearsRemaining) || 0;
+      
+      // Use unified keeper formula
+      const keeperBonus = calculateKeeperBonus(baseValue, draftRound, draftRoundAvg, yearsRemaining);
+      const totalValue = baseValue + keeperBonus;
+      
+      // Ensure result is a valid number
+      return (typeof totalValue === 'number' && !isNaN(totalValue)) ? totalValue : baseValue;
+    } catch (err) {
+      console.error("[Trade Page] Error calculating trade value for", player.name, err);
+      return Number(player.valueScore) || 0;
+    }
+  };
 
   // Helper: Calculate keeper-adjusted value using shared keeper formula
   const getPlayerTradeValue = (player: TradeData["teams"][0]["roster"][0]): number => {
