@@ -112,6 +112,7 @@ export default function TradeBuilderPage() {
   const [tradeData, setTradeData] = useState<TradeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [sideA, setSideA] = useState<TradeSide>({
     teamId: null,
     playerIds: [],
@@ -203,10 +204,14 @@ export default function TradeBuilderPage() {
       setTradeData(result.data);
       setRefreshLoading(false);
       
-      // Clear team selections on data refresh (user wants fresh start)
-      setSideA({ teamId: null, playerIds: [], picks: [] });
-      setSideB({ teamId: null, playerIds: [], picks: [] });
-      setPendingSelections({ A: [], B: [] });
+      // Clear team selections only on initial page load, not on subsequent data refreshes
+      if (isInitialLoad) {
+        console.log("[Trade Page] Initial load - clearing team selections");
+        setSideA({ teamId: null, playerIds: [], picks: [] });
+        setSideB({ teamId: null, playerIds: [], picks: [] });
+        setPendingSelections({ A: [], B: [] });
+        setIsInitialLoad(false);
+      }
     } catch (err) {
       console.error("[Trade Page] Fetch error:", err);
       setError(err instanceof Error ? err.message : "Failed to load trade data");
