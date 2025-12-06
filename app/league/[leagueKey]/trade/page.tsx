@@ -176,11 +176,6 @@ export default function TradeBuilderPage() {
     try {
       console.log("[Trade Page] Fetching trade data for league:", leagueKey, forceRefresh ? "(force refresh)" : "");
       
-      // Preserve current selections before fetching new data
-      const currentTeamAId = sideA.teamId;
-      const currentTeamBId = sideB.teamId;
-      const currentPlayerIds = sideB.playerIds;
-      
       const url = forceRefresh 
         ? `/api/league/${leagueKey}/trade-data?refresh=true`
         : `/api/league/${leagueKey}/trade-data`;
@@ -208,19 +203,10 @@ export default function TradeBuilderPage() {
       setTradeData(result.data);
       setRefreshLoading(false);
       
-      // Restore selections after data loads (only if teams still exist in new data)
-      if (currentTeamAId && result.data.teams?.some((t: any) => t.id === currentTeamAId)) {
-        console.log("[Trade Page] Restoring Team A selection:", currentTeamAId);
-        setSideA(prev => ({ ...prev, teamId: currentTeamAId }));
-      }
-      if (currentTeamBId && result.data.teams?.some((t: any) => t.id === currentTeamBId)) {
-        console.log("[Trade Page] Restoring Team B selection:", currentTeamBId);
-        setSideB(prev => ({ 
-          ...prev, 
-          teamId: currentTeamBId,
-          playerIds: currentPlayerIds // Preserve player selections too
-        }));
-      }
+      // Clear team selections on data refresh (user wants fresh start)
+      setSideA({ teamId: null, playerIds: [], picks: [] });
+      setSideB({ teamId: null, playerIds: [], picks: [] });
+      setPendingSelections({ A: [], B: [] });
     } catch (err) {
       console.error("[Trade Page] Fetch error:", err);
       setError(err instanceof Error ? err.message : "Failed to load trade data");
@@ -245,51 +231,32 @@ export default function TradeBuilderPage() {
 
     const teamBId = searchParams.get('teamB');
     const playerId = searchParams.get('playerId');
-    const hasUrlParams = teamBId || playerId;
 
-    // Only auto-select user's team (Team A) if:
-    // 1. No URL params (fresh visit, not from a link)
-    // 2. Team A is not already selected
-    // This prevents resetting on every refresh
-    if (!hasUrlParams && !sideA.teamId) {
+    // Only process URL params if they exist (coming from a link)
+    if (teamBId) {
+      // Auto-select user's team (Team A) if URL params are present
       const myTeam = tradeData.teams.find(t => t.isOwner);
       if (myTeam) {
-        console.log("[Trade Page] Auto-selecting user's team:", myTeam.name);
-        setSideA(prev => ({
-          ...prev,
+        setSideA({
           teamId: myTeam.id,
-        }));
+          playerIds: [],
+          picks: [],
+        });
       }
-    }
 
-    // Select Team B and add player if provided via URL
-    if (teamBId) {
-      // Find the team
+      // Select Team B and add player if provided
       const team = tradeData.teams.find(t => t.id === teamBId);
       if (team) {
-        console.log("[Trade Page] Selecting Team B from URL:", team.name);
-        setSideB(prev => ({
-          ...prev,
+        setSideB({
           teamId: teamBId,
-        }));
-
-        // If playerId is provided, add that player to the trade block
-        if (playerId) {
-          const player = team.roster.find(p => p.playerId === playerId);
-          if (player) {
-            console.log("[Trade Page] Adding player to trade block from URL:", player.name);
-            setSideB(prev => ({
-              ...prev,
-              teamId: teamBId,
-              playerIds: [playerId],
-            }));
-          }
-        }
+          playerIds: playerId ? [playerId] : [],
+          picks: [],
+        });
       }
     }
 
     setUrlParamsProcessed(true);
-  }, [tradeData, searchParams, urlParamsProcessed, sideA.teamId]);
+  }, [tradeData, searchParams, urlParamsProcessed]);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // Memoize normalized trade data to prevent re-computation on every render
