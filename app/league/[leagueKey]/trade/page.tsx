@@ -412,30 +412,26 @@ export default function TradeBuilderPage() {
     }
   };
 
-  const playerValueMap = new Map<string, number>();
-  try {
-    console.log("[Trade Page] Building player value map...");
-    let playerCount = 0;
-    (normalizedTradeData.teams || []).forEach((team) => {
-      (team.roster || []).forEach((player) => {
-        if (!player) return; // Skip undefined players
-        try {
-          // Use keeper-adjusted value for trade calculations
-          const tradeValue = getPlayerTradeValue(player);
-          if (player.playerId) {
-            playerValueMap.set(player.playerId, tradeValue);
-            playerCount++;
+    try {
+      (normalizedTradeData.teams || []).forEach((team) => {
+        (team.roster || []).forEach((player) => {
+          if (!player) return; // Skip undefined players
+          try {
+            // Use keeper-adjusted value for trade calculations
+            const tradeValue = getPlayerTradeValue(player);
+            if (player.playerId) {
+              map.set(player.playerId, tradeValue);
+            }
+          } catch (playerErr) {
+            console.error("[Trade Page] Error calculating value for player:", player.name, playerErr);
           }
-        } catch (playerErr) {
-          console.error("[Trade Page] Error calculating value for player:", player.name, playerErr);
-        }
+        });
       });
-    });
-    console.log("[Trade Page] Player value map built, players processed:", playerCount);
-  } catch (err) {
-    console.error("[Trade Page] Error building player value map:", err);
-    throw err;
-  }
+    } catch (err) {
+      console.error("[Trade Page] Error building player value map:", err);
+    }
+    return map;
+  }, [normalizedTradeData.teams, getPlayerTradeValue]);
 
   const togglePendingPlayer = (side: "A" | "B", playerId: string) => {
     setPendingSelections((prev) => ({
