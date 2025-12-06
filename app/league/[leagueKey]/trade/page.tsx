@@ -870,10 +870,10 @@ export default function TradeBuilderPage() {
               const allPlayers = normalizedTradeData.teams.flatMap(t => t.roster);
               const hasValues = allPlayers.some(p => p.valueScore > 0);
               
-              // Check if data is stale (>12 hours old)
+              // Check if data is stale (>6 hours old, matching sync interval)
               const lastUpdated = normalizedTradeData.lastUpdated ? new Date(normalizedTradeData.lastUpdated) : null;
               const hoursOld = lastUpdated ? (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60) : 999;
-              const isStale = hoursOld > 12;
+              const isStale = hoursOld > 6;
               
               // Update sync issues state
               const issuesDetected = (!hasValues && allPlayers.length > 0) || isStale;
