@@ -177,6 +177,12 @@ export default function TradeBuilderPage() {
     try {
       console.log("[Trade Page] Fetching trade data for league:", leagueKey, forceRefresh ? "(force refresh)" : "");
       
+      // Preserve current selections before fetching (for auto-refresh)
+      const currentTeamAId = sideA.teamId;
+      const currentTeamBId = sideB.teamId;
+      const currentPlayerIds = sideB.playerIds;
+      const currentPicks = { A: sideA.picks, B: sideB.picks };
+      
       const url = forceRefresh 
         ? `/api/league/${leagueKey}/trade-data?refresh=true`
         : `/api/league/${leagueKey}/trade-data`;
@@ -211,6 +217,21 @@ export default function TradeBuilderPage() {
         setSideB({ teamId: null, playerIds: [], picks: [] });
         setPendingSelections({ A: [], B: [] });
         setIsInitialLoad(false);
+      } else {
+        // Restore selections after data refresh (teams might have changed, so verify they still exist)
+        if (currentTeamAId && result.data.teams?.some((t: any) => t.id === currentTeamAId)) {
+          console.log("[Trade Page] Preserving Team A selection:", currentTeamAId);
+          setSideA(prev => ({ ...prev, teamId: currentTeamAId, picks: currentPicks.A }));
+        }
+        if (currentTeamBId && result.data.teams?.some((t: any) => t.id === currentTeamBId)) {
+          console.log("[Trade Page] Preserving Team B selection:", currentTeamBId);
+          setSideB(prev => ({ 
+            ...prev, 
+            teamId: currentTeamBId,
+            playerIds: currentPlayerIds,
+            picks: currentPicks.B
+          }));
+        }
       }
     } catch (err) {
       console.error("[Trade Page] Fetch error:", err);
