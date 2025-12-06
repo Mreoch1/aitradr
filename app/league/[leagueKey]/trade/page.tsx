@@ -410,8 +410,11 @@ export default function TradeBuilderPage() {
       console.error("[Trade Page] Error calculating trade value for", player.name, err);
       return Number(player.valueScore) || 0;
     }
-  };
+  }, [pickValueMap]);
 
+  // Memoize player value map to prevent re-building on every render
+  const playerValueMap = useMemo(() => {
+    const map = new Map<string, number>();
     try {
       (normalizedTradeData.teams || []).forEach((team) => {
         (team.roster || []).forEach((player) => {
