@@ -334,6 +334,26 @@ export async function syncLeaguePlayerStats(
           const statsList = Array.isArray(statsArray) ? statsArray : [statsArray];
           console.log(`[PlayerStats] Found ${statsList.length} stats for player ${playerKey}`);
           
+          // Get player name for logging
+          const playerRecord = await prisma.player.findUnique({
+            where: { id: playerId },
+            select: { name: true },
+          });
+          const playerName = playerRecord?.name || playerKey;
+          
+          // Log before deleting to show what we're replacing
+          const oldStats = await prisma.playerStat.findMany({
+            where: { playerId, leagueId: league.id },
+            select: { statName: true, value: true },
+          });
+          
+          if (oldStats.length > 0) {
+            const oldGoals = oldStats.find(s => s.statName === 'Goals')?.value ?? 0;
+            const oldAssists = oldStats.find(s => s.statName === 'Assists')?.value ?? 0;
+            const oldPoints = oldStats.find(s => s.statName === 'Points')?.value ?? 0;
+            console.log(`[PlayerStats] ${playerName} - OLD stats: G=${oldGoals} A=${oldAssists} P=${oldPoints}`);
+          }
+          
           // Delete existing stats
           await prisma.playerStat.deleteMany({
             where: { playerId, leagueId: league.id },
@@ -341,6 +361,8 @@ export async function syncLeaguePlayerStats(
           
           // Insert new stats
           let playerStatsStored = 0;
+          let newGoals = 0, newAssists = 0, newPoints = 0;
+          
           for (const statNode of statsList) {
             const stat = normalizeYahooNode(statNode);
             const statId = stat.stat_id?.toString() || stat["@_stat_id"]?.toString() || "";
@@ -359,10 +381,10 @@ export async function syncLeaguePlayerStats(
             
             const statName = statDef.name || statDef.display_name || `Stat ${statId}`;
             
-            // Log key stats for verification
-            if (['Goals', 'Assists', 'Points', 'Plus/Minus', 'Shots on Goal', 'Hits', 'Blocks'].includes(statName)) {
-              console.log(`[PlayerStats] Storing ${statName} for ${playerKey}: ${value} (statId: ${statId})`);
-            }
+            // Track key stats for comparison
+            if (statName === 'Goals') newGoals = value;
+            if (statName === 'Assists') newAssists = value;
+            if (statName === 'Points') newPoints = value;
             
             await prisma.playerStat.create({
               data: { playerId, leagueId: league.id, statId, statName, value },
@@ -370,8 +392,22 @@ export async function syncLeaguePlayerStats(
             totalStatsStored++;
             playerStatsStored++;
           }
+          
           if (playerStatsStored > 0) {
-            console.log(`[PlayerStats] Stored ${playerStatsStored} stats for player ${playerKey}`);
+            console.log(`[PlayerStats] ${playerName} - NEW stats: G=${newGoals} A=${newAssists} P=${newPoints} (stored ${playerStatsStored} stats)`);
+            if (oldStats.length > 0) {
+              const oldGoals = oldStats.find(s => s.statName === 'Goals')?.value ?? 0;
+              const oldAssists = oldStats.find(s => s.statName === 'Assists')?.value ?? 0;
+              const changes = [];
+              if (newGoals !== oldGoals) changes.push(`G: ${oldGoals}→${newGoals}`);
+              if (newAssists !== oldAssists) changes.push(`A: ${oldAssists}→${newAssists}`);
+              if (newPoints !== oldPoints) changes.push(`P: ${oldPoints}→${newPoints}`);
+              if (changes.length > 0) {
+                console.log(`[PlayerStats] ✅ ${playerName} stats CHANGED: ${changes.join(', ')}`);
+              } else {
+                console.log(`[PlayerStats] ⚠️ ${playerName} stats UNCHANGED - Yahoo may not have updated yet`);
+              }
+            }
           }
         }
       } catch (error) {
