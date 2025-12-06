@@ -134,7 +134,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const forceRefresh = searchParams.get("refresh") === "true";
     
-    const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours (more frequent updates for daily stats)
+    const SYNC_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours (more frequent updates for daily stats)
     const lastSync = league.updatedAt;
     const timeSinceSync = Date.now() - lastSync.getTime();
     const needsSync = timeSinceSync > SYNC_INTERVAL_MS || forceRefresh;
@@ -142,8 +142,10 @@ export async function GET(
     console.log("[Trade Data] Last sync:", lastSync.toISOString(), "Time since:", Math.round(timeSinceSync / 1000 / 60), "minutes");
     console.log("[Trade Data] Force refresh:", forceRefresh);
     console.log("[Trade Data] Needs sync:", needsSync);
+    console.log("[Trade Data] Sync interval:", Math.round(SYNC_INTERVAL_MS / 1000 / 60), "minutes");
 
     if (needsSync) {
+      console.log("[Trade Data] ========== STARTING STATS SYNC ==========");
       // Sync rosters (teams and players)
       try {
         console.log("[Trade Data] Starting roster sync for league:", leagueKey);
