@@ -175,6 +175,12 @@ export default function TradeBuilderPage() {
   const fetchTradeData = async (forceRefresh = false) => {
     try {
       console.log("[Trade Page] Fetching trade data for league:", leagueKey, forceRefresh ? "(force refresh)" : "");
+      
+      // Preserve current selections before fetching new data
+      const currentTeamAId = sideA.teamId;
+      const currentTeamBId = sideB.teamId;
+      const currentPlayerIds = sideB.playerIds;
+      
       const url = forceRefresh 
         ? `/api/league/${leagueKey}/trade-data?refresh=true`
         : `/api/league/${leagueKey}/trade-data`;
@@ -198,8 +204,23 @@ export default function TradeBuilderPage() {
         players: result.data.teams?.reduce((sum: number, t: any) => sum + (t.roster?.length ?? 0), 0),
         lastUpdated: result.data.lastUpdated
       });
+      
       setTradeData(result.data);
       setRefreshLoading(false);
+      
+      // Restore selections after data loads (only if teams still exist in new data)
+      if (currentTeamAId && result.data.teams?.some((t: any) => t.id === currentTeamAId)) {
+        console.log("[Trade Page] Restoring Team A selection:", currentTeamAId);
+        setSideA(prev => ({ ...prev, teamId: currentTeamAId }));
+      }
+      if (currentTeamBId && result.data.teams?.some((t: any) => t.id === currentTeamBId)) {
+        console.log("[Trade Page] Restoring Team B selection:", currentTeamBId);
+        setSideB(prev => ({ 
+          ...prev, 
+          teamId: currentTeamBId,
+          playerIds: currentPlayerIds // Preserve player selections too
+        }));
+      }
     } catch (err) {
       console.error("[Trade Page] Fetch error:", err);
       setError(err instanceof Error ? err.message : "Failed to load trade data");
