@@ -347,10 +347,11 @@ export async function syncLeaguePlayerStats(
             select: { statName: true, value: true },
           });
           
+          const oldGoals = oldStats.find(s => s.statName === 'Goals')?.value ?? 0;
+          const oldAssists = oldStats.find(s => s.statName === 'Assists')?.value ?? 0;
+          const oldPoints = oldStats.find(s => s.statName === 'Points')?.value ?? 0;
+          
           if (oldStats.length > 0) {
-            const oldGoals = oldStats.find(s => s.statName === 'Goals')?.value ?? 0;
-            const oldAssists = oldStats.find(s => s.statName === 'Assists')?.value ?? 0;
-            const oldPoints = oldStats.find(s => s.statName === 'Points')?.value ?? 0;
             console.log(`[PlayerStats] ${playerName} - OLD stats: G=${oldGoals} A=${oldAssists} P=${oldPoints}`);
           }
           
