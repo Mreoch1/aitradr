@@ -138,11 +138,11 @@ export function AISuggestionsModal({
                     <strong>ℹ️ Found {validSuggestions.length} trade suggestion{validSuggestions.length !== 1 ? 's' : ''}.</strong>
                     {validSuggestions.length < 5 && (
                       <span className="ml-2">
-                        The AI filtered out trades that were too lopsided, unrealistic, or didn't meet quality standards. 
-                        {validSuggestions.length === 1 && " Only one mutually beneficial trade was found."}
-                        {validSuggestions.length === 2 && " Only two realistic trades were identified."}
-                        {validSuggestions.length === 3 && " Three viable trades were found after filtering."}
-                        {validSuggestions.length === 4 && " Four trades passed validation."}
+                        The AI filtered out trades that were too lopsided (net value difference &gt; 35), unrealistic, or didn't meet quality standards. This ensures only realistic, mutually beneficial trades are shown.
+                        {validSuggestions.length === 1 && " Only one trade met all quality criteria. Try adjusting your team's needs or check back later as league dynamics change."}
+                        {validSuggestions.length === 2 && " Two realistic trades were identified after filtering. The system prioritizes quality over quantity to show only viable options."}
+                        {validSuggestions.length === 3 && " Three viable trades were found. Additional trades may have been filtered for being too lopsided or unrealistic."}
+                        {validSuggestions.length === 4 && " Four trades passed validation. The system shows the best available options based on your team's needs."}
                       </span>
                     )}
                   </p>

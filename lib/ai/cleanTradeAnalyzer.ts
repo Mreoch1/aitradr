@@ -114,8 +114,12 @@ function isValidSuggestion(suggestion: TradeSuggestion): boolean {
   }
   
   // FIX #1: Hard Loss Floor - prevent massive losing trades
-  if (suggestion.netValue < -12) {
-    console.warn("[Clean AI] Rejected: Net loss > 12 points (", suggestion.netValue, ")");
+  // Allow slightly larger losses if trade significantly improves weak categories
+  const hasStrongCategoryImprovement = suggestion.categoryImpact && suggestion.categoryImpact.length >= 2;
+  const maxAllowedLoss = hasStrongCategoryImprovement ? -15 : -12;
+  
+  if (suggestion.netValue < maxAllowedLoss) {
+    console.warn("[Clean AI] Rejected: Net loss > ", maxAllowedLoss, " points (", suggestion.netValue, ")");
     return false;
   }
   
@@ -317,7 +321,7 @@ Think like a human GM:
 - Trades with > 50 value difference will be marked "Speculative"
 - Losing trades (netValue < 0) capped at "Medium" confidence
 
-Return 3-5 best suggestions ranked by strategic fit and realism.`;
+Return 5-7 best suggestions ranked by strategic fit and realism. More candidates allow the system to show diverse, quality trade options after filtering.`;
 
 // ============================================================================
 // PAYLOAD BUILDER
@@ -484,10 +488,11 @@ export async function analyzeTrades(
     });
     
     // Filter out unrealistic trades (huge lopsided wins that would never be accepted)
-    // Trades with > 40 net value are very unlikely to be accepted in real leagues
+    // Trades with > 35 net value are very unlikely to be accepted in real leagues
     const realisticSuggestions = suggestionsWithRealConfidence.filter(s => {
-      // Block trades that are TOO lopsided (> 40 value difference) - these are veto-bait
-      if (Math.abs(s.netValue) > 40) {
+      // Block trades that are TOO lopsided (> 35 value difference) - these are veto-bait
+      // Slightly relaxed from 40 to allow more diverse options while still blocking unrealistic trades
+      if (Math.abs(s.netValue) > 35) {
         console.warn("[Clean AI] Filtered: Trade too lopsided (netValue:", s.netValue, ") - unlikely to be accepted");
         return false;
       }
