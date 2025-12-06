@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
@@ -215,7 +215,8 @@ export default function TradeBuilderPage() {
     // Auto-refresh data every 30 seconds (but don't force sync)
     const interval = setInterval(() => fetchTradeData(false), 30000);
     return () => clearInterval(interval);
-  }, [leagueKey, fetchTradeData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueKey]); // Only depend on leagueKey, fetchTradeData is stable
 
   // Handle URL parameters for pre-selecting team and player
   useEffect(() => {
