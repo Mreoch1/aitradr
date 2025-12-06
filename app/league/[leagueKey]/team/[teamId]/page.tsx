@@ -219,21 +219,21 @@ export default function TeamDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b-2 border-gray-300">
-                    <th className="px-2 py-2 text-left font-semibold">Player</th>
-                    <th className="px-2 py-2 text-left font-semibold">Pos</th>
-                    <th className="px-2 py-2 text-left font-semibold">NHL</th>
-                    <th className="px-2 py-2 text-center font-semibold">G</th>
-                    <th className="px-2 py-2 text-center font-semibold">A</th>
-                    <th className="px-2 py-2 text-center font-semibold">P</th>
-                    <th className="px-2 py-2 text-center font-semibold">PPP</th>
-                    <th className="px-2 py-2 text-center font-semibold">SOG</th>
-                    <th className="px-2 py-2 text-center font-semibold">+/-</th>
-                    <th className="px-2 py-2 text-center font-semibold">PIM</th>
-                    <th className="px-2 py-2 text-center font-semibold">HIT</th>
-                    <th className="px-2 py-2 text-center font-semibold">BLK</th>
-                    <th className="px-2 py-2 text-center font-semibold">FOW</th>
-                    <th className="px-2 py-2 text-center font-semibold">Value</th>
-                    <th className="px-2 py-2 text-center font-semibold">Keeper</th>
+                    <th className="px-2 py-2 text-left font-semibold theme-text-primary">Player</th>
+                    <th className="px-2 py-2 text-left font-semibold theme-text-primary">Pos</th>
+                    <th className="px-2 py-2 text-left font-semibold theme-text-primary">NHL</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">G</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">A</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">P</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">PPP</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">SOG</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">+/-</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">PIM</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">HIT</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">BLK</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">FOW</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">Value</th>
+                    <th className="px-2 py-2 text-center font-semibold theme-text-primary">Keeper</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,18 +249,18 @@ export default function TeamDashboardPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-2 py-2 text-xs">{player.pos}</td>
-                      <td className="px-2 py-2 text-xs">{player.nhlTeam}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.G}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.A}</td>
-                      <td className="px-2 py-2 text-center font-semibold">{player.stats.P}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.PPP}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.SOG}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.plusMinus}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.PIM}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.HIT}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.BLK}</td>
-                      <td className="px-2 py-2 text-center">{player.stats.FOW}</td>
+                      <td className="px-2 py-2 text-xs theme-text-secondary">{player.pos}</td>
+                      <td className="px-2 py-2 text-xs theme-text-secondary">{player.nhlTeam}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.G}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.A}</td>
+                      <td className="px-2 py-2 text-center font-semibold theme-text-primary">{player.stats.P}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.PPP}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.SOG}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.plusMinus}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.PIM}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.HIT}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.BLK}</td>
+                      <td className="px-2 py-2 text-center theme-text-primary">{player.stats.FOW}</td>
                       <td className={`px-2 py-2 text-center font-bold ${getValueColor(player.keeper?.totalValue ?? player.value)}`}>
                         {toFixedSafe(player.value, 1)}
                         {player.keeper && player.keeper.bonus > 0 && (
@@ -296,16 +296,16 @@ export default function TeamDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b-2 border-gray-300">
-                      <th className="px-2 py-2 text-left font-semibold">Player</th>
-                      <th className="px-2 py-2 text-left font-semibold">NHL</th>
-                      <th className="px-2 py-2 text-center font-semibold">W</th>
-                      <th className="px-2 py-2 text-center font-semibold">L</th>
-                      <th className="px-2 py-2 text-center font-semibold">GAA</th>
-                      <th className="px-2 py-2 text-center font-semibold">SV</th>
-                      <th className="px-2 py-2 text-center font-semibold">SV%</th>
-                      <th className="px-2 py-2 text-center font-semibold">SHO</th>
-                      <th className="px-2 py-2 text-center font-semibold">Value</th>
-                      <th className="px-2 py-2 text-center font-semibold">Keeper</th>
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">Player</th>
+                      <th className="px-2 py-2 text-left font-semibold theme-text-primary">NHL</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">W</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">L</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">GAA</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">SV</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">SV%</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">SHO</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">Value</th>
+                      <th className="px-2 py-2 text-center font-semibold theme-text-primary">Keeper</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -321,13 +321,13 @@ export default function TeamDashboardPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-xs">{goalie.nhlTeam}</td>
-                        <td className="px-2 py-2 text-center">{goalie.stats.W}</td>
-                        <td className="px-2 py-2 text-center">{goalie.stats.L}</td>
-                        <td className="px-2 py-2 text-center">{toFixedSafe(goalie.stats.GAA, 2)}</td>
-                        <td className="px-2 py-2 text-center">{goalie.stats.SV}</td>
-                        <td className="px-2 py-2 text-center">{toFixedSafe(goalie.stats.SVPCT, 3)}</td>
-                        <td className="px-2 py-2 text-center">{goalie.stats.SHO}</td>
+                        <td className="px-2 py-2 text-xs theme-text-secondary">{goalie.nhlTeam}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{goalie.stats.W}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{goalie.stats.L}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{toFixedSafe(goalie.stats.GAA, 2)}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{goalie.stats.SV}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{toFixedSafe(goalie.stats.SVPCT, 3)}</td>
+                        <td className="px-2 py-2 text-center theme-text-primary">{goalie.stats.SHO}</td>
                         <td className={`px-2 py-2 text-center font-bold ${getValueColor(goalie.keeper?.totalValue ?? goalie.value)}`}>
                           {toFixedSafe(goalie.value, 1)}
                           {goalie.keeper && goalie.keeper.bonus > 0 && (
@@ -417,7 +417,7 @@ export default function TeamDashboardPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-semibold text-blue-700">
+                        <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                           Fit: {toFixedSafe(rec.fitScore * 100, 0)}%
                         </div>
                         <div className="text-xs theme-text-secondary">
@@ -427,7 +427,7 @@ export default function TeamDashboardPage() {
                     </div>
                     
                     <div className="mb-2 rounded bg-white/50 p-2 dark:bg-gray-800/50">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">
                         Stats in Your Weak Categories:
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-xs">
@@ -436,8 +436,8 @@ export default function TeamDashboardPage() {
                           if (!catInfo) return null;
                           return (
                             <div key={cat} className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">{catInfo.abbrev}:</span>
-                              <span className="font-semibold theme-text-primary">{toFixedSafe(value, cat === "GAA" || cat === "SVPCT" ? 2 : 0)}</span>
+                              <span className="text-gray-600 dark:text-gray-300">{catInfo.abbrev}:</span>
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">{toFixedSafe(value, cat === "GAA" || cat === "SVPCT" ? 2 : 0)}</span>
                             </div>
                           );
                         })}
@@ -446,8 +446,8 @@ export default function TeamDashboardPage() {
                     
                     <div className="flex items-center justify-between text-xs">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">On: </span>
-                        <span className="font-semibold theme-text-primary">{rec.currentTeamName}</span>
+                        <span className="text-gray-600 dark:text-gray-300">On: </span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{rec.currentTeamName}</span>
                       </div>
                       {rec.keeper && (
                         <div className="rounded bg-purple-200 px-2 py-1 font-semibold text-purple-800 dark:bg-purple-800 dark:text-purple-200">
