@@ -35,18 +35,14 @@ function getPrismaClient() {
   return client;
 }
 
-// Lazy initialization - client is created on first access, not at module load
-// This prevents deployment failures if environment variables aren't ready yet
-const prisma: PrismaClient = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
-    const client = getPrismaClient();
-    const value = client[prop as keyof PrismaClient];
-    if (typeof value === 'function') {
-      return value.bind(client);
-    }
-    return value;
-  },
-});
+// Standard Next.js + Prisma singleton pattern
+// In development: reuse global client to avoid connection exhaustion
+// In production (serverless): new client per request (no global reuse needed)
+const prisma = globalThis.prisma ?? getPrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.prisma = prisma;
+}
 
 export { prisma };
 export default prisma;
