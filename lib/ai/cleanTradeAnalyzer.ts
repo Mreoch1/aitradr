@@ -407,11 +407,16 @@ export async function analyzeTrades(
   );
 
   try {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      throw new Error("DEEPSEEK_API_KEY environment variable is not configured. Please set it in Vercel environment variables.");
+    }
+
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        "Authorization": `Bearer ${apiKey.trim()}`,
       },
       body: JSON.stringify({
         model: "deepseek-chat",
