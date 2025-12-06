@@ -11,10 +11,14 @@ declare global {
 // Configure WebSocket for Neon
 neonConfig.webSocketConstructor = ws;
 
-const connectionString = process.env.DATABASE_URL as string;
+const connectionString = process.env.DATABASE_URL;
 
 function getPrismaClient() {
   if (globalThis.prisma) return globalThis.prisma;
+
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set. Please configure it in Vercel environment variables.");
+  }
 
   // Use PrismaNeon with a config object, not a Pool instance
   const adapter = new PrismaNeon({ connectionString });
