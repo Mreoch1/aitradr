@@ -11,11 +11,11 @@ declare global {
 // Configure WebSocket for Neon
 neonConfig.webSocketConstructor = ws;
 
-const connectionString = process.env.DATABASE_URL;
-
 function getPrismaClient() {
   if (globalThis.prisma) return globalThis.prisma;
 
+  const connectionString = process.env.DATABASE_URL;
+  
   if (!connectionString) {
     throw new Error("DATABASE_URL environment variable is not set. Please configure it in Vercel environment variables.");
   }
@@ -35,7 +35,18 @@ function getPrismaClient() {
   return client;
 }
 
-const prisma = getPrismaClient();
+// Lazy initialization - client is created on first access, not at module load
+// This prevents deployment failures if environment variables aren't ready yet
+const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    const value = client[prop as keyof PrismaClient];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 export { prisma };
 export default prisma;
