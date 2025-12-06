@@ -37,15 +37,16 @@ export function computeConfidence(context: TradeContext): "High" | "Medium" | "S
   } else if (absNet <= 15) {
     confidence = 0.8;  // Slightly tilted but acceptable
   } else if (absNet <= 30) {
-    confidence = 0.7;  // Moderate advantage
+    confidence = 0.65; // Moderate advantage - less likely to be accepted
   } else if (absNet <= 50) {
-    confidence = 0.5;  // Large advantage, questionable
+    confidence = 0.4;  // Large advantage, very questionable
   } else {
-    confidence = 0.25; // Very lopsided, suspicious
+    confidence = 0.2;  // Very lopsided, essentially veto-bait
   }
   
-  // Small boost for category improvement (max +15%)
-  confidence += 0.15 * Math.min(categoryScore, 1.0);
+  // Small boost for category improvement (max +10%)
+  // Reduced from 15% because category gains shouldn't justify huge value losses
+  confidence += 0.10 * Math.min(categoryScore, 1.0);
   confidence = Math.min(confidence, 0.98);
   
   // Hard caps for losing trades
@@ -60,11 +61,15 @@ export function computeConfidence(context: TradeContext): "High" | "Medium" | "S
   }
   
   // Realism guard: huge wins are unlikely to be accepted
-  if (netValue > 50) {
-    confidence = Math.min(confidence, 0.35);  // Too good to be true
+  // Tighter thresholds for realistic trades
+  if (netValue > 25) {
+    confidence = Math.min(confidence, 0.5);   // > 25 point win = Medium max (unlikely)
   }
-  if (netValue > 80) {
-    confidence = Math.min(confidence, 0.2);   // Essentially trade-rape
+  if (netValue > 30) {
+    confidence = Math.min(confidence, 0.4);   // > 30 point win = Speculative (very unlikely)
+  }
+  if (netValue > 50) {
+    confidence = Math.min(confidence, 0.25);  // > 50 point win = Very Speculative (veto-bait)
   }
   
   // Map confidence score to label

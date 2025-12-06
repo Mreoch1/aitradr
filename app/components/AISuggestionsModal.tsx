@@ -131,6 +131,24 @@ export function AISuggestionsModal({
             <p className="text-center theme-text-secondary">No suggestions available</p>
           ) : (
             <>
+              {/* Info Message if fewer than 5 suggestions */}
+              {validSuggestions.length < 5 && (
+                <div className="mb-4 rounded-lg border-2 border-blue-500 bg-blue-50 p-3">
+                  <p className="text-sm text-blue-900">
+                    <strong>ℹ️ Found {validSuggestions.length} trade suggestion{validSuggestions.length !== 1 ? 's' : ''}.</strong>
+                    {validSuggestions.length < 5 && (
+                      <span className="ml-2">
+                        The AI filtered out trades that were too lopsided, unrealistic, or didn't meet quality standards. 
+                        {validSuggestions.length === 1 && " Only one mutually beneficial trade was found."}
+                        {validSuggestions.length === 2 && " Only two realistic trades were identified."}
+                        {validSuggestions.length === 3 && " Three viable trades were found after filtering."}
+                        {validSuggestions.length === 4 && " Four trades passed validation."}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
               {/* Navigation */}
               <div className="mb-4 flex items-center justify-between">
                 <button
@@ -232,11 +250,27 @@ export function AISuggestionsModal({
                   <span className="text-sm theme-text-secondary">AI Confidence:</span>
                   <div className="h-4 w-48 rounded-full bg-gray-300">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-purple-500"
-                      style={{ width: `${currentSuggestion.confidence}%` }}
+                      className={`h-full rounded-full ${
+                        currentSuggestion.confidence === "High"
+                          ? "bg-green-500"
+                          : currentSuggestion.confidence === "Medium"
+                          ? "bg-yellow-500"
+                          : "bg-orange-500"
+                      }`}
+                      style={{ 
+                        width: currentSuggestion.confidence === "High" ? "80%" : 
+                               currentSuggestion.confidence === "Medium" ? "60%" : 
+                               "40%" 
+                      }}
                     ></div>
                   </div>
-                  <span className="font-bold theme-text-primary">{currentSuggestion.confidence}%</span>
+                  <span className={`font-bold ${
+                    currentSuggestion.confidence === "High" ? "text-green-700" :
+                    currentSuggestion.confidence === "Medium" ? "text-yellow-700" :
+                    "text-orange-700"
+                  }`}>
+                    {currentSuggestion.confidence}
+                  </span>
                 </div>
 
                 {/* Action Button */}

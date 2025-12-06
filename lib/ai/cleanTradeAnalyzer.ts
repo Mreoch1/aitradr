@@ -486,13 +486,17 @@ export async function analyzeTrades(
     });
     
     // Filter out unrealistic trades (huge lopsided wins that would never be accepted)
-    // If netValue > 80, confidence will be "Speculative" - consider not showing these at all
+    // Trades with > 30 net value are very unlikely to be accepted in real leagues
     const realisticSuggestions = suggestionsWithRealConfidence.filter(s => {
-      // Block trades that are TOO lopsided (> 90 value difference)
-      if (Math.abs(s.netValue) > 90) {
-        console.warn("[Clean AI] Filtered: Trade too lopsided (netValue:", s.netValue, ")");
+      // Block trades that are TOO lopsided (> 50 value difference) - these are veto-bait
+      if (Math.abs(s.netValue) > 50) {
+        console.warn("[Clean AI] Filtered: Trade too lopsided (netValue:", s.netValue, ") - unlikely to be accepted");
         return false;
       }
+      
+      // For trades with > 30 net value, mark as Speculative but still show
+      // (confidence scoring already handles this)
+      
       return true;
     });
     
