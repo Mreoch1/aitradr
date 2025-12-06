@@ -411,8 +411,8 @@ export default function TeamDashboardPage() {
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <div>
-                        <h3 className="font-bold text-lg theme-text-primary">{rec.name}</h3>
-                        <p className="text-xs theme-text-secondary">
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{rec.name}</h3>
+                        <p className="text-xs text-gray-700 dark:text-gray-300">
                           {rec.pos} • {rec.nhlTeam}
                         </p>
                       </div>
