@@ -457,10 +457,10 @@ export default function TeamDashboardPage() {
                     </div>
                     
                     <Link
-                      href={`/league/${leagueKey}/trade?teamB=${rec.currentTeamId}`}
+                      href={`/league/${leagueKey}/trade?teamB=${rec.currentTeamId}&playerId=${rec.playerId}`}
                       className="mt-3 block w-full rounded bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
                     >
-                      Open Trade Builder →
+                      Add to Trade Block →
                     </Link>
                   </div>
                 ))}

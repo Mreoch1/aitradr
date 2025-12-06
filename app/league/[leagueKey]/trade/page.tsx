@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
@@ -99,6 +99,7 @@ function formatStatName(name: string): string {
 
 export default function TradeBuilderPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const leagueKey = params.leagueKey as string;
 
   const [tradeData, setTradeData] = useState<TradeData | null>(null);
@@ -125,6 +126,7 @@ export default function TradeBuilderPage() {
     A: string[];
     B: string[];
   }>({ A: [], B: [] });
+  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
   
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{
@@ -201,6 +203,51 @@ export default function TradeBuilderPage() {
     const interval = setInterval(fetchTradeData, 30000);
     return () => clearInterval(interval);
   }, [leagueKey]);
+
+  // Handle URL parameters for pre-selecting team and player
+  useEffect(() => {
+    if (!tradeData || urlParamsProcessed) return;
+
+    const teamBId = searchParams.get('teamB');
+    const playerId = searchParams.get('playerId');
+
+    // Auto-select user's team (Team A) if not already selected
+    if (!sideA.teamId) {
+      const myTeam = tradeData.teams.find(t => t.isOwner);
+      if (myTeam) {
+        setSideA(prev => ({
+          ...prev,
+          teamId: myTeam.id,
+        }));
+      }
+    }
+
+    // Select Team B and add player if provided
+    if (teamBId) {
+      // Find the team
+      const team = tradeData.teams.find(t => t.id === teamBId);
+      if (team) {
+        setSideB(prev => ({
+          ...prev,
+          teamId: teamBId,
+        }));
+
+        // If playerId is provided, add that player to the trade block
+        if (playerId) {
+          const player = team.roster.find(p => p.playerId === playerId);
+          if (player) {
+            setSideB(prev => ({
+              ...prev,
+              teamId: teamBId,
+              playerIds: [playerId],
+            }));
+          }
+        }
+      }
+    }
+
+    setUrlParamsProcessed(true);
+  }, [tradeData, searchParams, urlParamsProcessed, sideA.teamId]);
 
   if (loading) {
     return (
