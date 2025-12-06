@@ -377,6 +377,24 @@ export async function syncLeaguePlayerStats(
     
     console.log(`[PlayerStats] Successfully stored ${totalStatsStored} stats for ${allPlayerKeys.length} players across ${teamsList.length} teams`);
     
+    // Verify we actually stored stats
+    if (totalStatsStored === 0) {
+      console.warn(`[PlayerStats] WARNING: No stats were stored! This may indicate an issue with the Yahoo API response.`);
+      throw new Error("No stats were stored during sync - Yahoo API may have returned empty data");
+    }
+    
+    // Log a sample of stored stats for verification
+    const sampleStats = await prisma.playerStat.findMany({
+      where: { leagueId: league.id },
+      take: 5,
+      include: { player: { select: { name: true } } }
+    });
+    console.log(`[PlayerStats] Sample of stored stats:`, sampleStats.map(s => ({
+      player: s.player.name,
+      stat: s.statName,
+      value: s.value
+    })));
+    
   } catch (error) {
     console.error(`[PlayerStats] Error syncing stats via teams endpoint:`, error);
     throw error;

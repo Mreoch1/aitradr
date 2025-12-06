@@ -134,7 +134,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const forceRefresh = searchParams.get("refresh") === "true";
     
-    const SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours (more frequent updates)
+    const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours (more frequent updates for daily stats)
     const lastSync = league.updatedAt;
     const timeSinceSync = Date.now() - lastSync.getTime();
     const needsSync = timeSinceSync > SYNC_INTERVAL_MS || forceRefresh;
@@ -174,21 +174,25 @@ export async function GET(
       try {
         console.log("[Trade Data] Starting player stats sync for league:", leagueKey);
         await syncLeaguePlayerStats(request, leagueKey);
-        console.log("[Trade Data] Player stats sync completed");
+        console.log("[Trade Data] Player stats sync completed successfully");
         statsSuccess = true;
+        
+        // Only update timestamp if stats were successfully synced
+        await prisma.league.update({
+          where: { id: league.id },
+          data: { updatedAt: new Date() },
+        });
+        console.log("[Trade Data] League timestamp updated after successful stats sync");
       } catch (error) {
         console.error("[Trade Data] Error syncing player stats:", error);
         if (error instanceof Error) {
           console.error("[Trade Data] Stats sync error details:", error.message);
+          console.error("[Trade Data] Stack trace:", error.stack);
         }
+        // Don't update timestamp if sync failed - keep old timestamp so user knows data is stale
+        console.warn("[Trade Data] Stats sync failed - NOT updating timestamp. Data may be stale.");
         // Continue - we'll try to use existing stats
       }
-      
-      // Update the league's updatedAt timestamp
-      await prisma.league.update({
-        where: { id: league.id },
-        data: { updatedAt: new Date() },
-      });
       
       // Calculate player values (only if we have fresh stats or this is first run)
       if (statsSuccess || forceRefresh) {

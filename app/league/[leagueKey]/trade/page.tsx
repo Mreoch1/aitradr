@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { TradeData } from "@/app/api/league/[leagueKey]/trade-data/route";
@@ -165,44 +165,50 @@ export default function TradeBuilderPage() {
     }
   };
 
-  useEffect(() => {
-    async function fetchTradeData() {
-      try {
-        console.log("[Trade Page] Fetching trade data for league:", leagueKey);
-        const response = await fetch(`/api/league/${leagueKey}/trade-data`);
-        console.log("[Trade Page] Response status:", response.status);
-        const result = await response.json();
-        console.log("[Trade Page] Response ok:", result.ok);
+  const fetchTradeData = async (forceRefresh = false) => {
+    try {
+      console.log("[Trade Page] Fetching trade data for league:", leagueKey, forceRefresh ? "(force refresh)" : "");
+      const url = forceRefresh 
+        ? `/api/league/${leagueKey}/trade-data?refresh=true`
+        : `/api/league/${leagueKey}/trade-data`;
+      const response = await fetch(url);
+      console.log("[Trade Page] Response status:", response.status);
+      const result = await response.json();
+      console.log("[Trade Page] Response ok:", result.ok);
 
-        if (!result.ok) {
-          console.error("[Trade Page] API error:", result.error);
-          if (handleTokenExpiration(result, `/league/${leagueKey}/trade`)) {
-            return;
-          }
-          setError(result.error || "Failed to load trade data");
+      if (!result.ok) {
+        console.error("[Trade Page] API error:", result.error);
+        if (handleTokenExpiration(result, `/league/${leagueKey}/trade`)) {
           return;
         }
-
-        console.log("[Trade Page] Trade data loaded:", {
-          teams: result.data.teams?.length,
-          picks: result.data.draftPickValues?.length,
-          players: result.data.teams?.reduce((sum: number, t: any) => sum + (t.roster?.length ?? 0), 0)
-        });
-        setTradeData(result.data);
-      } catch (err) {
-        console.error("[Trade Page] Fetch error:", err);
-        setError(err instanceof Error ? err.message : "Failed to load trade data");
-      } finally {
-        setLoading(false);
+        setError(result.error || "Failed to load trade data");
+        return;
       }
-    }
 
-    fetchTradeData();
+      console.log("[Trade Page] Trade data loaded:", {
+        teams: result.data.teams?.length,
+        picks: result.data.draftPickValues?.length,
+        players: result.data.teams?.reduce((sum: number, t: any) => sum + (t.roster?.length ?? 0), 0),
+        lastUpdated: result.data.lastUpdated
+      });
+      setTradeData(result.data);
+      setRefreshLoading(false);
+    } catch (err) {
+      console.error("[Trade Page] Fetch error:", err);
+      setError(err instanceof Error ? err.message : "Failed to load trade data");
+      setRefreshLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTradeData(false);
     
-    // Auto-refresh data every 30 seconds
-    const interval = setInterval(fetchTradeData, 30000);
+    // Auto-refresh data every 30 seconds (but don't force sync)
+    const interval = setInterval(() => fetchTradeData(false), 30000);
     return () => clearInterval(interval);
-  }, [leagueKey]);
+  }, [leagueKey, fetchTradeData]);
 
   // Handle URL parameters for pre-selecting team and player
   useEffect(() => {
@@ -818,6 +824,17 @@ export default function TradeBuilderPage() {
                 )}
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
+                <button
+                  onClick={() => {
+                    setRefreshLoading(true);
+                    fetchTradeData(true);
+                  }}
+                  disabled={refreshLoading}
+                  className="text-xs font-mono text-white hover:text-yellow-300 underline whitespace-nowrap disabled:opacity-50"
+                  title="Force refresh stats from Yahoo"
+                >
+                  {refreshLoading ? "🔄..." : "🔄"}
+                </button>
                 <Link 
                   href={`/league/${leagueKey}/formula`}
                   className="text-xs font-mono text-white hover:text-yellow-300 underline whitespace-nowrap"

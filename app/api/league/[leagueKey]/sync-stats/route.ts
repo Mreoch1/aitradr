@@ -44,10 +44,7 @@ export async function POST(
       );
     }
 
-    // Sync player stats
-    await syncLeaguePlayerStats(request, leagueKey);
-
-    // Recalculate player values with new stats
+    // Normalize league key first to find league
     const normalizedLeagueKey = leagueKey.replace(/\.1\./g, '.l.');
     const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
 
@@ -62,7 +59,40 @@ export async function POST(
       orderBy: { createdAt: 'asc' },
     });
 
-    if (league) {
+    if (!league) {
+      return NextResponse.json(
+        { ok: false, error: "League not found" },
+        { status: 404 }
+      );
+    }
+
+    // Sync player stats
+    let statsSuccess = false;
+    try {
+      console.log("[Sync Stats] Starting player stats sync for league:", leagueKey);
+      await syncLeaguePlayerStats(request, leagueKey);
+      console.log("[Sync Stats] Player stats sync completed successfully");
+      statsSuccess = true;
+      
+      // Only update timestamp if stats were successfully synced
+      await prisma.league.update({
+        where: { id: league.id },
+        data: { updatedAt: new Date() },
+      });
+      console.log("[Sync Stats] League timestamp updated after successful stats sync");
+    } catch (error) {
+      console.error("[Sync Stats] Error syncing player stats:", error);
+      if (error instanceof Error) {
+        console.error("[Sync Stats] Stats sync error details:", error.message);
+        console.error("[Sync Stats] Stack trace:", error.stack);
+      }
+      // Don't update timestamp if sync failed
+      console.warn("[Sync Stats] Stats sync failed - NOT updating timestamp. Data may be stale.");
+      throw error; // Re-throw so the API returns an error
+    }
+
+    // Recalculate player values with new stats (only if sync succeeded)
+    if (statsSuccess) {
       await ensureLeaguePlayerValues(league.id);
       
       // Rebuild team profiles after recalculating values
