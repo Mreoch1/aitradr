@@ -359,6 +359,11 @@ export async function syncLeaguePlayerStats(
             
             const statName = statDef.name || statDef.display_name || `Stat ${statId}`;
             
+            // Log key stats for verification
+            if (['Goals', 'Assists', 'Points', 'Plus/Minus', 'Shots on Goal', 'Hits', 'Blocks'].includes(statName)) {
+              console.log(`[PlayerStats] Storing ${statName} for ${playerKey}: ${value} (statId: ${statId})`);
+            }
+            
             await prisma.playerStat.create({
               data: { playerId, leagueId: league.id, statId, statName, value },
             });

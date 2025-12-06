@@ -53,14 +53,21 @@ function getStatValue(stats: { statName: string; value: number }[] | null | unde
   // Get possible Yahoo stat names
   const possibleNames = yahooStatNameMap[lowerStatName];
   if (!possibleNames) {
-    console.warn(`Unknown stat name: ${statName}`);
+    console.warn(`[getStatValue] Unknown stat name: ${statName}`);
     return 0;
   }
   
   // Find exact match from list of possible names
   for (const yahooName of possibleNames) {
     const match = stats.find((s) => s.statName === yahooName);
-    if (match) return match.value ?? 0;
+    if (match) {
+      return match.value ?? 0;
+    }
+  }
+  
+  // Debug: Log available stats if we can't find a match for common stats
+  if (['goals', 'assists', 'points', 'hits', 'blocks', 'shots on goal'].includes(lowerStatName)) {
+    console.warn(`[getStatValue] Could not find stat "${statName}" (looking for: ${possibleNames.join(', ')}). Available stats:`, stats.map(s => s.statName));
   }
   
   return 0;
