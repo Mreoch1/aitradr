@@ -16,20 +16,20 @@ interface AISuggestionsModalProps {
  * Client-side validation for trade suggestions
  * SOFT QUALITY PASS: Final safety filter to prevent rendering truly broken suggestions
  */
-function isRenderableSuggestion(s: TradeSuggestion): boolean {
+function isRenderableSuggestion(s: TradeSuggestion, index: number): boolean {
   // Must have a partner team
   if (!s.partnerTeam || !s.partnerTeam.trim()) {
-    console.warn("[UI] Rejected render: Missing partner team");
+    console.warn(`[UI] Suggestion ${index}: Rejected - Missing partner team. Data:`, JSON.stringify(s, null, 2));
     return false;
   }
   
   // Must have assets on both sides
   if (!s.youGive || s.youGive.length === 0) {
-    console.warn("[UI] Rejected render: No assets given");
+    console.warn(`[UI] Suggestion ${index}: Rejected - No assets given. Data:`, JSON.stringify(s, null, 2));
     return false;
   }
   if (!s.youGet || s.youGet.length === 0) {
-    console.warn("[UI] Rejected render: No assets received");
+    console.warn(`[UI] Suggestion ${index}: Rejected - No assets received. Data:`, JSON.stringify(s, null, 2));
     return false;
   }
   
@@ -38,13 +38,13 @@ function isRenderableSuggestion(s: TradeSuggestion): boolean {
   for (const asset of allAssets) {
     // Asset must have a name that doesn't contain "undefined"
     if (!asset.name || !asset.name.trim() || asset.name.toLowerCase().includes("undefined")) {
-      console.warn("[UI] Rejected render: Asset name invalid or contains 'undefined'");
+      console.warn(`[UI] Suggestion ${index}: Rejected - Asset name invalid or contains 'undefined'. Asset:`, asset, "Full suggestion:", JSON.stringify(s, null, 2));
       return false;
     }
     
     // Must have a finite value (can be negative, zero, or positive)
     if (!Number.isFinite(asset.value)) {
-      console.warn("[UI] Rejected render: Asset has NaN or Infinity value");
+      console.warn(`[UI] Suggestion ${index}: Rejected - Asset has NaN or Infinity value. Asset:`, asset, "Full suggestion:", JSON.stringify(s, null, 2));
       return false;
     }
   }
@@ -54,10 +54,11 @@ function isRenderableSuggestion(s: TradeSuggestion): boolean {
   const getHasValue = s.youGet.some(a => a.value > 5);
   
   if (!giveHasValue && !getHasValue) {
-    console.warn("[UI] Rejected render: Both sides have value < 5");
+    console.warn(`[UI] Suggestion ${index}: Rejected - Both sides have value < 5. Give:`, s.youGive.map(a => `${a.name}=${a.value}`), "Get:", s.youGet.map(a => `${a.name}=${a.value}`));
     return false;
   }
   
+  console.log(`[UI] Suggestion ${index}: ✅ PASSED validation - Partner: ${s.partnerTeam}, Net: ${s.netValue}`);
   return true;
 }
 
@@ -74,7 +75,8 @@ export function AISuggestionsModal({
 
   // Filter out invalid suggestions before rendering
   console.log("🔥 UI: Received suggestions from API:", suggestions.length);
-  const validSuggestions = suggestions.filter(isRenderableSuggestion);
+  console.log("🔥 UI: First suggestion sample:", suggestions[0] ? JSON.stringify(suggestions[0], null, 2) : "No suggestions");
+  const validSuggestions = suggestions.filter((s, idx) => isRenderableSuggestion(s, idx));
   console.log("🔥 UI: Renderable suggestions after filtering:", validSuggestions.length);
   
   // If no valid suggestions, show message
