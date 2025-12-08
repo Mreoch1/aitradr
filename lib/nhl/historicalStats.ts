@@ -153,7 +153,9 @@ export async function fetchNHLPlayerSeasonStats(
       shPoints: "Shorthanded Points",
       gameWinningGoals: "Game-Winning Goals",
       shots: "Shots on Goal",
-      // Note: hits, blockedShots may not be in summary endpoint
+      hits: "Hits",
+      blockedShots: "Blocks",
+      // Note: faceoffs won is not available in summary endpoint
     };
     
     for (const [nhlKey, ourStatName] of Object.entries(statMapping)) {
