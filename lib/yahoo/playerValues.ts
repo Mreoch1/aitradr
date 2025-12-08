@@ -187,7 +187,18 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       const totalWeight = values.reduce((sum, v) => sum + v.weight, 0);
       const weightedSum = values.reduce((sum, v) => sum + (v.value * v.weight), 0);
       const weightedAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
-      historicalStats.set(statName.toLowerCase(), weightedAvg);
+      // Normalize stat name to match SKATER_CATEGORIES format
+      // NHL API uses "Power Play Points" but we need "powerplay points" (no space)
+      let normalizedName = normalizeStatName(statName);
+      // Map NHL stat name variations to SKATER_CATEGORIES format
+      const statNameMapping: Record<string, string> = {
+        "power play points": "powerplay points",
+        "short handed points": "shorthanded points",
+        "game winning goals": "game-winning goals",
+        "game-winning goals": "game-winning goals",
+      };
+      normalizedName = statNameMapping[normalizedName] || normalizedName;
+      historicalStats.set(normalizedName, weightedAvg);
     }
   } catch (error) {
     console.error(`[PlayerValues] Error fetching historical stats for player ${playerId}:`, error);

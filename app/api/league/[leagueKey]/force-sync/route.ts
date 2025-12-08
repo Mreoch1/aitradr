@@ -50,7 +50,7 @@ export async function POST(
     console.log("[Force Sync] Rosters synced");
     
     // Step 2: Sync player stats from Yahoo
-    console.log("[Force Sync] Step 2/3: Syncing player stats...");
+    console.log("[Force Sync] Step 2/5: Syncing player stats...");
     try {
       await syncLeaguePlayerStats(request, leagueKey);
       console.log("[Force Sync] Player stats synced");
@@ -59,8 +59,96 @@ export async function POST(
       // Continue - we'll try to calculate with existing stats
     }
     
-    // Step 3: Calculate player values using z-scores
-    console.log("[Force Sync] Step 3/4: Calculating player values...");
+    // Step 3: Sync historical stats from NHL API (optional - may fail due to network limits)
+    console.log("[Force Sync] Step 3/5: Syncing historical stats from NHL API...");
+    try {
+      // Import and call the historical stats sync logic
+      const { findNHLPlayerIdByName, buildPlayerNameToNHLIdMap } = await import("@/lib/nhl/playerLookup");
+      const { fetchNHLPlayerSeasonStats, getLastTwoSeasons } = await import("@/lib/nhl/historicalStats");
+      
+      // Get all teams with roster entries
+      const teams = await prisma.team.findMany({
+        where: { leagueId: league.id },
+        include: {
+          rosterEntries: {
+            include: { player: true },
+          },
+        },
+      });
+      
+      const allRosterEntries = teams.flatMap(team => team.rosterEntries);
+      const uniquePlayers = Array.from(
+        new Map(allRosterEntries.map(e => [e.player.id, e.player])).values()
+      );
+      
+      if (uniquePlayers.length > 0) {
+        const historicalSeasons = getLastTwoSeasons();
+        const lookupMap = await buildPlayerNameToNHLIdMap();
+        const batchSize = 10;
+        let playersProcessed = 0;
+        
+        // Process in batches to avoid rate limits
+        for (let i = 0; i < uniquePlayers.length; i += batchSize) {
+          const batch = uniquePlayers.slice(i, i + batchSize);
+          
+          for (const player of batch) {
+            const nhlId = lookupMap.get(player.name.toLowerCase()) || await findNHLPlayerIdByName(player.name);
+            
+            if (!nhlId) {
+              continue;
+            }
+            
+            for (const season of historicalSeasons) {
+              try {
+                const stats = await fetchNHLPlayerSeasonStats(nhlId, season);
+                
+                for (const stat of stats) {
+                  await prisma.playerSeasonStat.upsert({
+                    where: {
+                      playerId_season_statName: {
+                        playerId: player.id,
+                        season,
+                        statName: stat.statName,
+                      },
+                    },
+                    update: {
+                      value: stat.value,
+                      gamesPlayed: stat.gamesPlayed,
+                    },
+                    create: {
+                      playerId: player.id,
+                      season,
+                      statName: stat.statName,
+                      value: stat.value,
+                      gamesPlayed: stat.gamesPlayed,
+                    },
+                  });
+                }
+                
+                if (stats.length > 0) {
+                  playersProcessed++;
+                }
+              } catch (error) {
+                console.error(`[Force Sync] Error syncing historical stats for ${player.name}, season ${season}:`, error);
+              }
+            }
+          }
+          
+          // Rate limiting between batches
+          if (i + batchSize < uniquePlayers.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        console.log(`[Force Sync] Historical stats synced for ${playersProcessed} players`);
+      }
+    } catch (error) {
+      console.error("[Force Sync] Historical stats sync failed (this is optional):", error);
+      // Continue - historical stats are nice to have but not required
+    }
+    
+    // Step 4: Calculate player values using z-scores (now includes historical stats if available)
+    console.log("[Force Sync] Step 4/5: Calculating player values...");
     try {
       await ensureLeaguePlayerValues(league.id);
       console.log("[Force Sync] Player values calculated");
@@ -72,8 +160,8 @@ export async function POST(
       );
     }
     
-    // Step 4: Auto-populate keeper data from hardcoded list
-    console.log("[Force Sync] Step 4/5: Populating keeper data...");
+    // Step 5: Auto-populate keeper data from hardcoded list
+    console.log("[Force Sync] Step 5/6: Populating keeper data...");
     try {
       const { populateKeeperData } = await import("@/lib/keeper/populate");
       await populateKeeperData(league.id);
@@ -83,8 +171,8 @@ export async function POST(
       // Don't fail the whole sync if keeper population fails
     }
     
-    // Step 5: Build and cache team profiles for AI suggestions
-    console.log("[Force Sync] Step 5/5: Building team profiles...");
+    // Step 6: Build and cache team profiles for AI suggestions
+    console.log("[Force Sync] Step 6/6: Building team profiles...");
     try {
       const profiles = await buildAllTeamProfiles(league.id);
       await storeTeamProfiles(league.id, profiles);
@@ -104,7 +192,7 @@ export async function POST(
     
     return NextResponse.json({ 
       ok: true, 
-      message: "Teams, stats, values, keepers, and AI profiles refreshed successfully" 
+      message: "Teams, stats, historical stats, values, keepers, and AI profiles refreshed successfully" 
     });
   } catch (error) {
     console.error("[Force Sync] Error:", error);
