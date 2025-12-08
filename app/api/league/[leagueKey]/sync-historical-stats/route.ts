@@ -20,33 +20,51 @@ export async function POST(
 
     const { leagueKey } = await params;
 
-    // Get league
+    // Get league - use same query pattern as trade-data route (handle league key variations)
+    const normalizedLeagueKey = leagueKey.replace(/\.1\./g, '.l.');
+    const reverseNormalizedKey = leagueKey.replace(/\.l\./g, '.1.');
+    
     const league = await prisma.league.findFirst({
       where: {
-        leagueKey,
+        OR: [
+          { leagueKey: normalizedLeagueKey },
+          { leagueKey: reverseNormalizedKey },
+          { leagueKey: leagueKey },
+        ],
         userId: session.userId,
       },
+      orderBy: { createdAt: 'asc' }, // Use the oldest record (primary league)
     });
 
     if (!league) {
       return NextResponse.json({ error: "League not found" }, { status: 404 });
     }
 
-    // Get all roster entries for this league (roster entries belong to league, not team directly)
-    const rosterEntries = await prisma.rosterEntry.findMany({
+    console.log(`[Historical Stats] Found league: ${league.name} (${league.leagueKey})`);
+
+    // Get all teams with roster entries (same pattern as trade-data route)
+    const teams = await prisma.team.findMany({
       where: {
         leagueId: league.id,
       },
       include: {
-        player: true,
+        rosterEntries: {
+          include: {
+            player: true,
+          },
+        },
       },
     });
 
-    console.log(`[Historical Stats] Found ${rosterEntries.length} roster entries for league ${league.name}`);
+    console.log(`[Historical Stats] Found ${teams.length} teams`);
+
+    // Get all roster entries from all teams
+    const allRosterEntries = teams.flatMap(team => team.rosterEntries);
+    console.log(`[Historical Stats] Found ${allRosterEntries.length} total roster entries`);
 
     // Get unique players from roster entries
     const uniquePlayers = Array.from(
-      new Map(rosterEntries.map(e => [e.player.id, e.player])).values()
+      new Map(allRosterEntries.map(e => [e.player.id, e.player])).values()
     );
 
     console.log(`[Historical Stats] Syncing stats for ${uniquePlayers.length} unique players`);
@@ -59,7 +77,8 @@ export async function POST(
           playersProcessed: 0,
           playersSkipped: 0,
           totalStatsStored: 0,
-          rosterEntriesFound: rosterEntries.length,
+          teamsFound: teams.length,
+          rosterEntriesFound: allRosterEntries.length,
         },
       });
     }
