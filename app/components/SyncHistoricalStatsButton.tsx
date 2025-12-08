@@ -25,12 +25,13 @@ export default function SyncHistoricalStatsButton({ leagueKey }: SyncHistoricalS
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to sync historical stats");
+        const errorMsg = data.details || data.error || "Failed to sync historical stats";
+        throw new Error(errorMsg);
       }
 
       setStatus({
         type: "success",
-        message: `Sync completed! Processed ${data.successfulSyncs || 0} players successfully.`,
+        message: `Sync completed! Processed ${data.successfulSyncs || 0} players successfully. ${data.totalStatsStored || 0} stats stored.`,
       });
     } catch (error) {
       setStatus({

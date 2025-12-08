@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
 import { findNHLPlayerIdByName } from "@/lib/nhl/playerLookup";
 import { fetchNHLPlayerSeasonStats, getLastTwoSeasons } from "@/lib/nhl/historicalStats";
-import { getSeasonForCurrentGame } from "@/lib/yahoo/season";
 
 /**
  * Sync historical stats (last 2 seasons) for all players in a league
@@ -47,15 +46,26 @@ export async function POST(
 
     console.log(`[Historical Stats] Syncing stats for ${uniquePlayers.length} players`);
 
-    // Get current season to determine which historical seasons to fetch
-    const currentSeason = await getSeasonForCurrentGame(request);
-    const historicalSeasons = getLastTwoSeasons(currentSeason);
+    // Get historical seasons (last 2 seasons) - use current year directly
+    // getLastTwoSeasons() will use current year if no season provided
+    const historicalSeasons = getLastTwoSeasons();
     
     console.log(`[Historical Stats] Fetching seasons: ${historicalSeasons.join(", ")}`);
 
     // Build NHL player lookup map once
+    console.log("[Historical Stats] Building NHL player lookup map...");
     const { buildPlayerNameToNHLIdMap } = await import("@/lib/nhl/playerLookup");
-    const lookupMap = await buildPlayerNameToNHLIdMap();
+    let lookupMap: Map<string, number>;
+    try {
+      lookupMap = await buildPlayerNameToNHLIdMap();
+      console.log(`[Historical Stats] Built lookup map with ${lookupMap.size} players`);
+    } catch (error) {
+      console.error("[Historical Stats] Error building lookup map:", error);
+      return NextResponse.json(
+        { error: "Failed to build NHL player lookup map", details: error instanceof Error ? error.message : "Unknown error" },
+        { status: 500 }
+      );
+    }
 
     let totalStatsStored = 0;
     let playersProcessed = 0;
@@ -133,12 +143,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: `Historical stats sync completed`,
-      stats: {
-        playersProcessed,
-        playersSkipped,
-        totalStatsStored,
-        seasons: historicalSeasons,
-      },
+      successfulSyncs: playersProcessed,
+      playersSkipped,
+      totalStatsStored,
+      seasons: historicalSeasons,
     });
   } catch (error) {
     console.error("[Historical Stats] Error syncing historical stats:", error);
