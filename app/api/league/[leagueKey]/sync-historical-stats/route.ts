@@ -206,9 +206,20 @@ export async function POST(
     console.log(`[Historical Stats] Total stats stored: ${totalStatsStored}`);
     console.log(`[Historical Stats] Lookup map size: ${lookupMap.size}`);
 
+    // Recalculate player values with new historical stats
+    console.log(`[Historical Stats] Recalculating player values with historical stats...`);
+    try {
+      const { ensureLeaguePlayerValues } = await import("@/lib/yahoo/playerValues");
+      await ensureLeaguePlayerValues(league.id);
+      console.log(`[Historical Stats] Player values recalculated successfully`);
+    } catch (error) {
+      console.error(`[Historical Stats] Error recalculating player values:`, error);
+      // Don't fail the whole sync if value recalculation fails
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Historical stats sync completed`,
+      message: `Historical stats sync completed and player values recalculated`,
       successfulSyncs: playersProcessed,
       playersSkipped,
       totalStatsStored,
