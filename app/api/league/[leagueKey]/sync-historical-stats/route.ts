@@ -42,12 +42,27 @@ export async function POST(
       },
     });
 
+    console.log(`[Historical Stats] Found ${rosterEntries.length} roster entries for league ${league.name}`);
+
     // Get unique players from roster entries
     const uniquePlayers = Array.from(
       new Map(rosterEntries.map(e => [e.player.id, e.player])).values()
     );
 
-    console.log(`[Historical Stats] Syncing stats for ${uniquePlayers.length} players`);
+    console.log(`[Historical Stats] Syncing stats for ${uniquePlayers.length} unique players`);
+    
+    if (uniquePlayers.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: "No players found in league rosters. Please sync rosters first.",
+        stats: {
+          playersProcessed: 0,
+          playersSkipped: 0,
+          totalStatsStored: 0,
+          rosterEntriesFound: rosterEntries.length,
+        },
+      });
+    }
 
     // Get historical seasons (last 2 seasons) - use current year directly
     // getLastTwoSeasons() will use current year if no season provided
@@ -143,6 +158,8 @@ export async function POST(
       }
     }
 
+    console.log(`[Historical Stats] Sync completed: ${playersProcessed} processed, ${playersSkipped} skipped, ${totalStatsStored} stats stored`);
+
     return NextResponse.json({
       success: true,
       message: `Historical stats sync completed`,
@@ -150,6 +167,8 @@ export async function POST(
       playersSkipped,
       totalStatsStored,
       seasons: historicalSeasons,
+      totalPlayers: uniquePlayers.length,
+      lookupMapSize: lookupMap.size,
     });
   } catch (error) {
     console.error("[Historical Stats] Error syncing historical stats:", error);
