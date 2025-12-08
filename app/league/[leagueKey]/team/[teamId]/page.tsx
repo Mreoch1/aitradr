@@ -425,7 +425,7 @@ export default function TeamDashboardPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 dark:text-blue-300">
-                          Fit: {toFixedSafe(rec.fitScore * 100, 0)}%
+                          Fit: {toFixedSafe(Math.min(rec.fitScore * 100, 100), 0)}%
                         </div>
                         <div className="text-xs theme-text-secondary">
                           Value: {toFixedSafe(rec.value, 1)}
@@ -437,12 +437,12 @@ export default function TeamDashboardPage() {
                       <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">
                         Stats in Your Weak Categories:
                       </div>
-                      <div className="grid grid-cols-2 gap-1 text-xs">
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                         {Object.entries(rec.categoryStats).map(([cat, value]) => {
                           const catInfo = dashboard.categorySummary[cat];
                           if (!catInfo) return null;
                           return (
-                            <div key={cat} className="flex justify-between">
+                            <div key={cat} className="flex items-center gap-1">
                               <span className="text-gray-600 dark:text-gray-300">{catInfo.abbrev}:</span>
                               <span className="font-semibold text-gray-900 dark:text-gray-100">{toFixedSafe(value, cat === "GAA" || cat === "SVPCT" ? 2 : 0)}</span>
                             </div>
