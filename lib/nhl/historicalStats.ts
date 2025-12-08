@@ -96,44 +96,45 @@ export async function findNHLPlayerId(playerName: string): Promise<number | null
 /**
  * Fetch historical stats for an NHL player by player ID and season
  * Uses api.nhle.com with the correct endpoint structure
+ * Fetches from multiple endpoints to get all stats: summary, realtime (hits/blocks), and faceoffs
  */
 export async function fetchNHLPlayerSeasonStats(
   nhlPlayerId: number,
   season: string
 ): Promise<{ statName: string; value: number; gamesPlayed: number }[]> {
   try {
-    // Use api.nhle.com - the correct NHL API domain
-    // Endpoint: /stats/rest/en/skater/summary for skaters, /goalie/summary for goalies
-    // Query params: season=YYYYYYYY, cayenneExp=playerId=XXXXX, factCayenneExp=gamesPlayed>0
-    
-    // Try skater endpoint first
-    const skaterUrl = `https://api.nhle.com/stats/rest/en/skater/summary?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
-    
     console.log(`[NHL API] Fetching stats for player ${nhlPlayerId}, season ${season}`);
-    let response = await fetch(skaterUrl);
     
-    let data: any;
-    if (response.ok) {
-      data = await response.json();
-    } else {
-      // Try goalie endpoint if skater fails
+    // Fetch from multiple endpoints to get all stats
+    const summaryUrl = `https://api.nhle.com/stats/rest/en/skater/summary?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
+    const realtimeUrl = `https://api.nhle.com/stats/rest/en/skater/realtime?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
+    const faceoffUrl = `https://api.nhle.com/stats/rest/en/skater/faceoffwins?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
+    
+    // Try skater endpoints first
+    let summaryResponse = await fetch(summaryUrl);
+    let realtimeResponse = await fetch(realtimeUrl);
+    let faceoffResponse = await fetch(faceoffUrl);
+    
+    // If summary fails, try goalie endpoint
+    if (!summaryResponse.ok) {
       const goalieUrl = `https://api.nhle.com/stats/rest/en/goalie/summary?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
-      response = await fetch(goalieUrl);
+      summaryResponse = await fetch(goalieUrl);
       
-      if (!response.ok) {
-        console.warn(`[NHL API] Failed to fetch stats: ${response.status} ${response.statusText}`);
+      if (!summaryResponse.ok) {
+        console.warn(`[NHL API] Failed to fetch stats: ${summaryResponse.status} ${summaryResponse.statusText}`);
         return [];
       }
-      data = await response.json();
     }
     
-    if (!data.data || data.data.length === 0) {
+    const summaryData: any = await summaryResponse.json();
+    
+    if (!summaryData.data || summaryData.data.length === 0) {
       console.warn(`[NHL API] No stats found for player ${nhlPlayerId}, season ${season}`);
       return [];
     }
     
     // Get the first stat entry (should be the season stats)
-    const seasonStats = data.data[0];
+    const seasonStats = summaryData.data[0];
     if (!seasonStats) {
       return [];
     }
@@ -141,10 +142,8 @@ export async function fetchNHLPlayerSeasonStats(
     const gamesPlayed = seasonStats.gamesPlayed || 0;
     const stats: { statName: string; value: number; gamesPlayed: number }[] = [];
     
-    // Map NHL stats to our stat names
-    // The API returns different field names than the old API
-    // Note: hits, blockedShots, and faceoffs won are not available in the summary endpoint
-    const statMapping: Record<string, string> = {
+    // Map NHL stats from summary endpoint to our stat names
+    const summaryStatMapping: Record<string, string> = {
       goals: "Goals",
       assists: "Assists",
       points: "Points",
@@ -156,7 +155,7 @@ export async function fetchNHLPlayerSeasonStats(
       shots: "Shots on Goal",
     };
     
-    for (const [nhlKey, ourStatName] of Object.entries(statMapping)) {
+    for (const [nhlKey, ourStatName] of Object.entries(summaryStatMapping)) {
       const value = seasonStats[nhlKey];
       if (value !== undefined && value !== null) {
         const finalValue: number = typeof value === "number" ? value : 0;
@@ -165,6 +164,57 @@ export async function fetchNHLPlayerSeasonStats(
           value: finalValue,
           gamesPlayed,
         });
+      }
+    }
+    
+    // Fetch hits and blocked shots from realtime endpoint
+    if (realtimeResponse.ok) {
+      try {
+        const realtimeData: any = await realtimeResponse.json();
+        if (realtimeData.data && realtimeData.data.length > 0) {
+          const realtimeStats = realtimeData.data[0];
+          
+          // Add hits
+          if (realtimeStats.hits !== undefined && realtimeStats.hits !== null) {
+            stats.push({
+              statName: "Hits",
+              value: typeof realtimeStats.hits === "number" ? realtimeStats.hits : 0,
+              gamesPlayed,
+            });
+          }
+          
+          // Add blocked shots
+          if (realtimeStats.blockedShots !== undefined && realtimeStats.blockedShots !== null) {
+            stats.push({
+              statName: "Blocks",
+              value: typeof realtimeStats.blockedShots === "number" ? realtimeStats.blockedShots : 0,
+              gamesPlayed,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn(`[NHL API] Error parsing realtime stats:`, error);
+      }
+    }
+    
+    // Fetch faceoffs won from faceoff endpoint
+    if (faceoffResponse.ok) {
+      try {
+        const faceoffData: any = await faceoffResponse.json();
+        if (faceoffData.data && faceoffData.data.length > 0) {
+          const faceoffStats = faceoffData.data[0];
+          
+          // Add faceoffs won (totalFaceoffWins)
+          if (faceoffStats.totalFaceoffWins !== undefined && faceoffStats.totalFaceoffWins !== null) {
+            stats.push({
+              statName: "Faceoffs Won",
+              value: typeof faceoffStats.totalFaceoffWins === "number" ? faceoffStats.totalFaceoffWins : 0,
+              gamesPlayed,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn(`[NHL API] Error parsing faceoff stats:`, error);
       }
     }
     
