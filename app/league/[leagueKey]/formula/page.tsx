@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SyncHistoricalStatsButton from "@/app/components/SyncHistoricalStatsButton";
 
 export default async function FormulaPage({
   params,
@@ -49,16 +50,17 @@ export default async function FormulaPage({
         <div className="mb-6 rounded-lg border-2 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 p-4">
           <div className="flex items-start gap-3">
             <div className="text-2xl">📊</div>
-            <div>
+            <div className="flex-1">
               <h3 className="mb-2 font-semibold text-blue-900 dark:text-blue-200">
                 Historical Stats Integration
               </h3>
-              <p className="text-sm text-blue-800 dark:text-blue-300">
+              <p className="mb-3 text-sm text-blue-800 dark:text-blue-300">
                 Player values now incorporate the last 2 seasons of historical statistics from the NHL API. 
                 Current season stats are weighted 70% and historical average (last 2 years) is weighted 30% 
                 to provide more stable and reliable valuations. This helps identify consistent performers 
                 and reduces volatility from small sample sizes or hot streaks.
               </p>
+              <SyncHistoricalStatsButton leagueKey={leagueKey} />
             </div>
           </div>
         </div>

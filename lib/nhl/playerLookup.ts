@@ -3,6 +3,8 @@
  * Since NHL API doesn't have a direct search, we'll build a lookup cache
  */
 
+import https from 'https';
+
 interface NHLPlayerInfo {
   id: number;
   fullName: string;
@@ -10,7 +12,50 @@ interface NHLPlayerInfo {
   lastName: string;
 }
 
+interface NHLTeamsResponse {
+  teams: Array<{
+    id: number;
+    name: string;
+  }>;
+}
+
+interface NHLRosterResponse {
+  roster: Array<{
+    person: {
+      id: number;
+      fullName: string;
+      firstName?: string;
+      lastName?: string;
+    };
+  }>;
+}
+
 const playerNameToNHLIdCache = new Map<string, number>();
+
+/**
+ * Make HTTPS request and return JSON
+ */
+function httpsGet(url: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error(`Failed to parse JSON: ${e}`));
+          }
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+    }).on('error', reject);
+  });
+}
 
 /**
  * Build a lookup map of player names to NHL IDs by fetching all current rosters
@@ -23,12 +68,7 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
     console.log("[NHL Lookup] Building player name to NHL ID map...");
     
     // Get all teams
-    const teamsResponse = await fetch("https://statsapi.web.nhl.com/api/v1/teams");
-    if (!teamsResponse.ok) {
-      throw new Error("Failed to fetch teams");
-    }
-    
-    const teamsData = await teamsResponse.json();
+    const teamsData: NHLTeamsResponse = await httpsGet("https://statsapi.web.nhl.com/api/v1/teams");
     const teams = teamsData.teams || [];
     
     console.log(`[NHL Lookup] Found ${teams.length} teams`);
@@ -37,11 +77,7 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
     for (const team of teams) {
       try {
         const rosterUrl = `https://statsapi.web.nhl.com/api/v1/teams/${team.id}/roster`;
-        const rosterResponse = await fetch(rosterUrl);
-        
-        if (!rosterResponse.ok) continue;
-        
-        const rosterData = await rosterResponse.json();
+        const rosterData: NHLRosterResponse = await httpsGet(rosterUrl);
         const roster = rosterData.roster || [];
         
         for (const rosterEntry of roster) {
@@ -58,6 +94,9 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
             }
           }
         }
+        
+        // Rate limiting: wait 50ms between teams
+        await new Promise(resolve => setTimeout(resolve, 50));
       } catch (error) {
         console.warn(`[NHL Lookup] Error fetching roster for team ${team.id}:`, error);
       }
