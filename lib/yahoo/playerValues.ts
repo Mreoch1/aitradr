@@ -235,10 +235,11 @@ export async function calculateSkaterValue(
   for (const category of SKATER_CATEGORIES) {
     // Blend current season (70%) with historical average (30%) for more stable valuation
     const currentValue = playerStats.stats.get(category) || 0;
-    const historicalValue = historicalStats.get(category) || 0;
+    const historicalValue = historicalStats.get(category);
     
-    // If we have historical data, blend it; otherwise use current only
-    const blendedValue = historicalValue > 0 
+    // If we have historical data (even if it's 0), blend it; otherwise use current only
+    // Use !== undefined to check if historical data exists (0 is a valid value)
+    const blendedValue = historicalValue !== undefined
       ? (currentValue * 0.7) + (historicalValue * 0.3)
       : currentValue;
     
