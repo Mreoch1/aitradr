@@ -69,14 +69,13 @@ interface NHLPlayerSearchResponse {
  */
 async function searchNHLPlayerByName(playerName: string): Promise<number | null> {
   try {
-    // NHL API search endpoint
-    // NOTE: statsapi.web.nhl.com doesn't exist (NXDOMAIN). Need to find correct NHL API domain.
-    // The domain may have changed or the API structure is different.
+    // Use records.nhl.com for player lookup - this API works
+    // The statsapi.web.nhl.com domain doesn't exist (NXDOMAIN)
     const encodedName = encodeURIComponent(playerName);
-    const searchUrl = `https://statsapi.web.nhl.com/api/v1/people?search=${encodedName}`;
+    const searchUrl = `https://records.nhl.com/site/api/player?search=${encodedName}`;
     
-    const searchData: NHLPlayerSearchResponse = await httpsGet(searchUrl);
-    const people = searchData.people || [];
+    const searchData: any = await httpsGet(searchUrl);
+    const people = searchData.data || [];
     
     if (people.length === 0) {
       return null;
@@ -85,8 +84,9 @@ async function searchNHLPlayerByName(playerName: string): Promise<number | null>
     // Try to find exact match first
     const normalizedSearch = normalizePlayerName(playerName);
     for (const person of people) {
-      if (person.fullName) {
-        const normalizedPerson = normalizePlayerName(person.fullName);
+      const fullName = person.fullName || `${person.firstName || ''} ${person.lastName || ''}`.trim();
+      if (fullName) {
+        const normalizedPerson = normalizePlayerName(fullName);
         if (normalizedPerson === normalizedSearch) {
           return person.id;
         }
@@ -115,52 +115,56 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
   try {
     console.log("[NHL Lookup] Building player name to NHL ID map...");
     
-    // Get all teams
-    // NOTE: statsapi.web.nhl.com doesn't exist (NXDOMAIN). Need to find correct NHL API domain.
-    const teamsData: NHLTeamsResponse = await httpsGet("https://statsapi.web.nhl.com/api/v1/teams");
-    const teams = teamsData.teams || [];
+    // Get all teams using api.nhle.com - the correct NHL API domain
+    const teamsData: any = await httpsGet("https://api.nhle.com/stats/rest/en/team");
+    const teams = teamsData.data || [];
     
     console.log(`[NHL Lookup] Found ${teams.length} teams`);
     
     let totalPlayersAdded = 0;
     
     // For each team, get roster
+    // Note: api.nhle.com doesn't have a direct roster endpoint, so we'll use records.nhl.com
+    // or build the lookup from the player search results
     for (const team of teams) {
       try {
-        const rosterUrl = `https://statsapi.web.nhl.com/api/v1/teams/${team.id}/roster`;
-        const rosterData: NHLRosterResponse = await httpsGet(rosterUrl);
-        const roster = rosterData.roster || [];
+        // Use records.nhl.com for roster data
+        const rosterUrl = `https://records.nhl.com/site/api/player?teamId=${team.id}`;
+        const rosterData: any = await httpsGet(rosterUrl);
+        const roster = rosterData.data || [];
         
-        for (const rosterEntry of roster) {
-          const person = rosterEntry.person;
-          if (person?.id && person?.fullName) {
+        for (const player of roster) {
+          const playerId = player.id;
+          const fullName = player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim();
+          
+          if (playerId && fullName) {
             // Store the full name as-is (will be normalized during lookup)
-            const fullName = person.fullName.toLowerCase().trim();
-            if (!lookup.has(fullName)) {
-              lookup.set(fullName, person.id);
+            const fullNameLower = fullName.toLowerCase().trim();
+            if (!lookup.has(fullNameLower)) {
+              lookup.set(fullNameLower, playerId);
               totalPlayersAdded++;
             }
             
             // Also store "First Last" format if available
-            if (person.firstName && person.lastName) {
-              const firstLast = `${person.firstName} ${person.lastName}`.toLowerCase().trim();
+            if (player.firstName && player.lastName) {
+              const firstLast = `${player.firstName} ${player.lastName}`.toLowerCase().trim();
               if (!lookup.has(firstLast)) {
-                lookup.set(firstLast, person.id);
+                lookup.set(firstLast, playerId);
                 totalPlayersAdded++;
               }
               
               // Store normalized version too
               const normalized = normalizePlayerName(firstLast);
               if (normalized !== firstLast && !lookup.has(normalized)) {
-                lookup.set(normalized, person.id);
+                lookup.set(normalized, playerId);
                 totalPlayersAdded++;
               }
             }
             
             // Store normalized version of full name
-            const normalized = normalizePlayerName(fullName);
-            if (normalized !== fullName && !lookup.has(normalized)) {
-              lookup.set(normalized, person.id);
+            const normalized = normalizePlayerName(fullNameLower);
+            if (normalized !== fullNameLower && !lookup.has(normalized)) {
+              lookup.set(normalized, playerId);
               totalPlayersAdded++;
             }
           }

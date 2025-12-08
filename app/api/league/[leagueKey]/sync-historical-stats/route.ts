@@ -8,13 +8,7 @@ import { fetchNHLPlayerSeasonStats, getLastTwoSeasons } from "@/lib/nhl/historic
  * Sync historical stats (last 2 seasons) for all players in a league
  * This fetches data from NHL API and stores it in PlayerSeasonStat table
  * 
- * CRITICAL ISSUE: statsapi.web.nhl.com doesn't exist (NXDOMAIN)
- * - Domain doesn't resolve in DNS (tested locally and on Vercel)
- * - This is why all historical stats syncs fail
- * - Need to find the correct NHL Stats API domain
- * 
- * Workaround: Run sync locally (won't work either until correct domain is found):
- *   npx tsx scripts/sync-historical-stats.ts [leagueKey]
+ * Uses api.nhle.com for stats and records.nhl.com for player lookup
  */
 export async function POST(
   request: NextRequest,
