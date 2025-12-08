@@ -70,6 +70,8 @@ interface NHLPlayerSearchResponse {
 async function searchNHLPlayerByName(playerName: string): Promise<number | null> {
   try {
     // NHL API search endpoint
+    // NOTE: statsapi.web.nhl.com doesn't exist (NXDOMAIN). Need to find correct NHL API domain.
+    // The domain may have changed or the API structure is different.
     const encodedName = encodeURIComponent(playerName);
     const searchUrl = `https://statsapi.web.nhl.com/api/v1/people?search=${encodedName}`;
     
@@ -114,6 +116,7 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
     console.log("[NHL Lookup] Building player name to NHL ID map...");
     
     // Get all teams
+    // NOTE: statsapi.web.nhl.com doesn't exist (NXDOMAIN). Need to find correct NHL API domain.
     const teamsData: NHLTeamsResponse = await httpsGet("https://statsapi.web.nhl.com/api/v1/teams");
     const teams = teamsData.teams || [];
     
