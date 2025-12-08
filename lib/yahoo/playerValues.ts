@@ -429,16 +429,25 @@ export async function calculateSkaterValue(
   
   // Apply rookie adjustment in redraft leagues (before other adjustments)
   // Rookies are less proven than established stars with similar stats
+  // Only apply if player has NO historical stats (true rookie) AND matches rookie pattern
   if (LEAGUE_TYPE === "redraft") {
+    // Check if player has historical stats - if they have 2+ seasons, they're not a rookie
+    const hasHistoricalData = historicalStats.size > 0;
+    
     // Heuristic for rookie: high assist rate (playmaker), relatively low goals for point total
     // Celebrini fits this: 14G/26A = high assists, early career
-    const isLikelyRookie = points >= 35 && (assists >= goals * 1.5);
+    // BUT: Only apply if they have NO historical data (true first-year player)
+    const matchesRookiePattern = points >= 35 && (assists >= goals * 1.5);
+    const isLikelyRookie = !hasHistoricalData && matchesRookiePattern;
+    
     if (isLikelyRookie) {
       const beforeRookie = value;
       value *= ROOKIE_REDRAFT_ADJUSTMENT;
       if (isDebugPlayer) {
         console.log(`[PlayerValues] Rookie adjustment (${ROOKIE_REDRAFT_ADJUSTMENT}x): ${beforeRookie.toFixed(1)} -> ${value.toFixed(1)}`);
       }
+    } else if (isDebugPlayer && matchesRookiePattern && hasHistoricalData) {
+      console.log(`[PlayerValues] Rookie pattern detected but skipped (has ${historicalStats.size} historical stat categories)`);
     }
   }
   
