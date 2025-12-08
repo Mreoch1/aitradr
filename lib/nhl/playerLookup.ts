@@ -3,8 +3,6 @@
  * Since NHL API doesn't have a direct search, we'll build a lookup cache
  */
 
-import https from 'https';
-
 interface NHLPlayerInfo {
   id: number;
   fullName: string;
@@ -34,27 +32,27 @@ const playerNameToNHLIdCache = new Map<string, number>();
 
 /**
  * Make HTTPS request and return JSON
+ * Use fetch for Vercel serverless compatibility
  */
-function httpsGet(url: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = '';
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error(`Failed to parse JSON: ${e}`));
-          }
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}`));
-        }
-      });
-    }).on('error', reject);
-  });
+async function httpsGet(url: string): Promise<any> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'AiTradr/1.0',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Failed to fetch: ${error}`);
+  }
 }
 
 interface NHLPlayerSearchResponse {
