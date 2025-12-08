@@ -200,8 +200,16 @@ export async function findNHLPlayerIdByName(
   playerName: string,
   lookupMap?: Map<string, number>
 ): Promise<number | null> {
+  // Always try direct API search first if lookup map is empty or small
   if (!lookupMap || lookupMap.size === 0) {
-    console.warn(`[NHL Lookup] Lookup map is empty, cannot find NHL ID for: ${playerName}`);
+    console.log(`[NHL Lookup] Lookup map is empty (size: ${lookupMap?.size || 0}), using direct API search for: ${playerName}`);
+    const directSearchResult = await searchNHLPlayerByName(playerName);
+    if (directSearchResult) {
+      const normalizedName = normalizePlayerName(playerName);
+      playerNameToNHLIdCache.set(normalizedName, directSearchResult);
+      return directSearchResult;
+    }
+    console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" - lookup map empty and direct search failed`);
     return null;
   }
 
@@ -209,13 +217,17 @@ export async function findNHLPlayerIdByName(
   const normalizedName = normalizePlayerName(playerName);
   if (playerNameToNHLIdCache.size > 0) {
     const cached = playerNameToNHLIdCache.get(normalizedName);
-    if (cached) return cached;
+    if (cached) {
+      console.log(`[NHL Lookup] ✅ Found cached NHL ID ${cached} for: ${playerName}`);
+      return cached;
+    }
   }
   
   // Try exact match first (normalized)
   const nhlId = lookupMap.get(normalizedName);
   if (nhlId) {
     playerNameToNHLIdCache.set(normalizedName, nhlId);
+    console.log(`[NHL Lookup] ✅ Found NHL ID ${nhlId} for: ${playerName} (exact match)`);
     return nhlId;
   }
   
@@ -226,6 +238,7 @@ export async function findNHLPlayerIdByName(
     // Exact match after normalization
     if (normalizedLookupName === normalizedName) {
       playerNameToNHLIdCache.set(normalizedName, id);
+      console.log(`[NHL Lookup] ✅ Found NHL ID ${id} for: ${playerName} (normalized match)`);
       return id;
     }
     
@@ -241,6 +254,7 @@ export async function findNHLPlayerIdByName(
       
       if (lastNameMatch && firstNameMatch) {
         playerNameToNHLIdCache.set(normalizedName, id);
+        console.log(`[NHL Lookup] ✅ Found NHL ID ${id} for: ${playerName} (last name + first initial match)`);
         return id;
       }
     }
@@ -250,6 +264,7 @@ export async function findNHLPlayerIdByName(
       // Only use substring if it's substantial (at least 5 characters)
       if (normalizedName.length >= 5 || normalizedLookupName.length >= 5) {
         playerNameToNHLIdCache.set(normalizedName, id);
+        console.log(`[NHL Lookup] ✅ Found NHL ID ${id} for: ${playerName} (substring match)`);
         return id;
       }
     }
@@ -266,8 +281,8 @@ export async function findNHLPlayerIdByName(
   
   // Log a sample of lookup map entries for debugging
   if (lookupMap.size > 0) {
-    const sampleEntries = Array.from(lookupMap.entries()).slice(0, 3);
-    console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" (normalized: "${normalizedName}"). Sample lookup entries: ${sampleEntries.map(([n]) => n).join(', ')}`);
+    const sampleEntries = Array.from(lookupMap.entries()).slice(0, 5);
+    console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" (normalized: "${normalizedName}"). Lookup map size: ${lookupMap.size}. Sample entries: ${sampleEntries.map(([n, id]) => `${n}(${id})`).join(', ')}`);
   } else {
     console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" - lookup map is empty`);
   }
