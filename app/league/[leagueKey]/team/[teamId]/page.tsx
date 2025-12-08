@@ -398,7 +398,11 @@ export default function TeamDashboardPage() {
               <p className="mb-4 text-sm theme-text-secondary">
                 Players across the league who excel in your weak categories:{" "}
                 {Object.entries(dashboard.categorySummary)
-                  .filter(([_, cat]) => cat.zScore < -0.5)
+                  .filter(([code, cat]) => {
+                    // Only show skater categories (exclude goalie-only: W, GAA, SV, SVPCT, SHO)
+                    const goalieCategoryCodes = ["W", "GAA", "SV", "SVPCT", "SHO"];
+                    return cat.zScore < -0.5 && !goalieCategoryCodes.includes(code);
+                  })
                   .map(([_, cat]) => cat.abbrev)
                   .join(", ")}
               </p>

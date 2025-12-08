@@ -460,15 +460,26 @@ async function generatePlayerRecommendations(
   pickValueMap: Map<number, number>
 ): Promise<PlayerRecommendation[]> {
   // Identify weak categories (z-score < -0.5)
-  const weakCategories = Object.entries(categorySummary)
+  const allWeakCategories = Object.entries(categorySummary)
     .filter(([_, cat]) => cat.zScore < -0.5)
     .map(([code, _]) => code);
 
+  // Filter out goalie-only categories since we only recommend skaters
+  // Goalie categories: W, GAA, SV, SVPCT, SHO
+  const goalieCategoryCodes = ["W", "GAA", "SV", "SVPCT", "SHO"];
+  const weakCategories = allWeakCategories.filter(
+    cat => !goalieCategoryCodes.includes(cat)
+  );
+
   if (weakCategories.length === 0) {
-    return []; // No weak categories, no recommendations needed
+    return []; // No weak skater categories, no recommendations needed
   }
 
-  console.log(`[Recommendations] Weak categories: ${weakCategories.join(", ")}`);
+  console.log(`[Recommendations] Weak skater categories: ${weakCategories.join(", ")}`);
+  if (allWeakCategories.length > weakCategories.length) {
+    const goalieWeakCategories = allWeakCategories.filter(cat => goalieCategoryCodes.includes(cat));
+    console.log(`[Recommendations] Skipping goalie-only weak categories: ${goalieWeakCategories.join(", ")}`);
+  }
 
   // Calculate league-wide stats for normalization
   const allPlayerStats: Array<{
