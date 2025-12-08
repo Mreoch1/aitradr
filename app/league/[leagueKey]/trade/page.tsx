@@ -644,10 +644,11 @@ export default function TradeBuilderPage() {
     
     const rowBgColor = index % 2 === 0 ? "theme-bg-primary" : "theme-bg-secondary";
     const hoverColor = "hover:opacity-80";
-    const selectedColor = isConfirmed ? "!bg-green-100 dark:!bg-green-900" : "";
+    const selectedColor = isConfirmed ? "!bg-green-100 dark:!bg-green-800/50" : "";
+    const selectedTextColor = isConfirmed ? "text-gray-900 dark:text-green-50" : "";
 
     return (
-      <tr key={player.playerId} className={`border-t border-gray-200 ${selectedColor || rowBgColor} ${hoverColor} transition-colors`}>
+      <tr key={player.playerId} className={`border-t border-gray-200 dark:border-gray-600 ${selectedColor || rowBgColor} ${hoverColor} transition-colors`}>
         <td className="px-2 py-2">
           <input
             type="checkbox"
@@ -662,7 +663,7 @@ export default function TradeBuilderPage() {
             className="h-4 w-4"
           />
         </td>
-        <td className="px-3 py-2 text-sm font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30">
+        <td className={`px-3 py-2 text-sm font-bold ${isConfirmed ? "text-blue-900 dark:text-blue-100 bg-blue-100 dark:bg-blue-800/60" : "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30"}`}>
           <div className="flex flex-col items-center">
             <span>{toFixedSafe(player.valueScore, 1)}</span>
             {player.isKeeper && player.originalDraftRound && player.yearsRemaining && player.yearsRemaining > 0 && (
@@ -687,7 +688,7 @@ export default function TradeBuilderPage() {
             )}
           </div>
             </td>
-        <td className="px-2 py-2 text-sm font-medium theme-text-primary">
+        <td className={`px-2 py-2 text-sm font-medium ${isConfirmed ? "text-gray-900 dark:text-green-50" : "theme-text-primary"}`}>
           <div className="flex items-center gap-2">
             <span>{player.name}</span>
             {player.status && (player.status === "IR" || player.status === "IR+" || player.status === "O") && (
@@ -707,7 +708,7 @@ export default function TradeBuilderPage() {
             )}
           </div>
             </td>
-        <td className="px-2 py-2 text-sm theme-text-secondary">
+        <td className={`px-2 py-2 text-sm ${isConfirmed ? "text-gray-700 dark:text-green-200" : "theme-text-secondary"}`}>
           {(() => {
             if (!player.positions && !player.position) return "-";
             
@@ -730,7 +731,7 @@ export default function TradeBuilderPage() {
             return [...new Set(validPositions)].join('/') || (player.position || "-");
           })()}
             </td>
-        <td className="px-2 py-2 text-sm theme-text-secondary">{player.nhlTeam || "-"}</td>
+        <td className={`px-2 py-2 text-sm ${isConfirmed ? "text-gray-700 dark:text-green-200" : "theme-text-secondary"}`}>{player.nhlTeam || "-"}</td>
         {isGoalieTable ? (
           // Goalie stats
           <>
@@ -740,16 +741,16 @@ export default function TradeBuilderPage() {
             <td className="px-2 py-2 text-sm text-center font-medium text-red-700 dark:text-red-400">
               {toFixedSafe(getStatValue(stats, "losses"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "goals against"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "goals against average"), 2)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-blue-700 dark:text-blue-300">
               {toFixedSafe(getStatValue(stats, "saves"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {(() => {
                 const svPct = getStatValue(stats, "save percentage");
                 // Yahoo stores SV% as a whole number like 915 for 91.5%
@@ -779,31 +780,31 @@ export default function TradeBuilderPage() {
             <td className="px-2 py-2 text-sm text-center font-semibold text-purple-700 dark:text-purple-400">
               {toFixedSafe(getStatValue(stats, "points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "plus/minus"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "penalty minutes"), 0)}
             </td>
             <td className="px-2 py-2 text-sm text-center font-medium text-orange-700 dark:text-orange-400">
               {toFixedSafe(getStatValue(stats, "power play points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "short handed points"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "game winning goals"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "shots on goal"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "faceoffs won"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "hits"), 0)}
             </td>
-            <td className="px-2 py-2 text-sm text-center theme-text-primary">
+            <td className={`px-2 py-2 text-sm text-center ${isConfirmed ? selectedTextColor : "theme-text-primary"}`}>
               {toFixedSafe(getStatValue(stats, "blocked shots"), 0)}
             </td>
           </>
