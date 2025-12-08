@@ -26,22 +26,25 @@ export async function POST(
         leagueKey,
         userId: session.userId,
       },
-      include: {
-        rosterEntries: {
-          include: {
-            player: true,
-          },
-        },
-      },
     });
 
     if (!league) {
       return NextResponse.json({ error: "League not found" }, { status: 404 });
     }
 
-    // Get unique players from roster
+    // Get all roster entries for this league (roster entries belong to league, not team directly)
+    const rosterEntries = await prisma.rosterEntry.findMany({
+      where: {
+        leagueId: league.id,
+      },
+      include: {
+        player: true,
+      },
+    });
+
+    // Get unique players from roster entries
     const uniquePlayers = Array.from(
-      new Map(league.rosterEntries.map(e => [e.player.id, e.player])).values()
+      new Map(rosterEntries.map(e => [e.player.id, e.player])).values()
     );
 
     console.log(`[Historical Stats] Syncing stats for ${uniquePlayers.length} players`);
