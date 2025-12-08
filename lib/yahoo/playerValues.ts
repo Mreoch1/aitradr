@@ -146,8 +146,60 @@ function zScore(value: number, mean: number, std: number, isNegative: boolean = 
 // ===== SKATER VALUE CALCULATION =====
 
 /**
+ * Get historical stats for a player (last 2 seasons)
+ * Returns a map of stat name to weighted average value
+ */
+async function getHistoricalStats(playerId: string): Promise<Map<string, number>> {
+  const historicalStats = new Map<string, number>();
+  
+  try {
+    // Get last 2 seasons of stats
+    const seasonStats = await prisma.playerSeasonStat.findMany({
+      where: {
+        playerId,
+      },
+      orderBy: {
+        season: 'desc',
+      },
+      take: 2, // Last 2 seasons
+    });
+    
+    if (seasonStats.length === 0) {
+      return historicalStats; // No historical data
+    }
+    
+    // Group by stat name and calculate weighted average
+    // More recent season gets higher weight (60% current, 40% previous)
+    const statMap = new Map<string, Array<{ value: number; weight: number }>>();
+    
+    for (let i = 0; i < seasonStats.length; i++) {
+      const stat = seasonStats[i];
+      const weight = i === 0 ? 0.6 : 0.4; // Most recent = 60%, older = 40%
+      
+      if (!statMap.has(stat.statName)) {
+        statMap.set(stat.statName, []);
+      }
+      statMap.get(stat.statName)!.push({ value: stat.value, weight });
+    }
+    
+    // Calculate weighted average for each stat
+    for (const [statName, values] of statMap.entries()) {
+      const totalWeight = values.reduce((sum, v) => sum + v.weight, 0);
+      const weightedSum = values.reduce((sum, v) => sum + (v.value * v.weight), 0);
+      const weightedAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+      historicalStats.set(statName.toLowerCase(), weightedAvg);
+    }
+  } catch (error) {
+    console.error(`[PlayerValues] Error fetching historical stats for player ${playerId}:`, error);
+  }
+  
+  return historicalStats;
+}
+
+/**
  * Calculate skater value using WEIGHTED z-scores by bucket
  * Reflects fantasy trade reality: offense > support > grind stats
+ * Now incorporates historical stats (last 2 seasons) for better evaluation
  */
 export async function calculateSkaterValue(
   playerId: string,
@@ -164,6 +216,9 @@ export async function calculateSkaterValue(
     return 40; // Default for players without stats
   }
   
+  // Get historical stats (last 2 seasons)
+  const historicalStats = await getHistoricalStats(playerId);
+  
   // Get player info for position multiplier
   const player = await prisma.player.findUnique({
     where: { id: playerId },
@@ -178,13 +233,21 @@ export async function calculateSkaterValue(
   const grindCategories = ["penalty minutes", "faceoffs won", "hits", "blocks"];
   
   for (const category of SKATER_CATEGORIES) {
-    const playerValue = playerStats.stats.get(category) || 0;
+    // Blend current season (70%) with historical average (30%) for more stable valuation
+    const currentValue = playerStats.stats.get(category) || 0;
+    const historicalValue = historicalStats.get(category) || 0;
+    
+    // If we have historical data, blend it; otherwise use current only
+    const blendedValue = historicalValue > 0 
+      ? (currentValue * 0.7) + (historicalValue * 0.3)
+      : currentValue;
+    
     const catStats = categoryStats.get(category);
     
     if (!catStats) continue;
     
     const isNegative = NEGATIVE_CATEGORIES.includes(category);
-    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    const z = zScore(blendedValue, catStats.mean, catStats.stdDev, isNegative);
     
     // Apply individual category weight
     const weight = CATEGORY_WEIGHTS_MAP[category] || 1.0;

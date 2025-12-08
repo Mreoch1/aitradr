@@ -11,73 +11,73 @@ datasource db {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  passwordHash String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  yahooAccount YahooAccount?
-  leagues      League[]
-  teams        Team[]
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  yahooAccount  YahooAccount?
+  leagues       League[]
+  teams         Team[]
   rosterEntries RosterEntry[]
 
   @@map("users")
 }
 
 model YahooAccount {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   yahooUserId  String
   accessToken  String
   refreshToken String?
   expiresAt    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("yahoo_accounts")
 }
 
 model League {
-  id         String        @id @default(cuid())
-  userId     String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leagueKey  String
-  name       String
-  season     String
-  sport      String
-  teamCount  Int?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  teams      Team[]
-  rosterEntries RosterEntry[]
-  playerValues PlayerValue[]
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueKey       String
+  name            String
+  season          String
+  sport           String
+  teamCount       Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  teams           Team[]
+  rosterEntries   RosterEntry[]
+  playerValues    PlayerValue[]
   draftPickValues DraftPickValue[]
-  teamDraftPicks TeamDraftPick[]
-  playerStats PlayerStat[]
-  teamProfiles TeamProfile[]
+  teamDraftPicks  TeamDraftPick[]
+  playerStats     PlayerStat[]
+  teamProfiles    TeamProfile[]
 
   @@unique([userId, leagueKey])
   @@map("leagues")
 }
 
 model Team {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leagueId      String
-  league        League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  teamKey       String
-  name          String
-  managerName   String?
-  yahooManagerId String?      // Yahoo GUID of the team manager
-  isOwner       Boolean       @default(false) // True if this team belongs to the logged-in user
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  standing      TeamStanding?
-  rosterEntries RosterEntry[]
-  draftPicks    TeamDraftPick[]
-  profile       TeamProfile?
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId       String
+  league         League          @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamKey        String
+  name           String
+  managerName    String?
+  yahooManagerId String? // Yahoo GUID of the team manager
+  isOwner        Boolean         @default(false) // True if this team belongs to the logged-in user
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  standing       TeamStanding?
+  rosterEntries  RosterEntry[]
+  draftPicks     TeamDraftPick[]
+  profile        TeamProfile?
 
   @@unique([leagueId, teamKey])
   @@map("teams")
@@ -94,51 +94,52 @@ model TeamStanding {
   pointsAgainst Float?
   rank          Int?
   createdAt     DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt     DateTime @updatedAt
 
   @@map("team_standings")
 }
 
 model Player {
-  id              String        @id @default(cuid())
-  playerKey       String        @unique
+  id              String             @id @default(cuid())
+  playerKey       String             @unique
   name            String
   teamAbbr        String?
   positions       String?
   primaryPosition String?
   status          String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
   rosterEntries   RosterEntry[]
   playerValues    PlayerValue[]
   playerStats     PlayerStat[]
+  seasonStats     PlayerSeasonStat[]
 
   @@map("players")
 }
 
 model RosterEntry {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  leagueId           String
-  league             League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  teamId             String
-  team               Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  playerId           String
-  player             Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  yahooPosition      String?
-  isBench            Boolean  @default(false)
-  isInjuredList      Boolean  @default(false)
-  
+  id            String  @id @default(cuid())
+  userId        String
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leagueId      String
+  league        League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamId        String
+  team          Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId      String
+  player        Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  yahooPosition String?
+  isBench       Boolean @default(false)
+  isInjuredList Boolean @default(false)
+
   // Keeper tracking
-  isKeeper           Boolean  @default(false)
-  originalDraftRound Int?     // Round they were first drafted
-  keeperYearIndex    Int?     // How many years they've been kept (0 = first year kept)
-  yearsRemaining     Int?     // How many more years can be kept
-  keeperRoundCost    Int?     // What round pick is forfeited to keep them
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  isKeeper           Boolean @default(false)
+  originalDraftRound Int? // Round they were first drafted
+  keeperYearIndex    Int? // How many years they've been kept (0 = first year kept)
+  yearsRemaining     Int? // How many more years can be kept
+  keeperRoundCost    Int? // What round pick is forfeited to keep them
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([teamId, playerId])
   @@map("roster_entries")
@@ -151,7 +152,7 @@ model PlayerValue {
   leagueId  String
   league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   score     Float
-  breakdown String?  // JSON string for future use
+  breakdown String? // JSON string for future use
   updatedAt DateTime @updatedAt
 
   @@unique([playerId, leagueId])
@@ -190,13 +191,29 @@ model PlayerStat {
   player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
   leagueId  String
   league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  statId    String   // Yahoo stat ID
-  statName  String   // Stat name (e.g., "Goals", "Assists")
-  value     Float    // Stat value
+  statId    String // Yahoo stat ID
+  statName  String // Stat name (e.g., "Goals", "Assists")
+  value     Float // Stat value
   updatedAt DateTime @updatedAt
 
   @@unique([playerId, leagueId, statId])
   @@map("player_stats")
+}
+
+model PlayerSeasonStat {
+  id          String   @id @default(cuid())
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  season      String // Season year, e.g., "2023", "2024"
+  statName    String // Stat name (e.g., "Goals", "Assists", "Points")
+  value       Float // Stat value for that season
+  gamesPlayed Int? // Number of games played in that season
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([playerId, season, statName])
+  @@index([playerId, season])
+  @@map("player_season_stats")
 }
 
 model OAuthState {
@@ -210,21 +227,21 @@ model OAuthState {
 }
 
 model SavedTrade {
-  id          String   @id @default(cuid())
-  userId      String
-  leagueId    String
-  tradeName   String?  // Optional user-given name
-  teamAId     String
-  teamBId     String
-  teamAPlayers String  // JSON array of player IDs
-  teamBPlayers String  // JSON array of player IDs
-  teamAPicks  String   // JSON array of pick rounds
-  teamBPicks  String   // JSON array of pick rounds
-  teamAValue  Float
-  teamBValue  Float
-  netDiff     Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  userId       String
+  leagueId     String
+  tradeName    String? // Optional user-given name
+  teamAId      String
+  teamBId      String
+  teamAPlayers String // JSON array of player IDs
+  teamBPlayers String // JSON array of player IDs
+  teamAPicks   String // JSON array of pick rounds
+  teamBPicks   String // JSON array of pick rounds
+  teamAValue   Float
+  teamBValue   Float
+  netDiff      Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("saved_trades")
 }
@@ -235,7 +252,7 @@ model TeamProfile {
   team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   leagueId    String
   league      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  profileData Json     // Stores the complete TeamProfile structure
+  profileData Json // Stores the complete TeamProfile structure
   lastUpdated DateTime @updatedAt
   createdAt   DateTime @default(now())
 
