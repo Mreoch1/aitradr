@@ -172,11 +172,12 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
     const uniqueSeasons = Array.from(new Set(seasonStats.map(s => s.season).sort().reverse())).slice(0, 2);
     const statsForSeasons = seasonStats.filter(s => uniqueSeasons.includes(s.season));
     
-    // Debug logging for first few players
+    // Debug logging for specific players
     const player = await prisma.player.findUnique({ where: { id: playerId }, select: { name: true } });
-    if (player && (player.name === "Macklin Celebrini" || player.name === "Mikko Rantanen")) {
-      console.log(`[PlayerValues] ${player.name} historical stats: ${statsForSeasons.length} stats found from seasons ${uniqueSeasons.join(', ')}`);
-      console.log(`[PlayerValues] Sample stat names:`, statsForSeasons.slice(0, 5).map(s => s.statName));
+    if (player && (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon")) {
+      console.log(`\n[PlayerValues] ===== ${player.name} Historical Stats =====`);
+      console.log(`[PlayerValues] ${statsForSeasons.length} stats found from seasons ${uniqueSeasons.join(', ')}`);
+      console.log(`[PlayerValues] Unique stat names:`, Array.from(new Set(statsForSeasons.map(s => s.statName))));
     }
     
     // Group by stat name and calculate weighted average
@@ -212,8 +213,9 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       historicalStats.set(normalizedName, weightedAvg);
       
       // Debug logging
-      if (player && (player.name === "Macklin Celebrini" || player.name === "Mikko Rantanen")) {
-        console.log(`[PlayerValues] ${player.name} - normalized "${statName}" -> "${normalizedName}" = ${weightedAvg.toFixed(2)}`);
+      if (player && (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon")) {
+        const seasonValues = values.map(v => `${v.season}:${v.value.toFixed(1)}(${v.weight})`).join(', ');
+        console.log(`[PlayerValues] ${player.name} - "${statName}" -> "${normalizedName}": ${seasonValues} = ${weightedAvg.toFixed(2)} avg`);
       }
     }
   } catch (error) {
@@ -259,17 +261,16 @@ export async function calculateSkaterValue(
   let grindContribution = 0;
   const grindCategories = ["penalty minutes", "faceoffs won", "hits", "blocks"];
   
+  // Debug logging header for specific players
+  const isDebugPlayer = playerStats.playerName === "Connor McDavid" || playerStats.playerName === "Nathan MacKinnon";
+  if (isDebugPlayer) {
+    console.log(`\n[PlayerValues] ===== ${playerStats.playerName} Value Calculation =====`);
+  }
+  
   for (const category of SKATER_CATEGORIES) {
     // Blend current season (70%) with historical average (30%) for more stable valuation
     const currentValue = playerStats.stats.get(category) || 0;
     const historicalValue = historicalStats.get(category);
-    
-    // Debug logging for first few players
-    if (playerStats.playerName === "Macklin Celebrini" || playerStats.playerName === "Mikko Rantanen") {
-      if (historicalValue !== undefined) {
-        console.log(`[PlayerValues] ${playerStats.playerName} - ${category}: current=${currentValue}, historical=${historicalValue}, blended=${(currentValue * 0.7) + (historicalValue * 0.3)}`);
-      }
-    }
     
     // If we have historical data (even if it's 0), blend it; otherwise use current only
     // Use !== undefined to check if historical data exists (0 is a valid value)
@@ -289,6 +290,12 @@ export async function calculateSkaterValue(
     const weightedZ = z * weight;
     
     totalWeightedZ += weightedZ;
+    
+    // Debug logging for specific players
+    if (isDebugPlayer) {
+      const hasHistorical = historicalValue !== undefined ? `(hist:${historicalValue.toFixed(1)})` : '(no hist)';
+      console.log(`[PlayerValues] ${category.padEnd(20)}: curr=${currentValue.toFixed(1).padStart(5)} ${hasHistorical.padEnd(12)} blend=${blendedValue.toFixed(1).padStart(5)} z=${z.toFixed(2).padStart(6)} w=${weight.toFixed(1)} wZ=${weightedZ.toFixed(2).padStart(7)}`);
+    }
     
     // Track grind stat contribution for capping
     if (grindCategories.includes(category)) {
@@ -311,7 +318,11 @@ export async function calculateSkaterValue(
   const finalWeightedZ = totalWeightedZ;
   
   // Base value from weighted z-scores (scaled down to prevent runaway scores)
-  let value = finalWeightedZ * 8 + 100; // Reduced from 10 to 8 for tighter scaling
+  let value = finalWeightedZ * 8 + 100;
+  
+  if (isDebugPlayer) {
+    console.log(`[PlayerValues] Base calculation: totalWeightedZ=${totalWeightedZ.toFixed(2)}, baseValue=${value.toFixed(1)}`);
+  } // Reduced from 10 to 8 for tighter scaling
   
   // Get player stats for market correction rules
   const goals = playerStats.stats.get("goals") || 0;
@@ -319,11 +330,19 @@ export async function calculateSkaterValue(
   const points = goals + assists;
   const ppp = playerStats.stats.get("powerplay points") || 0;
   
+  if (isDebugPlayer) {
+    console.log(`[PlayerValues] Player stats: G=${goals} A=${assists} P=${points} PPP=${ppp}`);
+  }
+  
   // Position scarcity multiplier (before defense dampening)
   if (player?.primaryPosition) {
     const pos = player.primaryPosition as keyof typeof POSITION_MULTIPLIERS;
     const multiplier = POSITION_MULTIPLIERS[pos] || 1.0;
+    const beforePos = value;
     value *= multiplier;
+    if (isDebugPlayer && multiplier !== 1.0) {
+      console.log(`[PlayerValues] Position multiplier (${player.primaryPosition}): ${multiplier}x -> ${beforePos.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // Defense dampening: D positions don't trade like forwards
@@ -331,50 +350,82 @@ export async function calculateSkaterValue(
     // Only apply dampening to non-elite defensemen
     // Elite D (30+ points) maintain value
     if (points < 30) {
+      const beforeDef = value;
       value *= DEFENSE_MULTIPLIER;
+      if (isDebugPlayer) {
+        console.log(`[PlayerValues] Defense dampening: ${DEFENSE_MULTIPLIER}x -> ${beforeDef.toFixed(1)} -> ${value.toFixed(1)}`);
+      }
     }
   }
   
   // Market gravity multiplier based on scoring production
   // Reflects Yahoo trade reality: elite scorers command premium
+  let marketMultiplier = 1.0;
   if (points >= 40 || goals >= 20) {
-    // Top 10 tier - absolute elite
-    value *= 1.12;
+    marketMultiplier = 1.12; // Top 10 tier - absolute elite
   } else if (points >= 30 || goals >= 15) {
-    // Top 30 tier - star players
-    value *= 1.08;
+    marketMultiplier = 1.08; // Top 30 tier - star players
   } else if (points >= 22 || goals >= 10) {
-    // Top 60 tier - solid contributors
-    value *= 1.04;
+    marketMultiplier = 1.04; // Top 60 tier - solid contributors
+  }
+  if (marketMultiplier !== 1.0) {
+    const beforeMarket = value;
+    value *= marketMultiplier;
+    if (isDebugPlayer) {
+      console.log(`[PlayerValues] Market gravity (${points}P/${goals}G): ${marketMultiplier}x -> ${beforeMarket.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // Superstar floor: Elite scorers cannot rank below depth players
   const isEliteScorer = points >= 30 || goals >= 15 || ppp >= 15;
   if (isEliteScorer) {
+    const beforeFloor = value;
     value = Math.max(value, 145); // Raised from 135 to 145
+    if (isDebugPlayer && beforeFloor < 145) {
+      console.log(`[PlayerValues] Elite scorer floor (145): ${beforeFloor.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // Hard floor for any scoring threat
   const isScorer = points >= 20 || goals >= 10;
   if (isScorer) {
+    const beforeFloor = value;
     value = Math.max(value, 115);
+    if (isDebugPlayer && beforeFloor < 115) {
+      console.log(`[PlayerValues] Scorer floor (115): ${beforeFloor.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // CLAMP to prevent runaway values
+  const beforeClamp = value;
   value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX, value));
+  if (isDebugPlayer && beforeClamp !== value) {
+    console.log(`[PlayerValues] Initial clamp (${SKATER_VALUE_MIN}-${SKATER_VALUE_MAX}): ${beforeClamp.toFixed(1)} -> ${value.toFixed(1)}`);
+  }
   
   // Reintroduce spread after clamping to create elite tier separation
   // Uses raw z-score sum to preserve ordering within elite tier
   const spreadAdjustment = (finalWeightedZ * 0.4); // Increased from 0.35 to 0.4
   value += spreadAdjustment;
+  if (isDebugPlayer) {
+    console.log(`[PlayerValues] Spread adjustment (+${spreadAdjustment.toFixed(2)}): -> ${value.toFixed(1)}`);
+  }
   
   // Add tiny deterministic jitter based on player stats to break remaining ties
   // This prevents identical values for different elite players
   const jitterSeed = (goals * 3.7 + assists * 2.3 + ppp * 1.1) % 3.0;
-  value += (jitterSeed - 1.5); // Range: -1.5 to +1.5
+  const jitter = (jitterSeed - 1.5); // Range: -1.5 to +1.5
+  value += jitter;
+  if (isDebugPlayer && Math.abs(jitter) > 0.1) {
+    console.log(`[PlayerValues] Jitter adjustment (${jitter.toFixed(2)}): -> ${value.toFixed(1)}`);
+  }
   
   // Re-clamp after spread (but allow slight overflow for ordering)
+  const beforeReclamp = value;
   value = Math.max(SKATER_VALUE_MIN, Math.min(SKATER_VALUE_MAX + 10, value));
+  if (isDebugPlayer && beforeReclamp !== value) {
+    console.log(`[PlayerValues] Re-clamp (${SKATER_VALUE_MIN}-${SKATER_VALUE_MAX + 10}): ${beforeReclamp.toFixed(1)} -> ${value.toFixed(1)}`);
+  }
   
   // Apply rookie adjustment in redraft leagues (before other adjustments)
   // Rookies are less proven than established stars with similar stats
@@ -383,7 +434,11 @@ export async function calculateSkaterValue(
     // Celebrini fits this: 14G/26A = high assists, early career
     const isLikelyRookie = points >= 35 && (assists >= goals * 1.5);
     if (isLikelyRookie) {
+      const beforeRookie = value;
       value *= ROOKIE_REDRAFT_ADJUSTMENT;
+      if (isDebugPlayer) {
+        console.log(`[PlayerValues] Rookie adjustment (${ROOKIE_REDRAFT_ADJUSTMENT}x): ${beforeRookie.toFixed(1)} -> ${value.toFixed(1)}`);
+      }
     }
   }
   
@@ -395,7 +450,11 @@ export async function calculateSkaterValue(
     // Apply suppression to excellent-but-not-elite players
     // This prevents Suzuki/Eichel from matching MacKinnon/McDavid
     const suppression = 0.92; // 8% reduction
+    const beforeSuppress = value;
     value *= suppression;
+    if (isDebugPlayer) {
+      console.log(`[PlayerValues] Franchise safeguard suppression (${suppression}x): ${beforeSuppress.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // Franchise floor for TRUE elite names only (very selective)
@@ -403,14 +462,26 @@ export async function calculateSkaterValue(
   // This catches McDavid (36P + 25A), MacKinnon (46P), but NOT Suzuki (30P, 22A)
   const isTrueElite = points >= 38 || assists >= 25 || (points >= 35 && assists >= 22);
   if (isTrueElite) {
+    const beforeFranchise = value;
     value = Math.max(value, FRANCHISE_FLOOR);
+    if (isDebugPlayer && beforeFranchise < FRANCHISE_FLOOR) {
+      console.log(`[PlayerValues] Franchise floor (${FRANCHISE_FLOOR}): ${beforeFranchise.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
   }
   
   // Small reputation bias for proven franchise names
   // Players with elite balanced production get market premium
   const hasEliteReputation = points >= 40 || (goals >= 20 && assists >= 20);
   if (hasEliteReputation) {
+    const beforeRep = value;
     value += 4; // +4 point boost for proven franchise players
+    if (isDebugPlayer) {
+      console.log(`[PlayerValues] Reputation bonus (+4): ${beforeRep.toFixed(1)} -> ${value.toFixed(1)}`);
+    }
+  }
+  
+  if (isDebugPlayer) {
+    console.log(`[PlayerValues] ===== FINAL VALUE: ${value.toFixed(1)} =====\n`);
   }
   
   return value;
