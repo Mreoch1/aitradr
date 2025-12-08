@@ -161,25 +161,29 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       orderBy: {
         season: 'desc',
       },
-      take: 2, // Last 2 seasons
+      take: 200, // Get more stats (multiple stats per season)
     });
     
     if (seasonStats.length === 0) {
       return historicalStats; // No historical data
     }
     
+    // Group by unique seasons (take last 2 unique seasons)
+    const uniqueSeasons = Array.from(new Set(seasonStats.map(s => s.season).sort().reverse())).slice(0, 2);
+    const statsForSeasons = seasonStats.filter(s => uniqueSeasons.includes(s.season));
+    
     // Group by stat name and calculate weighted average
     // More recent season gets higher weight (60% current, 40% previous)
-    const statMap = new Map<string, Array<{ value: number; weight: number }>>();
+    const statMap = new Map<string, Array<{ value: number; weight: number; season: string }>>();
     
-    for (let i = 0; i < seasonStats.length; i++) {
-      const stat = seasonStats[i];
-      const weight = i === 0 ? 0.6 : 0.4; // Most recent = 60%, older = 40%
+    for (const stat of statsForSeasons) {
+      const seasonIndex = uniqueSeasons.indexOf(stat.season);
+      const weight = seasonIndex === 0 ? 0.6 : 0.4; // Most recent = 60%, older = 40%
       
       if (!statMap.has(stat.statName)) {
         statMap.set(stat.statName, []);
       }
-      statMap.get(stat.statName)!.push({ value: stat.value, weight });
+      statMap.get(stat.statName)!.push({ value: stat.value, weight, season: stat.season });
     }
     
     // Calculate weighted average for each stat
@@ -247,6 +251,13 @@ export async function calculateSkaterValue(
     // Blend current season (70%) with historical average (30%) for more stable valuation
     const currentValue = playerStats.stats.get(category) || 0;
     const historicalValue = historicalStats.get(category);
+    
+    // Debug logging for first few players
+    if (playerStats.playerName === "Macklin Celebrini" || playerStats.playerName === "Mikko Rantanen") {
+      if (historicalValue !== undefined) {
+        console.log(`[PlayerValues] ${playerStats.playerName} - ${category}: current=${currentValue}, historical=${historicalValue}, blended=${(currentValue * 0.7) + (historicalValue * 0.3)}`);
+      }
+    }
     
     // If we have historical data (even if it's 0), blend it; otherwise use current only
     // Use !== undefined to check if historical data exists (0 is a valid value)
