@@ -1,5 +1,4 @@
 import Link from "next/link";
-import SyncHistoricalStatsButton from "@/app/components/SyncHistoricalStatsButton";
 
 export default async function FormulaPage({
   params,
@@ -52,15 +51,20 @@ export default async function FormulaPage({
             <div className="text-2xl">📊</div>
             <div className="flex-1">
               <h3 className="mb-2 font-semibold text-blue-900 dark:text-blue-200">
-                Historical Stats Integration
+                Historical Stats Always Included
               </h3>
               <p className="mb-3 text-sm text-blue-800 dark:text-blue-300">
-                Player values now incorporate the last 2 seasons of historical statistics from the NHL API. 
-                Current season stats are weighted 70% and historical average (last 2 years) is weighted 30% 
+                Player values automatically incorporate the last 2 seasons of historical statistics from the NHL API. 
+                Current season stats are weighted 70% and historical average (last 2 years weighted 60/40) is weighted 30% 
                 to provide more stable and reliable valuations. This helps identify consistent performers 
-                and reduces volatility from small sample sizes or hot streaks.
+                and reduces volatility from small sample sizes or hot streaks. Historical data is automatically 
+                synced and updated when you refresh teams.
               </p>
-              <SyncHistoricalStatsButton leagueKey={leagueKey} />
+              <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+                All 12 skater categories are included in the historical blend: Goals, Assists, Points, Plus/Minus, 
+                Penalty Minutes, Power Play Points, Shorthanded Points, Game-Winning Goals, Shots on Goal, 
+                Faceoffs Won, Hits, and Blocks.
+              </p>
             </div>
           </div>
         </div>
