@@ -143,6 +143,7 @@ export async function fetchNHLPlayerSeasonStats(
     
     // Map NHL stats to our stat names
     // The API returns different field names than the old API
+    // Note: hits, blockedShots, and faceoffs won are not available in the summary endpoint
     const statMapping: Record<string, string> = {
       goals: "Goals",
       assists: "Assists",
@@ -153,9 +154,6 @@ export async function fetchNHLPlayerSeasonStats(
       shPoints: "Shorthanded Points",
       gameWinningGoals: "Game-Winning Goals",
       shots: "Shots on Goal",
-      hits: "Hits",
-      blockedShots: "Blocks",
-      // Note: faceoffs won is not available in summary endpoint
     };
     
     for (const [nhlKey, ourStatName] of Object.entries(statMapping)) {
