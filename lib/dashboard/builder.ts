@@ -586,7 +586,9 @@ async function generatePlayerRecommendations(
   const scoredPlayers = allPlayerStats.map(player => {
     let fitScore = 0;
     const playerCategoryStats: Record<string, number> = {};
-    let categoriesAboveAverage = 0; // Count categories where player is above 50th percentile
+    let categoriesAboveAverage = 0; // Count categories where player is above 60th percentile (strong threshold)
+    let categoriesGood = 0; // Count categories where player is above 50th percentile
+    const categoryPercentiles: Record<string, number> = {}; // Store percentiles for each category
 
     for (const cat of weakCategories) {
       const statValue = player.stats[cat] || 0;
@@ -597,31 +599,50 @@ async function generatePlayerRecommendations(
       if (sortedStats.length > 0) {
         const rank = sortedStats.filter(s => s > statValue).length;
         const percentile = 1 - (rank / sortedStats.length);
+        categoryPercentiles[cat] = percentile;
         
         // Weight by category importance
         const weight = categoryWeights[cat] || 0;
         fitScore += percentile * weight;
         
-        // Count if player is above average (50th percentile) in this category
-        if (percentile > 0.5) {
+        // Count if player is above 60th percentile (strong) in this category
+        if (percentile > 0.6) {
           categoriesAboveAverage++;
+        }
+        // Count if player is above 50th percentile (good) in this category
+        if (percentile > 0.5) {
+          categoriesGood++;
         }
       }
     }
 
-    // Multi-category bonus: Players who excel in multiple weak categories get a bonus
-    // This prioritizes players who help with multiple needs over one-trick ponies
+    // Multi-category bonus: STRONGLY prioritize players who excel in MULTIPLE weak categories
+    // This ensures we recommend players who help with BOTH HIT and +/- (or other combinations)
     let multiCategoryBonus = 1.0;
     if (weakCategories.length >= 2) {
+      // If player excels in ALL weak categories (60th+ percentile) - huge bonus
       if (categoriesAboveAverage >= weakCategories.length) {
-        // Excels in ALL weak categories - maximum bonus
-        multiCategoryBonus = 1.5;
-      } else if (categoriesAboveAverage >= 2) {
-        // Excels in 2+ categories - good bonus
-        multiCategoryBonus = 1.3;
-      } else if (categoriesAboveAverage === 1 && weakCategories.length > 1) {
-        // Only good in 1 category when multiple are needed - slight penalty
-        multiCategoryBonus = 0.9;
+        multiCategoryBonus = 2.0; // Doubled from 1.5 - very strong preference
+      } 
+      // If player is good in ALL weak categories (50th+ percentile) - strong bonus
+      else if (categoriesGood >= weakCategories.length) {
+        multiCategoryBonus = 1.6; // Increased from 1.5
+      }
+      // If player excels in 2+ categories when multiple are needed - good bonus
+      else if (categoriesAboveAverage >= 2) {
+        multiCategoryBonus = 1.4; // Increased from 1.3
+      }
+      // If player is good in 2+ categories - moderate bonus
+      else if (categoriesGood >= 2) {
+        multiCategoryBonus = 1.2;
+      }
+      // Only good in 1 category when multiple are needed - STRONG penalty
+      else if (categoriesGood === 1 && weakCategories.length > 1) {
+        multiCategoryBonus = 0.7; // Increased penalty from 0.9 - heavily penalize one-trick ponies
+      }
+      // Not good in any category - very strong penalty
+      else if (categoriesGood === 0) {
+        multiCategoryBonus = 0.5; // Heavy penalty for players who don't help with any weak category
       }
     }
 
@@ -654,7 +675,10 @@ async function generatePlayerRecommendations(
   console.log(`[Recommendations] Generated ${topRecommendations.length} recommendations`);
   topRecommendations.forEach((rec, idx) => {
     const categoryList = Object.entries(rec.categoryStats)
-      .map(([cat, val]) => `${cat}:${val}`)
+      .map(([cat, val]) => {
+        const catInfo = categorySummary[cat];
+        return `${catInfo?.abbrev || cat}:${val}`;
+      })
       .join(", ");
     console.log(`[Recommendations] #${idx + 1}: ${rec.name} (Fit: ${(rec.fitScore * 100).toFixed(1)}%) - Stats: ${categoryList}`);
   });
