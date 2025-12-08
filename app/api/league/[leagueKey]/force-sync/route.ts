@@ -5,6 +5,11 @@ import { syncLeagueRosters } from "@/lib/yahoo/roster";
 import { syncLeaguePlayerStats } from "@/lib/yahoo/playerStats";
 import { ensureLeaguePlayerValues } from "@/lib/yahoo/playerValues";
 import { buildAllTeamProfiles, storeTeamProfiles } from "@/lib/ai/teamProfile";
+import {
+  YahooNotLinkedError,
+  YahooTokenExpiredError,
+} from "@/lib/yahoo/fantasyClient";
+import { getYahooAuthRedirectUrl } from "@/lib/yahoo/tokenExpiration";
 
 export async function POST(
   request: NextRequest,
@@ -103,6 +108,28 @@ export async function POST(
     });
   } catch (error) {
     console.error("[Force Sync] Error:", error);
+    
+    if (error instanceof YahooNotLinkedError) {
+      return NextResponse.json(
+        { ok: false, error: "Yahoo account not linked" },
+        { status: 400 }
+      );
+    }
+
+    if (error instanceof YahooTokenExpiredError) {
+      // Return 401 with redirect URL in response
+      const returnTo = `/league/${encodeURIComponent(leagueKey)}/trade`;
+      const redirectUrl = getYahooAuthRedirectUrl(returnTo);
+      return NextResponse.json(
+        { 
+          ok: false, 
+          error: "Yahoo access token expired",
+          redirectUrl,
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : "Sync failed" },
       { status: 500 }

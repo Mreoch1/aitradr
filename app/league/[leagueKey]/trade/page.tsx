@@ -248,13 +248,25 @@ export default function TradeBuilderPage() {
   };
 
   useEffect(() => {
-    fetchTradeData(false);
+    // Check if we're coming back from token refresh
+    const autoRefresh = searchParams.get('autoRefresh');
+    if (autoRefresh === 'true') {
+      // Force refresh data after token renewal
+      console.log("[Trade Page] Auto-refresh after token renewal");
+      fetchTradeData(true);
+      // Remove the query param from URL without reload
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('autoRefresh');
+      window.history.replaceState({}, '', newUrl.toString());
+    } else {
+      fetchTradeData(false);
+    }
     
     // Auto-refresh data every 30 seconds (but don't force sync)
     const interval = setInterval(() => fetchTradeData(false), 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueKey]); // Only depend on leagueKey, fetchTradeData is stable
+  }, [leagueKey, searchParams]); // Depend on searchParams to detect autoRefresh
 
   // Handle URL parameters for pre-selecting team and player
   useEffect(() => {
@@ -1032,6 +1044,10 @@ export default function TradeBuilderPage() {
                         alert("✅ " + data.message + "\n\nPage will reload now.");
                         window.location.reload();
                       } else {
+                        // Handle token expiration automatically - redirect instead of showing error
+                        if (handleTokenExpiration(data, `/league/${leagueKey}/trade`)) {
+                          return; // Redirect will happen, don't set loading to false
+                        }
                         alert("❌ Refresh failed: " + data.error);
                         setRefreshLoading(false);
                       }
@@ -1096,6 +1112,10 @@ export default function TradeBuilderPage() {
                       alert("✅ " + data.message + "\n\nPage will reload now.");
                       window.location.reload();
                     } else {
+                      // Handle token expiration automatically - redirect instead of showing error
+                      if (handleTokenExpiration(data, `/league/${leagueKey}/trade`)) {
+                        return; // Redirect will happen, don't set loading to false
+                      }
                       alert("❌ Refresh failed: " + data.error);
                       setRefreshLoading(false);
                     }

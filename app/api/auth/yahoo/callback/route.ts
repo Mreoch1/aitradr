@@ -395,10 +395,12 @@ export async function GET(request: NextRequest) {
     const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || new URL(request.url).host;
     const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
     
-    // If returnTo is provided, use it
+    // If returnTo is provided, use it and add autoRefresh param to trigger data refresh
     if (returnTo) {
-      const redirectUrl = `${protocol}://${host}${returnTo}`;
-      console.log("[Yahoo Callback] Redirecting to returnTo:", redirectUrl);
+      // Add autoRefresh query param to trigger automatic data refresh after token renewal
+      const separator = returnTo.includes('?') ? '&' : '?';
+      const redirectUrl = `${protocol}://${host}${returnTo}${separator}autoRefresh=true`;
+      console.log("[Yahoo Callback] Redirecting to returnTo with autoRefresh:", redirectUrl);
       return NextResponse.redirect(redirectUrl);
     }
     
