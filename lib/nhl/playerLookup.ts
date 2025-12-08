@@ -57,6 +57,54 @@ function httpsGet(url: string): Promise<any> {
   });
 }
 
+interface NHLPlayerSearchResponse {
+  people: Array<{
+    id: number;
+    fullName: string;
+    firstName?: string;
+    lastName?: string;
+  }>;
+}
+
+/**
+ * Search for a player directly using NHL API search endpoint
+ */
+async function searchNHLPlayerByName(playerName: string): Promise<number | null> {
+  try {
+    // NHL API search endpoint
+    const encodedName = encodeURIComponent(playerName);
+    const searchUrl = `https://statsapi.web.nhl.com/api/v1/people?search=${encodedName}`;
+    
+    const searchData: NHLPlayerSearchResponse = await httpsGet(searchUrl);
+    const people = searchData.people || [];
+    
+    if (people.length === 0) {
+      return null;
+    }
+    
+    // Try to find exact match first
+    const normalizedSearch = normalizePlayerName(playerName);
+    for (const person of people) {
+      if (person.fullName) {
+        const normalizedPerson = normalizePlayerName(person.fullName);
+        if (normalizedPerson === normalizedSearch) {
+          return person.id;
+        }
+      }
+    }
+    
+    // If no exact match, return first result (best guess)
+    if (people.length > 0 && people[0].id) {
+      return people[0].id;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[NHL Lookup] Error searching for player "${playerName}":`, error);
+    return null;
+  }
+}
+
 /**
  * Build a lookup map of player names to NHL IDs by fetching all current rosters
  * This is expensive but only needs to be done once or periodically
@@ -73,6 +121,8 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
     
     console.log(`[NHL Lookup] Found ${teams.length} teams`);
     
+    let totalPlayersAdded = 0;
+    
     // For each team, get roster
     for (const team of teams) {
       try {
@@ -85,24 +135,32 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
           if (person?.id && person?.fullName) {
             // Store the full name as-is (will be normalized during lookup)
             const fullName = person.fullName.toLowerCase().trim();
-            lookup.set(fullName, person.id);
+            if (!lookup.has(fullName)) {
+              lookup.set(fullName, person.id);
+              totalPlayersAdded++;
+            }
             
             // Also store "First Last" format if available
             if (person.firstName && person.lastName) {
               const firstLast = `${person.firstName} ${person.lastName}`.toLowerCase().trim();
-              lookup.set(firstLast, person.id);
+              if (!lookup.has(firstLast)) {
+                lookup.set(firstLast, person.id);
+                totalPlayersAdded++;
+              }
               
               // Store normalized version too
               const normalized = normalizePlayerName(firstLast);
-              if (normalized !== firstLast) {
+              if (normalized !== firstLast && !lookup.has(normalized)) {
                 lookup.set(normalized, person.id);
+                totalPlayersAdded++;
               }
             }
             
             // Store normalized version of full name
             const normalized = normalizePlayerName(fullName);
-            if (normalized !== fullName) {
+            if (normalized !== fullName && !lookup.has(normalized)) {
               lookup.set(normalized, person.id);
+              totalPlayersAdded++;
             }
           }
         }
@@ -114,7 +172,7 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
       }
     }
     
-    console.log(`[NHL Lookup] Built lookup map with ${lookup.size} players`);
+    console.log(`[NHL Lookup] Built lookup map with ${lookup.size} unique entries (${totalPlayersAdded} total variations)`);
     return lookup;
   } catch (error) {
     console.error("[NHL Lookup] Error building player lookup map:", error);
@@ -197,12 +255,21 @@ export async function findNHLPlayerIdByName(
     }
   }
   
+  // If lookup map failed, try direct API search as fallback
+  console.log(`[NHL Lookup] Lookup map search failed for "${playerName}", trying direct API search...`);
+  const directSearchResult = await searchNHLPlayerByName(playerName);
+  if (directSearchResult) {
+    console.log(`[NHL Lookup] ✅ Found NHL ID ${directSearchResult} for "${playerName}" via direct search`);
+    playerNameToNHLIdCache.set(normalizedName, directSearchResult);
+    return directSearchResult;
+  }
+  
   // Log a sample of lookup map entries for debugging
   if (lookupMap.size > 0) {
     const sampleEntries = Array.from(lookupMap.entries()).slice(0, 3);
-    console.warn(`[NHL Lookup] Could not find NHL ID for: "${playerName}" (normalized: "${normalizedName}"). Sample lookup entries: ${sampleEntries.map(([n]) => n).join(', ')}`);
+    console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" (normalized: "${normalizedName}"). Sample lookup entries: ${sampleEntries.map(([n]) => n).join(', ')}`);
   } else {
-    console.warn(`[NHL Lookup] Could not find NHL ID for: "${playerName}" - lookup map is empty`);
+    console.warn(`[NHL Lookup] ❌ Could not find NHL ID for: "${playerName}" - lookup map is empty`);
   }
   
   return null;
