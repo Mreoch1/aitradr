@@ -29,9 +29,10 @@ export default function SyncHistoricalStatsButton({ leagueKey }: SyncHistoricalS
         throw new Error(errorMsg);
       }
 
+      const message = `Sync completed! Processed ${data.successfulSyncs || 0} of ${data.totalPlayers || 0} players. ${data.totalStatsStored || 0} stats stored.${data.playersWithNoNHLId ? ` ${data.playersWithNoNHLId} players skipped (no NHL ID found).` : ''}`;
       setStatus({
         type: "success",
-        message: `Sync completed! Processed ${data.successfulSyncs || 0} players successfully. ${data.totalStatsStored || 0} stats stored.`,
+        message,
       });
     } catch (error) {
       setStatus({

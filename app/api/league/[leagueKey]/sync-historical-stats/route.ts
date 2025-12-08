@@ -107,11 +107,16 @@ export async function POST(
     let totalStatsStored = 0;
     let playersProcessed = 0;
     let playersSkipped = 0;
+    let playersWithNoNHLId = 0;
+    let playersWithNoStats = 0;
+
+    console.log(`[Historical Stats] Starting to process ${uniquePlayers.length} players with lookup map size ${lookupMap.size}`);
 
     // Process players in batches to avoid rate limiting
     const batchSize = 10;
     for (let i = 0; i < uniquePlayers.length; i += batchSize) {
       const batch = uniquePlayers.slice(i, i + batchSize);
+      console.log(`[Historical Stats] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(uniquePlayers.length / batchSize)} (${batch.length} players)`);
       
       for (const player of batch) {
         try {
@@ -119,19 +124,24 @@ export async function POST(
           const nhlPlayerId = await findNHLPlayerIdByName(player.name, lookupMap);
           
           if (!nhlPlayerId) {
-            console.warn(`[Historical Stats] Could not find NHL ID for ${player.name}`);
+            console.warn(`[Historical Stats] ⚠️  Could not find NHL ID for ${player.name}`);
+            playersWithNoNHLId++;
             playersSkipped++;
             continue;
           }
+
+          let playerHasStats = false;
 
           // Fetch stats for each historical season
           for (const season of historicalSeasons) {
             const seasonStats = await fetchNHLPlayerSeasonStats(nhlPlayerId, season);
             
             if (seasonStats.length === 0) {
-              console.warn(`[Historical Stats] No stats found for ${player.name}, season ${season}`);
+              console.warn(`[Historical Stats] ⚠️  No stats found for ${player.name}, season ${season}`);
               continue;
             }
+
+            playerHasStats = true;
 
             // Store stats in database
             for (const stat of seasonStats) {
@@ -161,23 +171,38 @@ export async function POST(
             }
           }
 
-          playersProcessed++;
+          if (playerHasStats) {
+            playersProcessed++;
+            console.log(`[Historical Stats] ✅ Processed ${player.name}: ${totalStatsStored} stats stored so far`);
+          } else {
+            playersWithNoStats++;
+            playersSkipped++;
+            console.warn(`[Historical Stats] ⚠️  ${player.name} had NHL ID but no stats for any season`);
+          }
           
           // Rate limiting: wait 100ms between players
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
-          console.error(`[Historical Stats] Error processing player ${player.name}:`, error);
+          console.error(`[Historical Stats] ❌ Error processing player ${player.name}:`, error);
           playersSkipped++;
         }
       }
 
       // Wait between batches
       if (i + batchSize < uniquePlayers.length) {
+        console.log(`[Historical Stats] Waiting 1 second before next batch...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    console.log(`[Historical Stats] Sync completed: ${playersProcessed} processed, ${playersSkipped} skipped, ${totalStatsStored} stats stored`);
+    console.log(`[Historical Stats] ========== SYNC COMPLETED ==========`);
+    console.log(`[Historical Stats] Total players: ${uniquePlayers.length}`);
+    console.log(`[Historical Stats] Players processed (with stats): ${playersProcessed}`);
+    console.log(`[Historical Stats] Players skipped: ${playersSkipped}`);
+    console.log(`[Historical Stats]   - No NHL ID found: ${playersWithNoNHLId}`);
+    console.log(`[Historical Stats]   - No stats found: ${playersWithNoStats}`);
+    console.log(`[Historical Stats] Total stats stored: ${totalStatsStored}`);
+    console.log(`[Historical Stats] Lookup map size: ${lookupMap.size}`);
 
     return NextResponse.json({
       success: true,
@@ -188,6 +213,8 @@ export async function POST(
       seasons: historicalSeasons,
       totalPlayers: uniquePlayers.length,
       lookupMapSize: lookupMap.size,
+      playersWithNoNHLId,
+      playersWithNoStats,
     });
   } catch (error) {
     console.error("[Historical Stats] Error syncing historical stats:", error);
