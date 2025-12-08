@@ -586,6 +586,7 @@ async function generatePlayerRecommendations(
   const scoredPlayers = allPlayerStats.map(player => {
     let fitScore = 0;
     const playerCategoryStats: Record<string, number> = {};
+    let categoriesAboveAverage = 0; // Count categories where player is above 50th percentile
 
     for (const cat of weakCategories) {
       const statValue = player.stats[cat] || 0;
@@ -600,12 +601,35 @@ async function generatePlayerRecommendations(
         // Weight by category importance
         const weight = categoryWeights[cat] || 0;
         fitScore += percentile * weight;
+        
+        // Count if player is above average (50th percentile) in this category
+        if (percentile > 0.5) {
+          categoriesAboveAverage++;
+        }
       }
     }
 
+    // Multi-category bonus: Players who excel in multiple weak categories get a bonus
+    // This prioritizes players who help with multiple needs over one-trick ponies
+    let multiCategoryBonus = 1.0;
+    if (weakCategories.length >= 2) {
+      if (categoriesAboveAverage >= weakCategories.length) {
+        // Excels in ALL weak categories - maximum bonus
+        multiCategoryBonus = 1.5;
+      } else if (categoriesAboveAverage >= 2) {
+        // Excels in 2+ categories - good bonus
+        multiCategoryBonus = 1.3;
+      } else if (categoriesAboveAverage === 1 && weakCategories.length > 1) {
+        // Only good in 1 category when multiple are needed - slight penalty
+        multiCategoryBonus = 0.9;
+      }
+    }
+
+    const finalFitScore = fitScore * multiCategoryBonus;
+
     return {
       ...player,
-      fitScore,
+      fitScore: finalFitScore,
       categoryStats: playerCategoryStats,
     };
   });
@@ -628,6 +652,12 @@ async function generatePlayerRecommendations(
     }));
 
   console.log(`[Recommendations] Generated ${topRecommendations.length} recommendations`);
+  topRecommendations.forEach((rec, idx) => {
+    const categoryList = Object.entries(rec.categoryStats)
+      .map(([cat, val]) => `${cat}:${val}`)
+      .join(", ");
+    console.log(`[Recommendations] #${idx + 1}: ${rec.name} (Fit: ${(rec.fitScore * 100).toFixed(1)}%) - Stats: ${categoryList}`);
+  });
   return topRecommendations;
 }
 
