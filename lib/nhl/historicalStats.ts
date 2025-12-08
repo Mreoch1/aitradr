@@ -131,10 +131,16 @@ export async function fetchNHLPlayerSeasonStats(
   try {
     console.log(`[NHL API] Fetching stats for player ${nhlPlayerId}, season ${season}`);
     
-    // Fetch from multiple endpoints to get all stats
+    // NHL API uses season format like "20232024" but we need to ensure we're querying correctly
+    // The API might return all seasons in one call, so we need to filter by season
     const summaryUrl = `https://api.nhle.com/stats/rest/en/skater/summary?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
     const realtimeUrl = `https://api.nhle.com/stats/rest/en/skater/realtime?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
     const faceoffUrl = `https://api.nhle.com/stats/rest/en/skater/faceoffwins?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
+    
+    // Debug: Log URLs for specific players
+    if (nhlPlayerId === 8477492 || nhlPlayerId === 8477956) { // MacKinnon or McDavid
+      console.log(`[NHL API] DEBUG: Player ${nhlPlayerId}, Season ${season}, URL: ${summaryUrl}`);
+    }
     
     // Try skater endpoints first with retry logic
     let summaryResponse = await fetchWithRetry(summaryUrl);
@@ -184,6 +190,11 @@ export async function fetchNHLPlayerSeasonStats(
     
     if (!seasonStats) {
       return [];
+    }
+    
+    // Debug: Log what we're actually using for specific players
+    if (nhlPlayerId === 8477492 || nhlPlayerId === 8477956) { // MacKinnon or McDavid
+      console.log(`[NHL API] DEBUG: Using entry with season=${seasonStats.season || 'N/A'}, requested=${season}, goals=${seasonStats.goals || 0}, games=${seasonStats.gamesPlayed || 0}`);
     }
     
     const gamesPlayed = seasonStats.gamesPlayed || 0;

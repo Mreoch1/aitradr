@@ -328,6 +328,36 @@ All scripts use:
 
 ---
 
+## Historical Stats Management
+
+### 📊 Export Historical Stats
+
+**Purpose:** Fetch historical NHL stats for all players (last 2 seasons) and export to JSON file.
+
+**Usage:**
+```bash
+npx tsx scripts/export-historical-stats.ts
+```
+
+**What it does:**
+- Fetches all unique players from the database
+- Queries NHL API for last 2 seasons of stats
+- Exports to `data/historical-stats.json`
+- The JSON file is then hard-coded in the repo and used for player value calculations
+
+**When to run:**
+- After adding new players to the database
+- At the start of a new season (to get previous 2 seasons)
+- When historical stats need to be refreshed
+
+**Output:**
+- Creates/updates `data/historical-stats.json`
+- JSON structure: `{ "Player Name": { "2023": { "Goals": 64, ... }, "2024": { ... } } }`
+
+**Note:** The exported JSON file is committed to the repo and used instead of querying the NHL API during value calculations. This is faster and more reliable.
+
+---
+
 ## Adding New Scripts
 
 Template:

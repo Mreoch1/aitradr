@@ -146,61 +146,108 @@ function zScore(value: number, mean: number, std: number, isNegative: boolean = 
 // ===== SKATER VALUE CALCULATION =====
 
 /**
+ * Load historical stats from hard-coded JSON file
+ * Returns cached historical stats data
+ */
+let cachedHistoricalStats: Record<string, Record<string, Record<string, number>>> | null = null;
+
+function loadHistoricalStats(): Record<string, Record<string, Record<string, number>>> {
+  if (cachedHistoricalStats) {
+    return cachedHistoricalStats;
+  }
+
+  try {
+    // Use require for Node.js fs (works in Next.js API routes/server-side)
+    // In Next.js serverless, static files in the repo are available at runtime
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(process.cwd(), 'data', 'historical-stats.json');
+    
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      cachedHistoricalStats = JSON.parse(fileContent);
+      // Remove _comment and _format keys if present
+      if (cachedHistoricalStats && '_comment' in cachedHistoricalStats) {
+        delete (cachedHistoricalStats as any)._comment;
+        delete (cachedHistoricalStats as any)._format;
+      }
+      console.log(`[PlayerValues] Loaded historical stats for ${Object.keys(cachedHistoricalStats || {}).length} players`);
+      return cachedHistoricalStats || {};
+    } else {
+      console.warn(`[PlayerValues] Historical stats file not found at ${filePath}, using empty data`);
+      cachedHistoricalStats = {};
+      return {};
+    }
+  } catch (error) {
+    console.error(`[PlayerValues] Error loading historical stats file:`, error);
+    cachedHistoricalStats = {};
+    return {};
+  }
+}
+
+/**
  * Get historical stats for a player (last 2 seasons)
  * Returns a map of stat name to weighted average value
+ * Now reads from hard-coded JSON file instead of database
  */
 async function getHistoricalStats(playerId: string): Promise<Map<string, number>> {
   const historicalStats = new Map<string, number>();
   
   try {
-    // Get last 2 seasons of stats
-    const seasonStats = await prisma.playerSeasonStat.findMany({
-      where: {
-        playerId,
-      },
-      orderBy: {
-        season: 'desc',
-      },
-      take: 200, // Get more stats (multiple stats per season)
-    });
-    
-    if (seasonStats.length === 0) {
-      return historicalStats; // No historical data
-    }
-    
-    // Group by unique seasons (take last 2 unique seasons)
-    const uniqueSeasons = Array.from(new Set(seasonStats.map(s => s.season).sort().reverse())).slice(0, 2);
-    const statsForSeasons = seasonStats.filter(s => uniqueSeasons.includes(s.season));
-    
-    // Debug logging for specific players
+    // Get player name to look up in historical stats
     const player = await prisma.player.findUnique({ where: { id: playerId }, select: { name: true } });
-    if (player && (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon")) {
-      console.log(`\n[PlayerValues] ===== ${player.name} Historical Stats =====`);
-      console.log(`[PlayerValues] ${statsForSeasons.length} stats found from seasons ${uniqueSeasons.join(', ')}`);
-      console.log(`[PlayerValues] Unique stat names:`, Array.from(new Set(statsForSeasons.map(s => s.statName))));
+    if (!player) {
+      return historicalStats;
     }
+
+    // Load historical stats from JSON file
+    const allHistoricalStats = loadHistoricalStats();
+    const playerHistoricalData = allHistoricalStats[player.name];
+
+    if (!playerHistoricalData || Object.keys(playerHistoricalData).length === 0) {
+      return historicalStats; // No historical data for this player
+    }
+
+    // Get seasons and sort (most recent first)
+    const seasons = Object.keys(playerHistoricalData).sort().reverse().slice(0, 2);
     
+    if (seasons.length === 0) {
+      return historicalStats;
+    }
+
+    // Debug logging for specific players
+    if (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon") {
+      console.log(`\n[PlayerValues] ===== ${player.name} Historical Stats =====`);
+      console.log(`[PlayerValues] Seasons found: ${seasons.join(', ')}`);
+      console.log(`[PlayerValues] Sample stats from ${seasons[0]}:`, Object.keys(playerHistoricalData[seasons[0]]).slice(0, 5));
+    }
+
     // Group by stat name and calculate weighted average
     // More recent season gets higher weight (60% current, 40% previous)
     const statMap = new Map<string, Array<{ value: number; weight: number; season: string }>>();
-    
-    for (const stat of statsForSeasons) {
-      const seasonIndex = uniqueSeasons.indexOf(stat.season);
+
+    for (const season of seasons) {
+      const seasonData = playerHistoricalData[season];
+      if (!seasonData) continue;
+
+      const seasonIndex = seasons.indexOf(season);
       const weight = seasonIndex === 0 ? 0.6 : 0.4; // Most recent = 60%, older = 40%
-      
-      if (!statMap.has(stat.statName)) {
-        statMap.set(stat.statName, []);
+
+      for (const [statName, value] of Object.entries(seasonData)) {
+        if (!statMap.has(statName)) {
+          statMap.set(statName, []);
+        }
+        statMap.get(statName)!.push({ value: value as number, weight, season });
       }
-      statMap.get(stat.statName)!.push({ value: stat.value, weight, season: stat.season });
     }
-    
+
     // Calculate weighted average for each stat
     for (const [statName, values] of statMap.entries()) {
       const totalWeight = values.reduce((sum, v) => sum + v.weight, 0);
       const weightedSum = values.reduce((sum, v) => sum + (v.value * v.weight), 0);
       const weightedAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+      
       // Normalize stat name to match SKATER_CATEGORIES format
-      // NHL API uses "Power Play Points" but we need "powerplay points" (no space)
       let normalizedName = normalizeStatName(statName);
       // Map NHL stat name variations to SKATER_CATEGORIES format
       const statNameMapping: Record<string, string> = {
@@ -213,7 +260,7 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       historicalStats.set(normalizedName, weightedAvg);
       
       // Debug logging
-      if (player && (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon")) {
+      if (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon") {
         const seasonValues = values.map(v => `${v.season}:${v.value.toFixed(1)}(${v.weight})`).join(', ');
         console.log(`[PlayerValues] ${player.name} - "${statName}" -> "${normalizedName}": ${seasonValues} = ${weightedAvg.toFixed(2)} avg`);
       }
