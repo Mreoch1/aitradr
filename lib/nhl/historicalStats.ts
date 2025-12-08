@@ -159,8 +159,29 @@ export async function fetchNHLPlayerSeasonStats(
       return [];
     }
     
-    // Get the first stat entry (should be the season stats)
-    const seasonStats = summaryData.data[0];
+    // Debug: Log all entries to see what we're getting
+    if (summaryData.data.length > 1) {
+      console.log(`[NHL API] Player ${nhlPlayerId}, season ${season}: Found ${summaryData.data.length} entries`);
+      summaryData.data.forEach((entry: any, idx: number) => {
+        console.log(`[NHL API] Entry ${idx}: season=${entry.season || 'N/A'}, games=${entry.gamesPlayed || 0}, goals=${entry.goals || 0}`);
+      });
+    }
+    
+    // Filter by season - the API might return multiple seasons, we need the exact one
+    let seasonStats = summaryData.data.find((entry: any) => {
+      // Check if entry has season field that matches
+      if (entry.season === season) return true;
+      // Some APIs use different format, try matching first 4 chars
+      if (entry.season && entry.season.substring(0, 4) === season.substring(0, 4)) return true;
+      return false;
+    });
+    
+    // If no season-specific match found, use first entry as fallback
+    if (!seasonStats) {
+      seasonStats = summaryData.data[0];
+      console.warn(`[NHL API] No exact season match for ${season}, using first entry (season: ${seasonStats.season || 'unknown'})`);
+    }
+    
     if (!seasonStats) {
       return [];
     }
