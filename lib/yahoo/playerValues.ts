@@ -172,6 +172,13 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
     const uniqueSeasons = Array.from(new Set(seasonStats.map(s => s.season).sort().reverse())).slice(0, 2);
     const statsForSeasons = seasonStats.filter(s => uniqueSeasons.includes(s.season));
     
+    // Debug logging for first few players
+    const player = await prisma.player.findUnique({ where: { id: playerId }, select: { name: true } });
+    if (player && (player.name === "Macklin Celebrini" || player.name === "Mikko Rantanen")) {
+      console.log(`[PlayerValues] ${player.name} historical stats: ${statsForSeasons.length} stats found from seasons ${uniqueSeasons.join(', ')}`);
+      console.log(`[PlayerValues] Sample stat names:`, statsForSeasons.slice(0, 5).map(s => s.statName));
+    }
+    
     // Group by stat name and calculate weighted average
     // More recent season gets higher weight (60% current, 40% previous)
     const statMap = new Map<string, Array<{ value: number; weight: number; season: string }>>();
@@ -203,6 +210,11 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       };
       normalizedName = statNameMapping[normalizedName] || normalizedName;
       historicalStats.set(normalizedName, weightedAvg);
+      
+      // Debug logging
+      if (player && (player.name === "Macklin Celebrini" || player.name === "Mikko Rantanen")) {
+        console.log(`[PlayerValues] ${player.name} - normalized "${statName}" -> "${normalizedName}" = ${weightedAvg.toFixed(2)}`);
+      }
     }
   } catch (error) {
     console.error(`[PlayerValues] Error fetching historical stats for player ${playerId}:`, error);
