@@ -98,6 +98,32 @@ export async function findNHLPlayerId(playerName: string): Promise<number | null
  * Uses api.nhle.com with the correct endpoint structure
  * Fetches from multiple endpoints to get all stats: summary, realtime (hits/blocks), and faceoffs
  */
+/**
+ * Retry fetch with exponential backoff for rate limiting
+ */
+async function fetchWithRetry(
+  url: string,
+  maxRetries: number = 3,
+  baseDelay: number = 2000
+): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url);
+    
+    if (response.status === 429) {
+      // Rate limited - wait with exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(`[NHL API] Rate limited (429), waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+    
+    return response;
+  }
+  
+  // Final attempt
+  return await fetch(url);
+}
+
 export async function fetchNHLPlayerSeasonStats(
   nhlPlayerId: number,
   season: string
@@ -110,18 +136,18 @@ export async function fetchNHLPlayerSeasonStats(
     const realtimeUrl = `https://api.nhle.com/stats/rest/en/skater/realtime?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
     const faceoffUrl = `https://api.nhle.com/stats/rest/en/skater/faceoffwins?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
     
-    // Try skater endpoints first
-    let summaryResponse = await fetch(summaryUrl);
-    let realtimeResponse = await fetch(realtimeUrl);
-    let faceoffResponse = await fetch(faceoffUrl);
+    // Try skater endpoints first with retry logic
+    let summaryResponse = await fetchWithRetry(summaryUrl);
+    let realtimeResponse = await fetchWithRetry(realtimeUrl);
+    let faceoffResponse = await fetchWithRetry(faceoffUrl);
     
     // If summary fails, try goalie endpoint
     if (!summaryResponse.ok) {
       const goalieUrl = `https://api.nhle.com/stats/rest/en/goalie/summary?season=${season}&factCayenneExp=gamesPlayed%3E0&cayenneExp=playerId%3D${nhlPlayerId}`;
-      summaryResponse = await fetch(goalieUrl);
+      summaryResponse = await fetchWithRetry(goalieUrl);
       
       if (!summaryResponse.ok) {
-        console.warn(`[NHL API] Failed to fetch stats: ${summaryResponse.status} ${summaryResponse.statusText}`);
+        console.warn(`[NHL API] Failed to fetch stats after retries: ${summaryResponse.status} ${summaryResponse.statusText}`);
         return [];
       }
     }

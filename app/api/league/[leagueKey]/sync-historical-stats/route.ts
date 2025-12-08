@@ -115,7 +115,8 @@ export async function POST(
     console.log(`[Historical Stats] Starting to process ${uniquePlayers.length} players with lookup map size ${lookupMap.size}`);
 
     // Process players in batches to avoid rate limiting
-    const batchSize = 10;
+    // Reduced batch size and increased delays to handle NHL API rate limits
+    const batchSize = 5;
     for (let i = 0; i < uniquePlayers.length; i += batchSize) {
       const batch = uniquePlayers.slice(i, i + batchSize);
       console.log(`[Historical Stats] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(uniquePlayers.length / batchSize)} (${batch.length} players)`);
@@ -182,18 +183,21 @@ export async function POST(
             console.warn(`[Historical Stats] ⚠️  ${player.name} had NHL ID but no stats for any season`);
           }
           
-          // Rate limiting: wait 100ms between players
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Rate limiting: increased delay between players to avoid 429 errors
+          // NHL API is strict, so we wait 500ms between players
+          await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           console.error(`[Historical Stats] ❌ Error processing player ${player.name}:`, error);
           playersSkipped++;
+          // Wait longer after errors to avoid compounding rate limit issues
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
 
-      // Wait between batches
+      // Wait between batches - increased to 3 seconds to respect rate limits
       if (i + batchSize < uniquePlayers.length) {
-        console.log(`[Historical Stats] Waiting 1 second before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`[Historical Stats] Waiting 3 seconds before next batch to avoid rate limits...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
