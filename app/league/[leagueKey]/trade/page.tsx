@@ -934,11 +934,11 @@ export default function TradeBuilderPage() {
               
               if (isStale) {
                 return (
-                  <div className="rounded-lg border-2 border-yellow-500 bg-yellow-50 px-6 py-4 shadow-md">
-                    <p className="text-center text-base font-bold text-yellow-900">
+                  <div className="rounded-lg border-2 border-yellow-500 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-6 py-4 shadow-md">
+                    <p className="text-center text-base font-bold text-yellow-900 dark:text-yellow-300">
                       ⚠️ Stats are {Math.round(hoursOld)} hours old
                     </p>
-                    <p className="text-center text-sm text-yellow-700 mt-2">
+                    <p className="text-center text-sm text-yellow-700 dark:text-yellow-400 mt-2">
                       Click <strong>"🔄 Refresh Teams"</strong> below to get the latest stats from Yahoo.
                     </p>
                   </div>
@@ -1082,8 +1082,8 @@ export default function TradeBuilderPage() {
             )}
           </div>
         ) : (
-          <div className="mb-6 rounded-lg border-2 border-yellow-500 bg-yellow-50 px-6 py-4 shadow-md">
-            <p className="text-center text-sm text-yellow-900">
+          <div className="mb-6 rounded-lg border-2 border-yellow-500 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-6 py-4 shadow-md">
+            <p className="text-center text-sm text-yellow-900 dark:text-yellow-300">
               ⚠️ Your team hasn't been identified yet. 
               <button
                 onClick={async () => {
@@ -1578,7 +1578,7 @@ export default function TradeBuilderPage() {
             </div>
           </div>
           {/* Improved Trade Analysis */}
-          <div className="mt-6 rounded-lg border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 p-6 shadow-md">
+          <div className="mt-6 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 shadow-md">
             <h3 className="mb-4 text-center text-lg font-bold theme-text-primary">📊 Trade Analysis</h3>
             
             <div className="grid grid-cols-2 gap-6">
@@ -1638,14 +1638,17 @@ export default function TradeBuilderPage() {
             </div>
             
             {/* Overall Trade Verdict */}
-            <div className="mt-4 rounded-lg border-2 p-3 text-center" style={{
-              borderColor: diff === 0 ? "#22c55e" : Math.abs(diff) < 5 ? "#eab308" : "#ef4444",
-              backgroundColor: diff === 0 ? "#f0fdf4" : Math.abs(diff) < 5 ? "#fef9c3" : "#fef2f2"
-            }}>
+            <div className={`mt-4 rounded-lg border-2 p-3 text-center ${
+              diff === 0 
+                ? "border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-400" 
+                : Math.abs(diff) < 5 
+                ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-400"
+                : "border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-400"
+            }`}>
               {diff === 0 ? (
                 <p className="font-bold text-green-700 dark:text-green-400">✅ EVEN TRADE</p>
               ) : Math.abs(diff) < 5 ? (
-                <p className="font-bold text-yellow-700">⚖️ RELATIVELY FAIR ({toFixedSafe(Math.abs(diff), 1)} point difference)</p>
+                <p className="font-bold text-yellow-700 dark:text-yellow-400">⚖️ RELATIVELY FAIR ({toFixedSafe(Math.abs(diff), 1)} point difference)</p>
               ) : diff > 0 ? (
                 <p className="font-bold text-red-700 dark:text-red-400">⚠️ {teamA?.name || "Team A"} wins by {toFixedSafe(diff, 1)} points</p>
               ) : (
@@ -1665,7 +1668,7 @@ export default function TradeBuilderPage() {
                 
                 if (hasKeepers) {
                   return (
-                    <p className="mt-2 text-xs text-purple-700 font-semibold">
+                    <p className="mt-2 text-xs text-purple-700 dark:text-purple-300 font-semibold">
                       🔒 Keeper-adjusted values included (surplus × years remaining)
                     </p>
                   );
