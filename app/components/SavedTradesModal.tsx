@@ -37,10 +37,10 @@ export function SavedTradesModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg theme-bg-primary shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-gray-200 p-4">
-          <h2 className="font-mono text-xl font-bold text-gray-800">
+        <div className="flex items-center justify-between border-b-2 border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="font-mono text-xl font-bold theme-text-primary">
             💾 SAVED TRADES
           </h2>
           <button
@@ -68,15 +68,15 @@ export function SavedTradesModal({
                 return (
                   <div
                     key={trade.id}
-                    className="rounded-lg border-2 border-gray-300 bg-gray-50 p-4 hover:border-blue-500"
+                    className="rounded-lg border-2 border-gray-300 dark:border-gray-600 theme-bg-secondary p-4 hover:border-blue-500 dark:hover:border-blue-400"
                   >
                     {/* Trade Header */}
                     <div className="mb-3 flex items-center justify-between">
                       <div>
-                        <h3 className="font-mono font-bold text-gray-800">
+                        <h3 className="font-mono font-bold theme-text-primary">
                           {trade.tradeName || "Untitled Trade"}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm theme-text-secondary">
                           {trade.teamAName} ↔ {trade.teamBName}
                         </p>
                         <p className="text-xs theme-text-secondary">
@@ -113,12 +113,12 @@ export function SavedTradesModal({
                         <p className="mb-1 font-bold theme-text-primary">
                           {trade.teamAName} Sends:
                         </p>
-                        <p className="text-gray-600">
+                        <p className="theme-text-secondary">
                           {trade.teamAPlayers.length} player(s)
                           {trade.teamAPicks.length > 0 &&
                             `, ${trade.teamAPicks.length} pick(s)`}
                         </p>
-                        <p className="font-mono text-gray-800">
+                        <p className="font-mono theme-text-primary">
                           Value: {toFixedSafe(trade.teamAValue, 1)}
                         </p>
                       </div>
@@ -128,19 +128,19 @@ export function SavedTradesModal({
                         <p className="mb-1 font-bold theme-text-primary">
                           {trade.teamBName} Sends:
                         </p>
-                        <p className="text-gray-600">
+                        <p className="theme-text-secondary">
                           {trade.teamBPlayers.length} player(s)
                           {trade.teamBPicks.length > 0 &&
                             `, ${trade.teamBPicks.length} pick(s)`}
                         </p>
-                        <p className="font-mono text-gray-800">
+                        <p className="font-mono theme-text-primary">
                           Value: {toFixedSafe(trade.teamBValue, 1)}
                         </p>
                       </div>
                     </div>
 
                     {/* Verdict */}
-                    <div className="mt-3 rounded-lg bg-white p-2 text-center">
+                    <div className="mt-3 rounded-lg theme-bg-primary p-2 text-center">
                       {isGoodTrade ? (
                         <p className="font-bold text-green-700 dark:text-green-400">✅ EVEN TRADE</p>
                       ) : winner ? (
@@ -148,7 +148,7 @@ export function SavedTradesModal({
                           ⚠️ {winner} wins by {toFixedSafe(Math.abs(netGain), 1)} points
                         </p>
                       ) : (
-                        <p className="font-bold text-yellow-700">
+                        <p className="font-bold text-yellow-700 dark:text-yellow-400">
                           ⚖️ Close ({toFixedSafe(Math.abs(netGain), 1)} pt difference)
                         </p>
                       )}

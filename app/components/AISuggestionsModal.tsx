@@ -135,8 +135,8 @@ export function AISuggestionsModal({
             <>
               {/* Info Message if fewer than 5 suggestions */}
               {validSuggestions.length < 5 && (
-                <div className="mb-4 rounded-lg border-2 border-blue-500 bg-blue-50 p-3">
-                  <p className="text-sm text-blue-900">
+                <div className="mb-4 rounded-lg border-2 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 p-3">
+                  <p className="text-sm text-blue-900 dark:text-blue-200">
                     <strong>ℹ️ Found {validSuggestions.length} trade suggestion{validSuggestions.length !== 1 ? 's' : ''}.</strong>
                     {validSuggestions.length < 5 && (
                       <span className="ml-2">
@@ -175,8 +175,8 @@ export function AISuggestionsModal({
               {/* Current Suggestion */}
               <div className="space-y-6">
                 {/* Trade Partner */}
-                <div className="rounded-lg border-2 border-blue-500 bg-blue-50 p-4">
-                  <h3 className="font-bold text-blue-900">
+                <div className="rounded-lg border-2 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 p-4">
+                  <h3 className="font-bold text-blue-900 dark:text-blue-200">
                     Trade With: {currentSuggestion.partnerTeam}
                   </h3>
                 </div>
@@ -184,30 +184,30 @@ export function AISuggestionsModal({
                 {/* Trade Details */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* You Give */}
-                  <div className="rounded-lg border-2 border-red-500 bg-red-50 p-4">
-                    <h4 className="mb-3 font-bold text-red-900">⬆️ You Give</h4>
+                  <div className="rounded-lg border-2 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/20 p-4">
+                    <h4 className="mb-3 font-bold text-red-900 dark:text-red-200">⬆️ You Give</h4>
                     <div className="space-y-2">
                       {currentSuggestion.youGive.map((item, idx) => (
                         <div key={idx} className="flex justify-between text-sm">
-                          <span className="text-red-800">
+                          <span className="text-red-800 dark:text-red-200">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-red-700 dark:text-red-400">{toFixedSafe(item.value, 1)}</span>
+                          <span className="font-semibold text-red-700 dark:text-red-300">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* You Get */}
-                  <div className="rounded-lg border-2 border-green-500 bg-green-50 p-4">
-                    <h4 className="mb-3 font-bold text-green-900">⬇️ You Get</h4>
+                  <div className="rounded-lg border-2 border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20 p-4">
+                    <h4 className="mb-3 font-bold text-green-900 dark:text-green-200">⬇️ You Get</h4>
                     <div className="space-y-2">
                       {currentSuggestion.youGet.map((item, idx) => (
                         <div key={idx} className="flex justify-between text-sm">
-                          <span className="text-green-800">
+                          <span className="text-green-800 dark:text-green-200">
                             {item.type === "player" ? item.name : `Round ${item.name} Pick`}
                           </span>
-                          <span className="font-semibold text-green-700 dark:text-green-400">{toFixedSafe(item.value, 1)}</span>
+                          <span className="font-semibold text-green-700 dark:text-green-300">{toFixedSafe(item.value, 1)}</span>
                         </div>
                       ))}
                     </div>
@@ -217,25 +217,35 @@ export function AISuggestionsModal({
                 {/* Net Gain */}
                 <div className={`rounded-lg border-2 p-4 ${
                   Math.abs(currentSuggestion.netValue) < 5
-                    ? "border-yellow-500 bg-yellow-50"
+                    ? "border-yellow-500 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
                     : currentSuggestion.netValue > 0
-                    ? "border-green-500 bg-green-50"
-                    : "border-gray-500 bg-gray-50"
+                    ? "border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20"
+                    : "border-gray-500 dark:border-gray-400 bg-gray-50 dark:bg-gray-800/50"
                 }`}>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold">Net Gain:</span>
+                    <span className="font-bold theme-text-primary">Net Gain:</span>
                     <span className={`text-2xl font-bold ${
-                      currentSuggestion.netValue > 0 ? "text-green-700 dark:text-green-400" : "theme-text-primary"
+                      currentSuggestion.netValue > 0 
+                        ? "text-green-700 dark:text-green-300" 
+                        : currentSuggestion.netValue < 0
+                        ? "text-red-700 dark:text-red-300"
+                        : "text-gray-700 dark:text-gray-300"
                     }`}>
                       {currentSuggestion.netValue > 0 ? "+" : ""}{toFixedSafe(currentSuggestion.netValue, 1)}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm">
+                  <p className={`mt-2 text-sm font-semibold ${
+                    Math.abs(currentSuggestion.netValue) < 5 
+                      ? "text-yellow-800 dark:text-yellow-300" 
+                      : currentSuggestion.netValue > 0 
+                      ? "text-green-800 dark:text-green-300" 
+                      : "text-red-800 dark:text-red-300"
+                  }`}>
                     {Math.abs(currentSuggestion.netValue) < 5 
                       ? "⚖️ Fair Trade" 
                       : currentSuggestion.netValue > 0 
                       ? "✅ You Win" 
-                      : "You Lose"}
+                      : "❌ You Lose"}
                   </p>
                 </div>
 
@@ -268,8 +278,8 @@ export function AISuggestionsModal({
                   </div>
                   <span className={`font-bold ${
                     currentSuggestion.confidence === "High" ? "text-green-700 dark:text-green-400" :
-                    currentSuggestion.confidence === "Medium" ? "text-yellow-700" :
-                    "text-orange-700"
+                    currentSuggestion.confidence === "Medium" ? "text-yellow-700 dark:text-yellow-400" :
+                    "text-orange-700 dark:text-orange-400"
                   }`}>
                     {currentSuggestion.confidence}
                   </span>
