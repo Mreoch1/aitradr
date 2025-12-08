@@ -7,6 +7,9 @@ import { fetchNHLPlayerSeasonStats, getLastTwoSeasons } from "@/lib/nhl/historic
 /**
  * Sync historical stats (last 2 seasons) for all players in a league
  * This fetches data from NHL API and stores it in PlayerSeasonStat table
+ * 
+ * NOTE: Vercel serverless functions have DNS resolution issues with statsapi.web.nhl.com
+ * If this fails, you can run the sync script locally: npx tsx scripts/sync-historical-stats.ts [leagueKey]
  */
 export async function POST(
   request: NextRequest,

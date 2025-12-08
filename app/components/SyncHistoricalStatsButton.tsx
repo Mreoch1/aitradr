@@ -35,9 +35,16 @@ export default function SyncHistoricalStatsButton({ leagueKey }: SyncHistoricalS
         message,
       });
     } catch (error) {
+      let errorMessage = error instanceof Error ? error.message : "Failed to sync historical stats";
+      
+      // Check if it's a DNS/network error
+      if (errorMessage.includes("ENOTFOUND") || errorMessage.includes("fetch failed")) {
+        errorMessage = "Network error: Cannot reach NHL API. This is a known Vercel limitation. Please run the sync locally using: npx tsx scripts/sync-historical-stats.ts [leagueKey]";
+      }
+      
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "Failed to sync historical stats",
+        message: errorMessage,
       });
     } finally {
       setLoading(false);
