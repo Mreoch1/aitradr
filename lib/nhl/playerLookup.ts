@@ -83,14 +83,26 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
         for (const rosterEntry of roster) {
           const person = rosterEntry.person;
           if (person?.id && person?.fullName) {
-            // Store multiple variations of the name for better matching
+            // Store the full name as-is (will be normalized during lookup)
             const fullName = person.fullName.toLowerCase().trim();
             lookup.set(fullName, person.id);
             
-            // Also store "First Last" format
+            // Also store "First Last" format if available
             if (person.firstName && person.lastName) {
               const firstLast = `${person.firstName} ${person.lastName}`.toLowerCase().trim();
               lookup.set(firstLast, person.id);
+              
+              // Store normalized version too
+              const normalized = normalizePlayerName(firstLast);
+              if (normalized !== firstLast) {
+                lookup.set(normalized, person.id);
+              }
+            }
+            
+            // Store normalized version of full name
+            const normalized = normalizePlayerName(fullName);
+            if (normalized !== fullName) {
+              lookup.set(normalized, person.id);
             }
           }
         }
@@ -111,39 +123,88 @@ export async function buildPlayerNameToNHLIdMap(): Promise<Map<string, number>> 
 }
 
 /**
+ * Normalize player name for matching (remove special characters, handle accents)
+ */
+function normalizePlayerName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .normalize('NFD') // Decompose accented characters
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .replace(/\s+/g, ' '); // Normalize whitespace
+}
+
+/**
  * Find NHL player ID from player name using the lookup map
  */
 export async function findNHLPlayerIdByName(
   playerName: string,
   lookupMap?: Map<string, number>
 ): Promise<number | null> {
+  if (!lookupMap || lookupMap.size === 0) {
+    console.warn(`[NHL Lookup] Lookup map is empty, cannot find NHL ID for: ${playerName}`);
+    return null;
+  }
+
   // Use cache if available
+  const normalizedName = normalizePlayerName(playerName);
   if (playerNameToNHLIdCache.size > 0) {
-    const cached = playerNameToNHLIdCache.get(playerName.toLowerCase().trim());
+    const cached = playerNameToNHLIdCache.get(normalizedName);
     if (cached) return cached;
   }
   
-  // Use provided lookup map or build one
-  const lookup = lookupMap || await buildPlayerNameToNHLIdMap();
-  
-  // Try exact match first
-  const normalizedName = playerName.toLowerCase().trim();
-  const nhlId = lookup.get(normalizedName);
-  
+  // Try exact match first (normalized)
+  const nhlId = lookupMap.get(normalizedName);
   if (nhlId) {
     playerNameToNHLIdCache.set(normalizedName, nhlId);
     return nhlId;
   }
   
-  // Try partial matching (e.g., "Connor McDavid" matches "Connor McDavid")
-  for (const [name, id] of lookup.entries()) {
-    if (name.includes(normalizedName) || normalizedName.includes(name)) {
+  // Try matching against normalized lookup map entries
+  for (const [lookupName, id] of lookupMap.entries()) {
+    const normalizedLookupName = normalizePlayerName(lookupName);
+    
+    // Exact match after normalization
+    if (normalizedLookupName === normalizedName) {
       playerNameToNHLIdCache.set(normalizedName, id);
       return id;
     }
+    
+    // Partial matching - check if last names match (most reliable)
+    const nameParts = normalizedName.split(' ');
+    const lookupParts = normalizedLookupName.split(' ');
+    
+    if (nameParts.length >= 2 && lookupParts.length >= 2) {
+      // Match if last names match and first name initial matches
+      const lastNameMatch = nameParts[nameParts.length - 1] === lookupParts[lookupParts.length - 1];
+      const firstNameMatch = nameParts[0] === lookupParts[0] || 
+                             nameParts[0][0] === lookupParts[0][0];
+      
+      if (lastNameMatch && firstNameMatch) {
+        playerNameToNHLIdCache.set(normalizedName, id);
+        return id;
+      }
+    }
+    
+    // Fallback: substring matching
+    if (normalizedLookupName.includes(normalizedName) || normalizedName.includes(normalizedLookupName)) {
+      // Only use substring if it's substantial (at least 5 characters)
+      if (normalizedName.length >= 5 || normalizedLookupName.length >= 5) {
+        playerNameToNHLIdCache.set(normalizedName, id);
+        return id;
+      }
+    }
   }
   
-  console.warn(`[NHL Lookup] Could not find NHL ID for player: ${playerName}`);
+  // Log a sample of lookup map entries for debugging
+  if (lookupMap.size > 0) {
+    const sampleEntries = Array.from(lookupMap.entries()).slice(0, 3);
+    console.warn(`[NHL Lookup] Could not find NHL ID for: "${playerName}" (normalized: "${normalizedName}"). Sample lookup entries: ${sampleEntries.map(([n]) => n).join(', ')}`);
+  } else {
+    console.warn(`[NHL Lookup] Could not find NHL ID for: "${playerName}" - lookup map is empty`);
+  }
+  
   return null;
 }
 
