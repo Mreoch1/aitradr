@@ -401,7 +401,10 @@ export default function TeamDashboardPage() {
                   .filter(([code, cat]) => {
                     // Only show skater categories (exclude goalie-only: W, GAA, SV, SVPCT, SHO)
                     const goalieCategoryCodes = ["W", "GAA", "SV", "SVPCT", "SHO"];
-                    return cat.zScore < -0.5 && !goalieCategoryCodes.includes(code);
+                    // Include if z-score < -0.4 OR rank in bottom 30% (matches recommendation logic)
+                    const isWeakByZScore = cat.zScore < -0.4;
+                    const isWeakByRank = cat.rank > (cat.teams * 0.7);
+                    return (isWeakByZScore || isWeakByRank) && !goalieCategoryCodes.includes(code);
                   })
                   .map(([_, cat]) => cat.abbrev)
                   .join(", ")}

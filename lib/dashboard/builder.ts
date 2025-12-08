@@ -459,9 +459,15 @@ async function generatePlayerRecommendations(
   allTeams: any[],
   pickValueMap: Map<number, number>
 ): Promise<PlayerRecommendation[]> {
-  // Identify weak categories (z-score < -0.5)
+  // Identify weak categories (z-score < -0.4 or rank in bottom 30% of league)
+  // Lower threshold to catch categories like plus/minus that might be exactly -0.5
   const allWeakCategories = Object.entries(categorySummary)
-    .filter(([_, cat]) => cat.zScore < -0.5)
+    .filter(([code, cat]) => {
+      // Include if z-score is below -0.4 OR if rank is in bottom 30% (e.g., 8/10, 9/10, 10/10)
+      const isWeakByZScore = cat.zScore < -0.4;
+      const isWeakByRank = cat.rank > (cat.teams * 0.7); // Bottom 30%
+      return isWeakByZScore || isWeakByRank;
+    })
     .map(([code, _]) => code);
 
   // Filter out goalie-only categories since we only recommend skaters
@@ -475,7 +481,14 @@ async function generatePlayerRecommendations(
     return []; // No weak skater categories, no recommendations needed
   }
 
+  console.log(`[Recommendations] All weak categories (z-score < -0.4 or bottom 30%): ${allWeakCategories.join(", ")}`);
   console.log(`[Recommendations] Weak skater categories: ${weakCategories.join(", ")}`);
+  weakCategories.forEach(cat => {
+    const catInfo = categorySummary[cat];
+    if (catInfo) {
+      console.log(`[Recommendations]   - ${cat} (${catInfo.abbrev}): z-score=${catInfo.zScore.toFixed(2)}, rank=${catInfo.rank}/${catInfo.teams}`);
+    }
+  });
   if (allWeakCategories.length > weakCategories.length) {
     const goalieWeakCategories = allWeakCategories.filter(cat => goalieCategoryCodes.includes(cat));
     console.log(`[Recommendations] Skipping goalie-only weak categories: ${goalieWeakCategories.join(", ")}`);
