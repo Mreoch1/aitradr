@@ -619,30 +619,41 @@ async function generatePlayerRecommendations(
     // Multi-category bonus: STRONGLY prioritize players who excel in MULTIPLE weak categories
     // This ensures we recommend players who help with BOTH HIT and +/- (or other combinations)
     let multiCategoryBonus = 1.0;
+    
+    // REQUIREMENT: If multiple weak categories exist, player MUST be at least decent (40th percentile) in ALL of them
+    // This filters out one-category specialists completely
     if (weakCategories.length >= 2) {
-      // If player excels in ALL weak categories (60th+ percentile) - huge bonus
-      if (categoriesAboveAverage >= weakCategories.length) {
-        multiCategoryBonus = 2.0; // Doubled from 1.5 - very strong preference
-      } 
-      // If player is good in ALL weak categories (50th+ percentile) - strong bonus
-      else if (categoriesGood >= weakCategories.length) {
-        multiCategoryBonus = 1.6; // Increased from 1.5
-      }
-      // If player excels in 2+ categories when multiple are needed - good bonus
-      else if (categoriesAboveAverage >= 2) {
-        multiCategoryBonus = 1.4; // Increased from 1.3
-      }
-      // If player is good in 2+ categories - moderate bonus
-      else if (categoriesGood >= 2) {
-        multiCategoryBonus = 1.2;
-      }
-      // Only good in 1 category when multiple are needed - STRONG penalty
-      else if (categoriesGood === 1 && weakCategories.length > 1) {
-        multiCategoryBonus = 0.7; // Increased penalty from 0.9 - heavily penalize one-trick ponies
-      }
-      // Not good in any category - very strong penalty
-      else if (categoriesGood === 0) {
-        multiCategoryBonus = 0.5; // Heavy penalty for players who don't help with any weak category
+      const categoriesDecent = weakCategories.filter(cat => {
+        const percentile = categoryPercentiles[cat] || 0;
+        return percentile > 0.4; // At least 40th percentile
+      }).length;
+      
+      // If player isn't decent in ALL weak categories, heavily penalize or filter out
+      if (categoriesDecent < weakCategories.length) {
+        // Not decent in all categories - very strong penalty (effectively filters them out)
+        multiCategoryBonus = 0.3; // Heavy penalty - these won't rank highly
+      } else {
+        // Player is decent in all categories - now apply bonuses based on how good they are
+        // If player excels in ALL weak categories (60th+ percentile) - huge bonus
+        if (categoriesAboveAverage >= weakCategories.length) {
+          multiCategoryBonus = 2.5; // Even higher - very strong preference
+        } 
+        // If player is good in ALL weak categories (50th+ percentile) - strong bonus
+        else if (categoriesGood >= weakCategories.length) {
+          multiCategoryBonus = 2.0; // Increased from 1.6
+        }
+        // If player excels in 2+ categories when multiple are needed - good bonus
+        else if (categoriesAboveAverage >= 2) {
+          multiCategoryBonus = 1.5; // Increased from 1.4
+        }
+        // If player is good in 2+ categories - moderate bonus
+        else if (categoriesGood >= 2) {
+          multiCategoryBonus = 1.3; // Increased from 1.2
+        }
+        // Decent in all but not great - still acceptable
+        else {
+          multiCategoryBonus = 1.0; // No bonus, but not penalized
+        }
       }
     }
 
