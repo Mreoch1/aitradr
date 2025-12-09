@@ -165,27 +165,54 @@ export async function fetchNHLPlayerSeasonStats(
       return [];
     }
     
-    // Debug: Log all entries to see what we're getting
-    if (summaryData.data.length > 1) {
-      console.log(`[NHL API] Player ${nhlPlayerId}, season ${season}: Found ${summaryData.data.length} entries`);
-      summaryData.data.forEach((entry: any, idx: number) => {
-        console.log(`[NHL API] Entry ${idx}: season=${entry.season || 'N/A'}, games=${entry.gamesPlayed || 0}, goals=${entry.goals || 0}`);
-      });
-    }
+    // The NHL API returns data sorted by games played (descending), with the first entry being
+    // typically the most recent season or career total. The API's season parameter doesn't
+    // actually filter properly - it returns all available data.
+    // 
+    // Strategy: When querying for a specific season, we need to identify which entry corresponds
+    // to that season. Since entries don't have explicit season fields, we'll try to use the
+    // season parameter from the URL to determine which entry we want.
+    // 
+    // For season "20232024" (2023-24 season), we want the entry for that season
+    // For season "20242025" (2024-25 season, current), we want the most recent entry
     
-    // Filter by season - the API might return multiple seasons, we need the exact one
-    let seasonStats = summaryData.data.find((entry: any) => {
-      // Check if entry has season field that matches
-      if (entry.season === season) return true;
-      // Some APIs use different format, try matching first 4 chars
-      if (entry.season && entry.season.substring(0, 4) === season.substring(0, 4)) return true;
-      return false;
-    });
+    const requestedSeasonYear = parseInt(season.substring(0, 4)); // "2023" from "20232024"
+    const currentYear = new Date().getFullYear();
     
-    // If no season-specific match found, use first entry as fallback
-    if (!seasonStats) {
+    let seasonStats: any;
+    
+    // If requesting the current season (2024-25 = 2024), use the first entry (most recent)
+    // If requesting last season (2023-24 = 2023), we need to find the right entry
+    // The API typically returns: [0] = current/most recent, [1] = previous, etc.
+    if (requestedSeasonYear === currentYear - 1) {
+      // Requesting 2023-24 season - this should be the second entry (index 1) if current season data exists
+      // But if current season data doesn't exist yet, it might be first entry
+      // Try to find by looking for an entry with games played around 82 (full season) or check if it's the previous entry
+      if (summaryData.data.length > 1) {
+        // Use the second entry if available (previous season)
+        seasonStats = summaryData.data[1];
+        console.log(`[NHL API] Requesting ${requestedSeasonYear}-${requestedSeasonYear + 1} season, using entry [1] (games: ${seasonStats.gamesPlayed || 0})`);
+      } else {
+        // Only one entry available, use it
+        seasonStats = summaryData.data[0];
+        console.warn(`[NHL API] Only one entry available for ${season}, using it`);
+      }
+    } else if (requestedSeasonYear === currentYear) {
+      // Requesting current season (2024-25) - use first entry (most recent)
       seasonStats = summaryData.data[0];
-      console.warn(`[NHL API] No exact season match for ${season}, using first entry (season: ${seasonStats.season || 'unknown'})`);
+      console.log(`[NHL API] Requesting ${requestedSeasonYear}-${requestedSeasonYear + 1} season (current), using entry [0] (games: ${seasonStats.gamesPlayed || 0})`);
+    } else {
+      // Older season - try to find by index (older seasons are later in array)
+      // This is a best-guess approach
+      const seasonIndex = currentYear - requestedSeasonYear;
+      if (seasonIndex >= 0 && seasonIndex < summaryData.data.length) {
+        seasonStats = summaryData.data[seasonIndex];
+        console.log(`[NHL API] Requesting ${requestedSeasonYear}-${requestedSeasonYear + 1} season (${seasonIndex} years ago), using entry [${seasonIndex}]`);
+      } else {
+        // Fallback to first entry
+        seasonStats = summaryData.data[0];
+        console.warn(`[NHL API] Could not determine correct entry for ${season}, using first entry`);
+      }
     }
     
     if (!seasonStats) {
