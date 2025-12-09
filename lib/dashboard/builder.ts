@@ -4,7 +4,7 @@
  */
 
 import prisma from "@/lib/prisma";
-import { calculateKeeperBonus, getRoundCost } from "@/lib/keeper/types";
+import { calculateKeeperBonus, calculateTradeValue, getRoundCost } from "@/lib/keeper/types";
 import type {
   TeamDashboard,
   CategorySummary,
@@ -338,7 +338,7 @@ export async function buildTeamDashboard(
           yearsHeld: entry.keeperYearIndex ?? 0,
           yearsRemaining: entry.yearsRemaining,
           bonus,
-          totalValue: baseValue + bonus,
+          totalValue: calculateTradeValue(baseValue, bonus),
         };
       }
 
@@ -381,7 +381,7 @@ export async function buildTeamDashboard(
           yearsHeld: entry.keeperYearIndex ?? 0,
           yearsRemaining: entry.yearsRemaining,
           bonus,
-          totalValue: baseValue + bonus,
+          totalValue: calculateTradeValue(baseValue, bonus),
         };
       }
 
@@ -552,7 +552,7 @@ async function generatePlayerRecommendations(
           yearsHeld: entry.keeperYearIndex ?? 0,
           yearsRemaining: entry.yearsRemaining,
           bonus,
-          totalValue: baseValue + bonus,
+          totalValue: calculateTradeValue(baseValue, bonus),
         };
       }
 

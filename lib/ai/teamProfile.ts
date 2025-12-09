@@ -9,7 +9,7 @@
  */
 
 import prisma from "@/lib/prisma";
-import { calculateKeeperBonus } from "@/lib/keeper/types";
+import { calculateKeeperBonus, calculateTradeBonus, calculateTradeValue } from "@/lib/keeper/types";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -264,7 +264,7 @@ export async function buildAllTeamProfiles(leagueId: string): Promise<TeamProfil
       if (entry.originalDraftRound && entry.yearsRemaining !== null) {
         const draftRoundAvg = pickValueMap.get(entry.originalDraftRound) ?? 100;
         const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, draftRoundAvg, entry.yearsRemaining);
-        keeperValue = baseValue + bonus;
+        keeperValue = calculateTradeValue(baseValue, bonus);
       }
       
       if (entry.yearsRemaining === 1) keepers.expiring.push(playerId);
