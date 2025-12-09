@@ -37,7 +37,6 @@ const CATEGORY_VOLATILITY: Record<string, number> = {
   "blocks": 0.8,
 } as const;
 import { toFixedSafe } from "@/lib/utils/numberFormat";
-import type { AnyStat } from "./categoryAnalyzer";
 
 type Position = "C" | "LW" | "RW" | "D" | "G";
 
