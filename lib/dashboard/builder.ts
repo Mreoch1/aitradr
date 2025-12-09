@@ -4,7 +4,7 @@
  */
 
 import prisma from "@/lib/prisma";
-import { calculateKeeperBonus } from "@/lib/keeper/types";
+import { calculateKeeperBonus, getRoundCost } from "@/lib/keeper/types";
 import type {
   TeamDashboard,
   CategorySummary,
@@ -263,7 +263,8 @@ export async function buildTeamDashboard(
   for (const entry of targetTeam.rosterEntries) {
     if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining) {
       const baseValue = entry.player.playerValues[0]?.score ?? 0;
-      const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, 100, entry.yearsRemaining);
+      const draftRoundAvg = pickValueMap?.get(entry.originalDraftRound) ?? getRoundCost(entry.originalDraftRound);
+      const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, draftRoundAvg, entry.yearsRemaining);
       totalKeeperSurplus += bonus;
     }
   }

@@ -164,7 +164,7 @@ const ROUND_COST_TABLE: Record<number, number> = {
   16: 60,
 };
 
-function getRoundCost(round: number): number {
+export function getRoundCost(round: number): number {
   return ROUND_COST_TABLE[round] ?? 80;
 }
 
@@ -175,47 +175,118 @@ function getKeeperTier(round: number): 'A' | 'B' | 'C' {
 }
 
 /**
- * Unified keeper bonus formula
- * Formula: bonus = baseValue × draftBonus × keeperMultiplier
+ * Determine player tier based on base value
+ * Used for tier caps and control premium eligibility
+ */
+function getPlayerTier(baseValue: number): 'Generational' | 'Franchise' | 'Star' | 'Core' | 'Normal' {
+  if (baseValue >= 165) return 'Generational';
+  if (baseValue >= 150) return 'Franchise';
+  if (baseValue >= 135) return 'Star';
+  if (baseValue >= 115) return 'Core';
+  return 'Normal';
+}
+
+/**
+ * CORRECTED Keeper Economics System
  * 
- * draftBonus = (round - 1) / 100
- * keeperMultiplier = 0.6 (1yr), 0.8 (2yr), 1.0 (3yr)
+ * Golden Rule: A player only receives keeper value if they generate economic surplus.
  * 
- * Examples:
- * - Celebrini (167.6, R14, 1yr): (14-1)/100 = 0.13 → 167.6 × 0.13 × 0.6 = 13.06 → 180.7 total
- * - Tage (114.0, R13, 1yr): (13-1)/100 = 0.12 → 114.0 × 0.12 × 0.6 = 8.21 → 122.2 total
+ * Part A: Surplus Bonus (only if player outperforms draft slot)
+ * Part B: Control Premium (only for elite players with multi-year control)
  * 
  * @param baseValue - Current player value from z-score engine
- * @param draftRound - Original draft round (1-16)
- * @param _draftRoundAvg - Unused, kept for compatibility
+ * @param draftRound - Original draft round (1-16, or 16 for FA pickups)
+ * @param draftRoundAvg - Average expected value at that draft round
  * @param yearsRemaining - Years of keeper eligibility remaining (1, 2, or 3)
- * @returns Keeper bonus points
+ * @returns Object with keeperBonus and tradeBonus (40% of keeper bonus)
  */
 export function calculateKeeperBonus(
   baseValue: number,
   draftRound: number,
-  _draftRoundAvg: number, // Unused, kept for compatibility
+  draftRoundAvg: number,
   yearsRemaining: number
 ): number {
-  // Draft bonus: (round - 1) / 100
-  // R14 → (14-1)/100 = 0.13
-  // R13 → (13-1)/100 = 0.12
-  // R1 → (1-1)/100 = 0.00 (no bonus for first rounders)
-  const draftBonus = (draftRound - 1) / 100;
+  // Hard rule: Round 1 cannot be kept
+  if (draftRound === 1) return 0;
   
-  // Keeper multiplier based on years remaining
-  // 1 year left = 0.6 (60%)
-  // 2 years left = 0.8 (80%)
-  // 3 years left = 1.0 (100%)
-  const keeperMultiplier =
-    yearsRemaining === 1 ? 0.6 :
-    yearsRemaining === 2 ? 0.8 :
-    yearsRemaining === 3 ? 1.0 :
-    0; // No bonus if 0 years remaining
+  // Treat FA pickups as Round 16
+  const effectiveDraftRound = draftRound > 16 ? 16 : draftRound;
+  const effectiveDraftRoundAvg = draftRoundAvg > 0 ? draftRoundAvg : getRoundCost(effectiveDraftRound);
   
-  // Final bonus: baseValue × draftBonus × keeperMultiplier
-  const keeperBonus = baseValue * draftBonus * keeperMultiplier;
+  // Determine player tier
+  const tier = getPlayerTier(baseValue);
+  
+  // Part A: Surplus Bonus
+  // Only applies if player outperforms their draft slot
+  const surplus = baseValue - effectiveDraftRoundAvg;
+  
+  // If player was drafted where they belong or early → surplus = 0
+  let surplusBonus = 0;
+  if (surplus > 0) {
+    // Surplus weights by years remaining
+    const surplusWeights: Record<number, number> = {
+      1: 0.45,
+      2: 0.75,
+      3: 1.00,
+    };
+    const weight = surplusWeights[yearsRemaining] || 0;
+    
+    // Tier caps for surplus bonus
+    const tierCaps: Record<string, number> = {
+      'Generational': 25,
+      'Franchise': 35,
+      'Star': 34,
+      'Core': 22,
+      'Normal': 15,
+    };
+    const cap = tierCaps[tier] || 15;
+    
+    surplusBonus = Math.min(surplus, cap) * weight;
+  }
+  
+  // Part B: Control Premium
+  // Only for elite players (Normal tier never gets control premium)
+  // Control applies when: drafted late, drafted as future star, or massively outperforming ADP
+  // For elite players, control can apply even without surplus (multi-year ownership advantage)
+  let controlBonus = 0;
+  if (tier !== 'Normal') {
+    // Control premium matrix
+    const controlMatrix: Record<string, Record<number, number>> = {
+      'Generational': { 1: 0, 2: 20, 3: 45 },
+      'Franchise': { 1: 0, 2: 14, 3: 32 },
+      'Star': { 1: 0, 2: 10, 3: 22 },
+      'Core': { 1: 0, 2: 5, 3: 12 },
+    };
+    
+    controlBonus = controlMatrix[tier]?.[yearsRemaining] || 0;
+    
+    // Control only applies if:
+    // - Player was drafted late (surplus exists), OR
+    // - Player is elite and has multi-year control (tier-based logic)
+    // For early picks with no surplus, control premium still applies for elite players
+    // This reflects multi-year ownership advantage even for fairly-drafted stars
+  }
+  
+  // Total keeper bonus
+  // Note: Control premium for elite players can exceed surplus bonus
+  const keeperBonus = surplusBonus + controlBonus;
   
   return keeperBonus;
+}
+
+/**
+ * Calculate trade bonus (40% of keeper bonus)
+ * This prevents keeper economics from dominating trades
+ */
+export function calculateTradeBonus(keeperBonus: number): number {
+  return keeperBonus * 0.40;
+}
+
+/**
+ * Calculate final trade value including keeper economics
+ */
+export function calculateTradeValue(baseValue: number, keeperBonus: number): number {
+  const tradeBonus = calculateTradeBonus(keeperBonus);
+  return baseValue + tradeBonus;
 }
 
