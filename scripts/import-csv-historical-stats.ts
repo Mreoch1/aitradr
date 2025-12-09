@@ -33,15 +33,24 @@ const SKATER_STAT_MAP: Record<string, string> = {
 };
 
 // Map CSV column names to our internal goalie stat names
-// Note: CSV uses exact column names like "SV%" with % symbol
+// Supports both old format (GP,GS,W,L,GA,GAA,SV,SA,SV%,SHO) and new format (full names)
 const GOALIE_STAT_MAP: Record<string, string> = {
-  W: "Wins",
-  L: "Losses", // Not used in calculation but stored
-  GA: "Goals Against", // Not directly used, but GAA is
-  GAA: "Goals Against Average",
-  SV: "Saves",
-  "SV%": "Save Percentage", // CSV has % symbol in header
-  SHO: "Shutouts",
+  // New format (full names)
+  "Wins": "Wins",
+  "Losses": "Losses", // Not used in calculation but stored
+  "Goals Against": "Goals Against", // Not directly used, but GAA is
+  "Goals Against Average": "Goals Against Average",
+  "Saves": "Saves",
+  "Save Percentage": "Save Percentage",
+  "Shutouts": "Shutouts",
+  // Old format (abbreviations) - for backwards compatibility
+  "W": "Wins",
+  "L": "Losses",
+  "GA": "Goals Against",
+  "GAA": "Goals Against Average",
+  "SV": "Saves",
+  "SV%": "Save Percentage",
+  "SHO": "Shutouts",
 };
 
 // Convert season format "2023/24" -> "2023", "2024/25" -> "2024"
@@ -223,12 +232,22 @@ function parseGoaliesCSV(existingStats: HistoricalStatsData): void {
     headerIndex[col.trim()] = idx;
   });
   
+  // Detect format: new format has "Player Name" and "Season", old format has "season" and "player"
+  const isNewFormat = headerIndex["Player Name"] !== undefined || headerIndex["Season"] !== undefined;
+  
+  // Map header keys based on format
+  const seasonKey = isNewFormat ? "Season" : "season";
+  const playerKey = isNewFormat ? "Player Name" : "player";
+  const teamKey = isNewFormat ? "Team" : "team";
+  
+  console.log(`[Import CSV] Detected ${isNewFormat ? "new" : "old"} CSV format for goalies`);
+  
   const playerStatsMap = new Map<string, Map<string, Map<string, any>>>();
   
   // Parse data rows
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    if (!line.trim()) continue;
+    if (!line.trim() || line.includes("League Average")) continue; // Skip league average rows
     
     // Parse CSV
     const values: string[] = [];
@@ -248,9 +267,9 @@ function parseGoaliesCSV(existingStats: HistoricalStatsData): void {
     }
     values.push(current.trim());
     
-    const season = values[headerIndex.season];
-    const player = values[headerIndex.player];
-    const team = values[headerIndex.team];
+    const season = values[headerIndex[seasonKey]];
+    const player = values[headerIndex[playerKey]];
+    const team = values[headerIndex[teamKey]];
     
     if (!season || !player) continue;
     
@@ -273,41 +292,61 @@ function parseGoaliesCSV(existingStats: HistoricalStatsData): void {
       team,
     };
     
+    // Map column names based on format
+    const savesKey = isNewFormat ? "Saves" : "SV";
+    const saKey = isNewFormat ? "Shots Against" : "SA";
+    const gaKey = isNewFormat ? "Goals Against" : "GA";
+    const gaaKey = isNewFormat ? "Goals Against Average" : "GAA";
+    const svpKey = isNewFormat ? "Save Percentage" : "SV%";
+    const winsKey = isNewFormat ? "Wins" : "W";
+    const lossesKey = isNewFormat ? "Losses" : "L";
+    const shutoutsKey = isNewFormat ? "Shutouts" : "SHO";
+    const gpKey = isNewFormat ? "Games Played" : "GP";
+    const gsKey = isNewFormat ? "Games Started" : "GS";
+    
+    // Get stat values
     for (const [csvKey, ourKey] of Object.entries(GOALIE_STAT_MAP)) {
       const idx = headerIndex[csvKey];
-      if (idx !== undefined && values[idx] !== undefined) {
+      if (idx !== undefined && values[idx] !== undefined && values[idx] !== "") {
         const value = parseFloat(values[idx]);
         if (!isNaN(value)) {
           stats[csvKey] = value;
+          // Also store with our internal key
+          stats[ourKey] = value;
         }
       }
     }
     
+    // Get Saves, SA, GA for calculation if missing
+    const saves = stats[savesKey] || stats["Saves"] || (headerIndex[savesKey] !== undefined ? parseFloat(values[headerIndex[savesKey]]) : undefined);
+    const sa = headerIndex[saKey] !== undefined ? parseFloat(values[headerIndex[saKey]]) : undefined;
+    const ga = headerIndex[gaKey] !== undefined ? parseFloat(values[headerIndex[gaKey]]) : undefined;
+    
     // Calculate saves if missing (SV = SA - GA)
-    if ((stats.SV === undefined || stats.SV === 0) && headerIndex.SA !== undefined && headerIndex.GA !== undefined) {
-      const sa = parseFloat(values[headerIndex.SA]) || 0;
-      const ga = parseFloat(values[headerIndex.GA]) || 0;
-      if (sa > 0) {
-        stats.SV = sa - ga; // Saves = Shots Against - Goals Against
-      }
+    if ((!saves || saves === 0) && sa !== undefined && ga !== undefined && sa > 0) {
+      const calculatedSaves = sa - ga;
+      stats["Saves"] = calculatedSaves;
+      stats["SV"] = calculatedSaves; // Store both formats
     }
+    
+    // Get save percentage
+    const svp = stats[svpKey] || stats["Save Percentage"] || (headerIndex[svpKey] !== undefined ? parseFloat(values[headerIndex[svpKey]]) : undefined);
     
     // Calculate save percentage if missing (SV% = SV / SA)
-    if ((stats["SV%"] === undefined || stats["SV%"] === 0) && headerIndex.SA !== undefined) {
-      const sa = parseFloat(values[headerIndex.SA]) || 0;
-      const sv = stats.SV || 0;
-      if (sa > 0 && sv > 0) {
-        stats["SV%"] = sv / sa; // Save Percentage = Saves / Shots Against
-      }
+    const finalSaves = stats["Saves"] || saves || 0;
+    if ((!svp || svp === 0) && sa !== undefined && sa > 0 && finalSaves > 0) {
+      const calculatedSVP = finalSaves / sa;
+      stats["Save Percentage"] = calculatedSVP;
+      stats["SV%"] = calculatedSVP; // Store both formats
     }
     
-    if (headerIndex.GP !== undefined && values[headerIndex.GP] !== undefined) {
-      stats.GP = parseFloat(values[headerIndex.GP]) || 0;
+    // Store GP and GS
+    if (headerIndex[gpKey] !== undefined && values[headerIndex[gpKey]] !== undefined && values[headerIndex[gpKey]] !== "") {
+      stats.GP = parseFloat(values[headerIndex[gpKey]]) || 0;
     }
     
-    // Also store GS (Games Started) if available
-    if (headerIndex.GS !== undefined && values[headerIndex.GS] !== undefined) {
-      stats.GS = parseFloat(values[headerIndex.GS]) || 0;
+    if (headerIndex[gsKey] !== undefined && values[headerIndex[gsKey]] !== undefined && values[headerIndex[gsKey]] !== "") {
+      stats.GS = parseFloat(values[headerIndex[gsKey]]) || 0;
     }
     
     teamMap.set(team, stats);
@@ -326,11 +365,22 @@ function parseGoaliesCSV(existingStats: HistoricalStatsData): void {
         existingStats[player][seasonYear] = {};
       }
       
-      // Convert to our stat format
-      for (const [csvKey, ourKey] of Object.entries(GOALIE_STAT_MAP)) {
-        if (aggregated[csvKey] !== undefined) {
-          existingStats[player][seasonYear][ourKey] = aggregated[csvKey];
-        }
+      // Convert to our stat format - use the internal key names
+      // Handle both old and new format keys
+      if (aggregated["Wins"] !== undefined || aggregated["W"] !== undefined) {
+        existingStats[player][seasonYear]["Wins"] = aggregated["Wins"] || aggregated["W"];
+      }
+      if (aggregated["Goals Against Average"] !== undefined || aggregated["GAA"] !== undefined) {
+        existingStats[player][seasonYear]["Goals Against Average"] = aggregated["Goals Against Average"] || aggregated["GAA"];
+      }
+      if (aggregated["Saves"] !== undefined || aggregated["SV"] !== undefined) {
+        existingStats[player][seasonYear]["Saves"] = aggregated["Saves"] || aggregated["SV"];
+      }
+      if (aggregated["Save Percentage"] !== undefined || aggregated["SV%"] !== undefined) {
+        existingStats[player][seasonYear]["Save Percentage"] = aggregated["Save Percentage"] || aggregated["SV%"];
+      }
+      if (aggregated["Shutouts"] !== undefined || aggregated["SHO"] !== undefined) {
+        existingStats[player][seasonYear]["Shutouts"] = aggregated["Shutouts"] || aggregated["SHO"];
       }
     }
   }

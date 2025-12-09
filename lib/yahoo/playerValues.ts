@@ -216,7 +216,13 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
     }
 
     // Debug logging for specific players
-    if (player.name === "Connor McDavid" || player.name === "Nathan MacKinnon") {
+    const isDebugPlayer = player.name === "Connor McDavid" || 
+                          player.name === "Nathan MacKinnon" ||
+                          player.name === "Connor Hellebuyck" ||
+                          player.name === "Igor Shesterkin" ||
+                          player.name === "Jake Oettinger";
+    
+    if (isDebugPlayer) {
       console.log(`\n[PlayerValues] ===== ${player.name} Historical Stats =====`);
       console.log(`[PlayerValues] Seasons found: ${seasons.join(', ')}`);
       console.log(`[PlayerValues] Sample stats from ${seasons[0]}:`, Object.keys(playerHistoricalData[seasons[0]]).slice(0, 5));
