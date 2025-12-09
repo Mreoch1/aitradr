@@ -136,9 +136,11 @@ export async function POST(
           : (player.primaryPosition || "?");
         
         // Calculate keeper bonus with control premium (conservative formula)
+        // HARD RULE: Keeper logic ONLY applies when isKeeper === true
         let keeperBonus = 0;
         let adjustedValue = playerValue?.score || 0;
         
+        // Step 1: Gate keeper logic - must be active keeper
         if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining) {
           const draftRound = entry.originalDraftRound;
           const draftRoundAvg = pickValueMap.get(draftRound) ?? 100;
@@ -196,21 +198,27 @@ export async function POST(
           adjustedValue = Math.min(adjustedValue, finalCap[playerTier]);
         }
         
+        // Step 2: Ensure keeperBonus is 0 for non-keepers (explicit safeguard)
+        if (!entry.isKeeper) {
+          keeperBonus = 0;
+          // adjustedValue already equals base value (no keeper bonus added)
+        }
+        
         return {
           name: player.name,
           position: positionString,
           nhlTeam: player.teamAbbr || "?",
-          value: adjustedValue, // Use keeper-adjusted value
+          value: adjustedValue, // Base value for non-keepers, keeper-adjusted for keepers
           stats: statsObj,
           rawStats: stats.map(s => ({ statName: s.statName, value: s.value })), // Full stats for category analysis
           status: player.status || undefined,
           // Keeper data
           isKeeper: entry.isKeeper || false,
-          originalDraftRound: entry.originalDraftRound ?? undefined,
-          keeperYearIndex: entry.keeperYearIndex ?? undefined,
-          yearsRemaining: entry.yearsRemaining ?? undefined,
-          keeperRoundCost: entry.keeperRoundCost ?? undefined,
-          keeperBonus: keeperBonus,
+          originalDraftRound: entry.isKeeper ? (entry.originalDraftRound ?? undefined) : undefined,
+          keeperYearIndex: entry.isKeeper ? (entry.keeperYearIndex ?? undefined) : undefined,
+          yearsRemaining: entry.isKeeper ? (entry.yearsRemaining ?? undefined) : undefined,
+          keeperRoundCost: entry.isKeeper ? (entry.keeperRoundCost ?? undefined) : undefined,
+          keeperBonus: keeperBonus, // Always 0 for non-keepers
         };
       });
       

@@ -344,19 +344,23 @@ function generatePotentialTrades(
         }
         
         // Calculate keeper economics impact
+        // HARD RULE: Keeper logic ONLY applies when isKeeper === true
         let keeperImpact = 0;
         
-        // Losing a high-keeper-bonus player is costly
-        const myKeeperBonus = myPlayer.keeperBonus || 0;
-        const theirKeeperBonus = theirPlayer.keeperBonus || 0;
+        // Step 1: Gate keeper bonus - must be 0 for non-keepers
+        const myKeeperBonus = (myPlayer.isKeeper && myPlayer.keeperBonus) ? myPlayer.keeperBonus : 0;
+        const theirKeeperBonus = (theirPlayer.isKeeper && theirPlayer.keeperBonus) ? theirPlayer.keeperBonus : 0;
         keeperImpact = theirKeeperBonus - myKeeperBonus;
         
-        // Prefer moving expiring keepers (low years remaining)
+        // Step 2: Disable round effects for non-keepers (already gated by isKeeper checks below)
+        
+        // Step 3: Disable multi-year logic unless active keeper
+        // Prefer moving expiring keepers (low years remaining) - ONLY for keepers
         if (myPlayer.isKeeper && (myPlayer.yearsRemaining ?? 3) <= 1) {
           keeperImpact += 8; // Bonus for moving expiring keeper
         }
         
-        // Protect fresh late-round elite keepers
+        // Protect fresh late-round elite keepers - ONLY for keepers
         if (myPlayer.isKeeper && myPlayer.keeperBonus && myPlayer.keeperBonus > 30) {
           keeperImpact -= 12; // Penalty for trading away elite keeper bargain
         }
@@ -384,6 +388,17 @@ function generatePotentialTrades(
         const adjustedValueDiff = valueDiff - marketPenalty - positionPenalty;
         const tradeScore = calculateTradeScore(adjustedValueDiff, categoryGain) + keeperImpact;
         
+        // CRITICAL FIX: Category gain threshold check
+        // Value wins that don't materially improve categories must be downgraded
+        const REQUIRED_CATEGORY_THRESHOLD = 8; // Minimum category gain for value-only trades
+        if (valueDiff > 0 && categoryGain < REQUIRED_CATEGORY_THRESHOLD) {
+          // Value gain but insufficient category improvement - downgrade confidence
+          // This will be reflected in the final confidence calculation
+          // For now, we'll add a penalty to the trade score
+          const categoryPenalty = (REQUIRED_CATEGORY_THRESHOLD - categoryGain) * 2;
+          if (tradeScore - categoryPenalty < 0) continue; // Reject if penalty makes it negative
+        }
+        
         // Filter logic: skip trades that don't make strategic sense
         // 1. Skip heavy value losses with no category help
         if (valueDiff < -15 && categoryGain < 5 && keeperImpact < 5) continue;
@@ -397,6 +412,7 @@ function generatePotentialTrades(
           if (categoryGain < 15) continue; // Need strong category justification
           
           // Cannot trade away elite keeper with years remaining for value loss
+          // HARD GATE: Only applies to actual keepers
           if (myPlayer.isKeeper && (myPlayer.yearsRemaining ?? 0) > 1 && myPlayer.keeperBonus && myPlayer.keeperBonus > 25) {
             continue; // Protect valuable keepers
           }

@@ -112,12 +112,14 @@ export async function POST(
         const player = entry.player;
         const baseValue = player.playerValues[0]?.score ?? 0;
         
+        // HARD RULE: Keeper logic ONLY applies when isKeeper === true
         let keeperValue = baseValue;
         if (entry.isKeeper && entry.originalDraftRound && entry.yearsRemaining !== null) {
           const draftRoundAvg = pickValueMap.get(entry.originalDraftRound) ?? 100;
           const bonus = calculateKeeperBonus(baseValue, entry.originalDraftRound, draftRoundAvg, entry.yearsRemaining);
           keeperValue = baseValue + bonus;
         }
+        // For non-keepers, keeperValue = baseValue (no keeper bonus)
 
         // Parse positions
         let positions: string[] = [];
