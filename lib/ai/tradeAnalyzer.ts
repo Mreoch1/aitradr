@@ -680,12 +680,25 @@ export async function analyzeTrades(
         seenTrades.add(tradeKey);
         
         console.log(`[AI] Explaining trade with ${partner.name} (score: ${toFixedSafe(tradeScore, 1)})...`);
-        const { reasoning } = await explainTrade(payload, categoryGain);
+        
+        // Calculate win probability based on category swings
+        const leagueAverages = calculateLeagueAverages(allTeams);
+        const myProfile = buildCategoryProfile(myTeam, leagueAverages, allTeams, 0.5);
+        const winProb = categorySwings ? calculateWinProbability(categorySwings, myProfile) : undefined;
+        
+        const { reasoning } = await explainTrade(payload, categoryGain, categorySwings);
         
         // FIX #8: Risk-based confidence calculation
         // Confidence decreases with value risk: abs(valueDelta × 2.5)
         const valueDelta = payload.trade.netChangeUser;
         const riskBasedConfidence = Math.max(55, Math.min(95, 100 - Math.abs(valueDelta * 2.5)));
+        
+        // Convert category swings Map to array for JSON serialization
+        const categorySwingsArray = categorySwings ? Array.from(categorySwings.entries())
+          .filter(([_, change]) => Math.abs(change) > 0.5)
+          .map(([category, change]) => ({ category, change }))
+          .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+          .slice(0, 6) : undefined;
         
         suggestions.push({
           tradeWithTeam: `${partner.name}${partner.managerName ? ` (${partner.managerName})` : ""}`,
@@ -703,7 +716,7 @@ export async function analyzeTrades(
           reasoning,
           confidence: riskBasedConfidence,
           categorySwings: categorySwingsArray,
-          winProbability: winProb, // Use calculated confidence, not AI's opinion
+          winProbability: winProb,
         });
       } catch (error) {
         console.error("[AI] Failed to explain trade with", partner.name, error);
