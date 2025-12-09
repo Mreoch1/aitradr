@@ -35,11 +35,56 @@ type SkaterStat = typeof SKATER_STATS[number];
 type GoalieStat = typeof GOALIE_STATS[number];
 export type AnyStat = SkaterStat | GoalieStat;
 
+/**
+ * Category volatility factors for strategic priority weighting
+ * Higher = more volatile/unpredictable (less reliable to chase)
+ * Lower = more stable/grindable (more reliable to fix)
+ */
+const CATEGORY_VOLATILITY: Record<AnyStat, number> = {
+  // Goalie categories (highly volatile)
+  "shutouts": 1.4,
+  "save percentage": 1.3,
+  "wins": 1.1,
+  "goals against average": 1.2,
+  "saves": 1.0,
+  
+  // Skater categories
+  "goals": 1.0,
+  "assists": 0.95,
+  "points": 0.95,
+  "plus/minus": 1.2,
+  "penalty minutes": 0.9,
+  "powerplay points": 1.05,
+  "shorthanded points": 1.3,
+  "game-winning goals": 1.35,
+  "shots on goal": 0.85,
+  "faceoffs won": 0.7,
+  "hits": 0.8,
+  "blocks": 0.8,
+} as const;
+
+/**
+ * Calculate strategic priority for a category based on z-score and volatility
+ * Formula: priority = abs(zScore) × categoryVolatilityFactor × seasonWeight
+ */
+export function calculateCategoryPriority(
+  zScore: number,
+  category: AnyStat,
+  seasonProgress: number = 0.5 // 0.0 = early season, 1.0 = late season
+): number {
+  const volatilityFactor = CATEGORY_VOLATILITY[category] || 1.0;
+  // Season weight: early season = less urgency, late season = more urgency
+  const seasonWeight = 0.8 + (seasonProgress * 0.4); // 0.8 to 1.2
+  return Math.abs(zScore) * volatilityFactor * seasonWeight;
+}
+
 export interface CategoryProfile {
   teamName: string;
   categoryScores: Map<AnyStat, number>; // Ratio vs league average (1.0 = average)
+  categoryZScores: Map<AnyStat, number>; // Z-scores for each category
+  categoryPriorities: Map<AnyStat, number>; // Strategic priority index
   strengths: AnyStat[]; // Stats where score > 1.15
-  weaknesses: AnyStat[]; // Stats where score < 0.90
+  weaknesses: AnyStat[]; // Stats where score < 0.90, sorted by priority
 }
 
 export interface PlayerCategoryContribution {
@@ -109,17 +154,59 @@ export function calculateLeagueAverages(allTeams: TeamForAI[]): Map<AnyStat, num
 }
 
 /**
- * Build category profile for a team
+ * Calculate z-scores for all categories across teams
+ */
+function calculateCategoryZScores(allTeams: TeamForAI[], leagueAverages: Map<AnyStat, number>): Map<AnyStat, { mean: number; stdDev: number }> {
+  const categoryStats = new Map<AnyStat, number[]>();
+  const allStats = [...SKATER_STATS, ...GOALIE_STATS];
+  
+  // Collect all team totals for each category
+  for (const stat of allStats) {
+    const teamTotals: number[] = [];
+    for (const team of allTeams) {
+      let teamTotal = 0;
+      for (const player of team.roster) {
+        teamTotal += getStatValue(player, stat);
+      }
+      teamTotals.push(teamTotal);
+    }
+    categoryStats.set(stat, teamTotals);
+  }
+  
+  // Calculate mean and stdDev for each category
+  const zScoreStats = new Map<AnyStat, { mean: number; stdDev: number }>();
+  for (const [stat, values] of categoryStats.entries()) {
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+    const stdDev = Math.sqrt(variance) || 1;
+    zScoreStats.set(stat, { mean, stdDev });
+  }
+  
+  return zScoreStats;
+}
+
+/**
+ * Build category profile for a team with strategic priority weighting
  */
 export function buildCategoryProfile(
   team: TeamForAI,
-  leagueAverages: Map<AnyStat, number>
+  leagueAverages: Map<AnyStat, number>,
+  allTeams?: TeamForAI[], // Optional: needed for z-score calculation
+  seasonProgress: number = 0.5
 ): CategoryProfile {
   const categoryScores = new Map<AnyStat, number>();
+  const categoryZScores = new Map<AnyStat, number>();
+  const categoryPriorities = new Map<AnyStat, number>();
   const strengths: AnyStat[] = [];
   const weaknesses: AnyStat[] = [];
   
   const allStats = [...SKATER_STATS, ...GOALIE_STATS];
+  
+  // Calculate z-score stats if we have all teams data
+  let zScoreStats: Map<AnyStat, { mean: number; stdDev: number }> | null = null;
+  if (allTeams && allTeams.length > 0) {
+    zScoreStats = calculateCategoryZScores(allTeams, leagueAverages);
+  }
   
   for (const stat of allStats) {
     // Calculate team total for this stat
@@ -130,17 +217,39 @@ export function buildCategoryProfile(
     
     const leagueAvg = leagueAverages.get(stat) || 1;
     const score = leagueAvg > 0 ? teamTotal / leagueAvg : 1.0;
-    
     categoryScores.set(stat, score);
+    
+    // Calculate z-score if we have the stats
+    let zScore = 0;
+    if (zScoreStats) {
+      const stats = zScoreStats.get(stat);
+      if (stats) {
+        zScore = (teamTotal - stats.mean) / stats.stdDev;
+        categoryZScores.set(stat, zScore);
+        
+        // Calculate strategic priority
+        const priority = calculateCategoryPriority(zScore, stat, seasonProgress);
+        categoryPriorities.set(stat, priority);
+      }
+    }
     
     // Strength/weakness thresholds per spec
     if (score > 1.15) strengths.push(stat);  // Strong category
     if (score < 0.85) weaknesses.push(stat); // Weak category (tightened from 0.90)
   }
   
+  // Sort weaknesses by strategic priority (highest priority first)
+  weaknesses.sort((a, b) => {
+    const priorityA = categoryPriorities.get(a) || 0;
+    const priorityB = categoryPriorities.get(b) || 0;
+    return priorityB - priorityA; // Descending order
+  });
+  
   return {
     teamName: team.name,
     categoryScores,
+    categoryZScores,
+    categoryPriorities,
     strengths,
     weaknesses,
   };
@@ -174,26 +283,44 @@ export function getPlayerCategoryContribution(player: PlayerForAI): PlayerCatego
 }
 
 /**
- * Calculate category gain from a trade
+ * Calculate category gain from a trade with strategic priority weighting
  * Returns a score representing how much this trade improves weak categories
  */
 export function calculateCategoryGain(
   myProfile: CategoryProfile,
   playersOut: PlayerForAI[],
   playersIn: PlayerForAI[]
-): { gain: number; improvements: Map<AnyStat, number> } {
+): { gain: number; improvements: Map<AnyStat, number>; categorySwings: Map<AnyStat, number> } {
   const improvements = new Map<AnyStat, number>();
+  const categorySwings = new Map<AnyStat, number>(); // Net z-score change per category
   let totalGain = 0;
   
-  for (const stat of myProfile.weaknesses) {
-    // Calculate net change in this weak stat
+  // Calculate net change for ALL categories (not just weaknesses)
+  const allStats = [...SKATER_STATS, ...GOALIE_STATS];
+  for (const stat of allStats) {
     const lost = playersOut.reduce((sum, p) => sum + getStatValue(p, stat), 0);
     const gained = playersIn.reduce((sum, p) => sum + getStatValue(p, stat), 0);
     const netChange = gained - lost;
     
+    // Calculate z-score swing (approximate based on league averages)
+    // This is a simplified calculation - in practice, you'd need league stdDev
+    const currentZScore = myProfile.categoryZScores.get(stat) || 0;
+    // For now, use raw change as proxy for z-score change
+    categorySwings.set(stat, netChange);
+  }
+  
+  // Weight improvements to weak categories by strategic priority
+  for (const stat of myProfile.weaknesses) {
+    const netChange = categorySwings.get(stat) || 0;
+    
     if (netChange > 0) {
-      // Weight improvements to weak categories heavily
-      const improvement = netChange * 2.0;
+      // Weight by strategic priority (higher priority = more weight)
+      const priority = myProfile.categoryPriorities.get(stat) || 1.0;
+      // Invert volatility: stable categories (low volatility) get higher weight
+      const volatilityFactor = CATEGORY_VOLATILITY[stat] || 1.0;
+      const stabilityWeight = 1.0 / volatilityFactor; // Lower volatility = higher weight
+      
+      const improvement = netChange * stabilityWeight * 2.0;
       improvements.set(stat, netChange);
       totalGain += improvement;
     }
@@ -201,9 +328,7 @@ export function calculateCategoryGain(
   
   // Also penalize if we lose strength in our strong categories
   for (const stat of myProfile.strengths) {
-    const lost = playersOut.reduce((sum, p) => sum + getStatValue(p, stat), 0);
-    const gained = playersIn.reduce((sum, p) => sum + getStatValue(p, stat), 0);
-    const netChange = gained - lost;
+    const netChange = categorySwings.get(stat) || 0;
     
     if (netChange < 0) {
       // Small penalty for losing strength
@@ -211,7 +336,7 @@ export function calculateCategoryGain(
     }
   }
   
-  return { gain: totalGain, improvements };
+  return { gain: totalGain, improvements, categorySwings };
 }
 
 /**

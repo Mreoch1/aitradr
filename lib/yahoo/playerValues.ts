@@ -918,32 +918,52 @@ export async function calculateDraftPickValues(leagueId: string): Promise<void> 
       continue;
     }
     
-    // Calculate average but apply floor based on round
+    // Calculate average but apply floor and ceiling based on round
     const avgValue = roundPlayers.reduce((sum, p) => sum + p.score, 0) / roundPlayers.length;
     
-    // FIX #3: Pick value floor table - prevents picks from being undervalued
-    // Round 3 picks should never be below replacement level (45 is too low)
+    // Safety rules: Pick values can NEVER exceed or drop below these bounds
+    // Prevents zombie rounds, extreme pick hoarding, and tank exploits
     const PICK_FLOOR_TABLE: Record<number, number> = {
-      1: 155,
-      2: 145,
-      3: 135,
+      1: 140,   // R1 minimum
+      2: 135,
+      3: 130,
       4: 125,
-      5: 115,
-      6: 105,
-      7: 95,
+      5: 120,
+      6: 110,
+      7: 100,
       8: 90,
-      9: 85,
-      10: 80,
-      11: 75,
-      12: 70,
-      13: 65,
-      14: 60,
-      15: 55,
-      16: 50,
+      9: 80,
+      10: 70,
+      11: 60,
+      12: 55,
+      13: 50,
+      14: 45,
+      15: 42,
+      16: 40,   // R16 minimum
     };
     
-    const floor = PICK_FLOOR_TABLE[round] ?? 50;
-    const finalValue = Math.max(avgValue, floor);
+    const PICK_CEILING_TABLE: Record<number, number> = {
+      1: 175,   // R1 maximum
+      2: 170,
+      3: 165,
+      4: 160,
+      5: 145,   // R5 maximum
+      6: 135,
+      7: 125,
+      8: 120,
+      9: 115,
+      10: 105,  // R10 maximum
+      11: 100,
+      12: 90,
+      13: 80,
+      14: 70,
+      15: 60,
+      16: 55,   // R16 maximum
+    };
+    
+    const floor = PICK_FLOOR_TABLE[round] ?? 40;
+    const ceiling = PICK_CEILING_TABLE[round] ?? 175;
+    const finalValue = Math.max(floor, Math.min(ceiling, avgValue));
     
     await prisma.draftPickValue.upsert({
       where: { leagueId_round: { leagueId, round } },

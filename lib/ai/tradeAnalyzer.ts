@@ -12,7 +12,30 @@ import {
   calculateTradeScore,
   getStatValue,
   type CategoryProfile,
+  type AnyStat,
 } from "./categoryAnalyzer";
+
+// Import volatility factors for win probability calculation
+// We'll define a simplified version here to avoid circular imports
+const CATEGORY_VOLATILITY: Record<string, number> = {
+  "shutouts": 1.4,
+  "save percentage": 1.3,
+  "wins": 1.1,
+  "goals against average": 1.2,
+  "saves": 1.0,
+  "goals": 1.0,
+  "assists": 0.95,
+  "points": 0.95,
+  "plus/minus": 1.2,
+  "penalty minutes": 0.9,
+  "powerplay points": 1.05,
+  "shorthanded points": 1.3,
+  "game-winning goals": 1.35,
+  "shots on goal": 0.85,
+  "faceoffs won": 0.7,
+  "hits": 0.8,
+  "blocks": 0.8,
+} as const;
 import { toFixedSafe } from "@/lib/utils/numberFormat";
 import type { AnyStat } from "./categoryAnalyzer";
 
@@ -68,6 +91,8 @@ export interface TradeSuggestion {
   netGain: number;
   reasoning: string;
   confidence: number; // 0-100
+  categorySwings?: Array<{ category: string; change: number }>; // Net category changes
+  winProbability?: number; // Win probability percentage
 }
 
 // ============================================================================
@@ -158,6 +183,7 @@ interface TradePayload {
     netChangeUser: number;
     netChangePartner: number;
   };
+  categorySwings?: Map<AnyStat, number>; // Net category change (raw values, not z-scores)
 }
 
 /**
@@ -238,22 +264,22 @@ function generatePotentialTrades(
   myTeam: TeamForAI,
   otherTeams: TeamForAI[],
   allTeams: TeamForAI[]
-): Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number }> {
+  ): Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number; categorySwings: Map<AnyStat, number> }> {
   const myTeamSummary = buildTeamSummary(myTeam);
   
-  // Calculate league averages and category profiles
+  // Calculate league averages and category profiles with strategic priority
   const leagueAverages = calculateLeagueAverages(allTeams);
-  const myProfile = buildCategoryProfile(myTeam, leagueAverages);
+  const myProfile = buildCategoryProfile(myTeam, leagueAverages, allTeams, 0.5); // seasonProgress = 0.5 (mid-season)
   
   console.log("[Trade Gen] My team:", myTeamSummary.name);
   console.log("[Trade Gen] Category strengths:", myProfile.strengths.join(", ") || "None");
   console.log("[Trade Gen] Category weaknesses:", myProfile.weaknesses.join(", ") || "None");
   
-  const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number }> = [];
+  const potentialTrades: Array<{ partner: TeamForAI; payload: TradePayload; categoryGain: number; tradeScore: number; categorySwings: Map<AnyStat, number> }> = [];
   
   for (const partnerTeam of otherTeams) {
     const partnerSummary = buildTeamSummary(partnerTeam);
-    const partnerProfile = buildCategoryProfile(partnerTeam, leagueAverages);
+    const partnerProfile = buildCategoryProfile(partnerTeam, leagueAverages, allTeams, 0.5);
     
     console.log(`[Trade Gen] Checking ${partnerTeam.name}...`);
     
@@ -294,7 +320,7 @@ function generatePotentialTrades(
         if (Math.abs(valueDiff) > 25) continue;
         
         // Calculate category gain
-        const { gain: categoryGain } = calculateCategoryGain(
+        const { gain: categoryGain, improvements, categorySwings } = calculateCategoryGain(
           myProfile,
           [myPlayer],
           [theirPlayer]
@@ -405,9 +431,10 @@ function generatePotentialTrades(
             netChangeUser: valueDiff,
             netChangePartner: -valueDiff,
           },
+          categorySwings,
         };
         
-        potentialTrades.push({ partner: partnerTeam, payload, categoryGain, tradeScore });
+        potentialTrades.push({ partner: partnerTeam, payload, categoryGain, tradeScore, categorySwings });
         break; // One trade per partner
       }
       
@@ -431,10 +458,83 @@ function generatePotentialTrades(
 }
 
 /**
+ * Format category swings for display
+ * Returns formatted string showing net category changes
+ */
+function formatCategorySwings(categorySwings: Map<AnyStat, number>): string {
+  const significantSwings: Array<{ stat: AnyStat; change: number }> = [];
+  
+  for (const [stat, change] of categorySwings.entries()) {
+    // Only show swings above threshold (avoid noise)
+    if (Math.abs(change) > 0.5) {
+      significantSwings.push({ stat, change });
+    }
+  }
+  
+  if (significantSwings.length === 0) {
+    return "No significant category changes";
+  }
+  
+  // Sort by absolute value (largest swings first)
+  significantSwings.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+  
+  // Format as: "+0.9 HIT, +0.6 BLK, -0.4 A"
+  const formatted = significantSwings
+    .map(({ stat, change }) => {
+      const sign = change >= 0 ? "+" : "";
+      const statName = stat.charAt(0).toUpperCase() + stat.slice(1).replace(/\//g, "/");
+      return `${sign}${change.toFixed(1)} ${statName}`;
+    })
+    .slice(0, 6) // Top 6 category changes
+    .join(", ");
+  
+  // Calculate net improvement
+  const netImprovement = significantSwings.reduce((sum, { change }) => sum + change, 0);
+  
+  return `Expected Category Swing: ${formatted} | Net Improvement: ${netImprovement >= 0 ? "+" : ""}${netImprovement.toFixed(1)}`;
+}
+
+/**
+ * Calculate win probability for a trade
+ * Based on category delta × volatility × count
+ */
+function calculateWinProbability(
+  categorySwings: Map<AnyStat, number>,
+  myProfile: CategoryProfile
+): number {
+  let improvements = 0;
+  let deteriorations = 0;
+  
+  for (const [stat, change] of categorySwings.entries()) {
+    if (Math.abs(change) < 0.5) continue; // Ignore noise
+    
+    const volatility = CATEGORY_VOLATILITY[stat] || 1.0;
+    const weightedChange = change / volatility; // Divide by volatility (higher volatility = less reliable)
+    
+    if (weightedChange > 0) {
+      improvements += weightedChange;
+    } else {
+      deteriorations += Math.abs(weightedChange);
+    }
+  }
+  
+  // Win probability = improvements / (improvements + deteriorations)
+  const total = improvements + deteriorations;
+  if (total === 0) return 50; // Neutral trade
+  
+  const winProb = (improvements / total) * 100;
+  return Math.max(10, Math.min(90, winProb)); // Clamp between 10-90%
+}
+
+/**
  * Ask DeepSeek to explain a trade based on the factual data we provide
  * Includes category gain information for richer explanations
  */
-async function explainTrade(payload: TradePayload, categoryGain: number): Promise<{
+async function explainTrade(
+  payload: TradePayload, 
+  categoryGain: number,
+  categorySwings?: Map<AnyStat, number>
+): Promise<{
   reasoning: string;
   confidence: number;
 }> {
@@ -483,8 +583,9 @@ You Receive: ${payload.trade.receive.map(p => `${p.name} [${p.positions.join("/"
 
 Net Value Change: ${payload.trade.netChangeUser >= 0 ? "+" : ""}${toFixedSafe(payload.trade.netChangeUser, 1)} points
 Category Improvement Score: ${toFixedSafe(categoryGain, 1)}${categoryGain > 5 ? " (significant)" : ""}
+${categorySwings ? formatCategorySwings(categorySwings) : ""}
 
-Explain in 2-3 sentences why this trade makes sense based on position balance and value.`;
+Explain in 2-3 sentences why this trade makes sense based on position balance, value, and category impact.`;
 
   const response = await callDeepSeek([
     { role: "system", content: systemPrompt },
@@ -569,7 +670,7 @@ export async function analyzeTrades(
     // FIX #7: Deduplicate trades
     const seenTrades = new Set<string>();
     
-    for (const { partner, payload, categoryGain, tradeScore } of potentialTrades.slice(0, 5)) {
+    for (const { partner, payload, categoryGain, tradeScore, categorySwings } of potentialTrades.slice(0, 5)) {
       try {
         // Create unique key for this trade
         const tradeKey = `${payload.trade.send.map(p => p.name).join(',')}|${payload.trade.receive.map(p => p.name).join(',')}|${partner.name}`;
@@ -600,7 +701,9 @@ export async function analyzeTrades(
           })),
           netGain: payload.trade.netChangeUser,
           reasoning,
-          confidence: riskBasedConfidence, // Use calculated confidence, not AI's opinion
+          confidence: riskBasedConfidence,
+          categorySwings: categorySwingsArray,
+          winProbability: winProb, // Use calculated confidence, not AI's opinion
         });
       } catch (error) {
         console.error("[AI] Failed to explain trade with", partner.name, error);
