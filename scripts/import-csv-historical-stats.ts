@@ -33,13 +33,14 @@ const SKATER_STAT_MAP: Record<string, string> = {
 };
 
 // Map CSV column names to our internal goalie stat names
+// Note: CSV uses exact column names like "SV%" with % symbol
 const GOALIE_STAT_MAP: Record<string, string> = {
   W: "Wins",
-  L: "Losses",
-  GA: "Goals Against",
+  L: "Losses", // Not used in calculation but stored
+  GA: "Goals Against", // Not directly used, but GAA is
   GAA: "Goals Against Average",
   SV: "Saves",
-  "SV%": "Save Percentage",
+  "SV%": "Save Percentage", // CSV has % symbol in header
   SHO: "Shutouts",
 };
 
@@ -72,18 +73,30 @@ function aggregatePlayerStats(statsByTeam: Map<string, any>): any {
   }
   
   // Calculate averages for rate stats (GAA, SV%) - weighted by games played
+  // For goalies: GAA and SV% need special handling when aggregating across teams
   if (totalGP > 0 && statsByTeam.size > 1) {
-    // For goalies: GAA and SV% need special handling
-    // GAA: sum GA / sum minutes (approximate as GP * 60)
-    // SV%: sum SV / sum SA
-    if (aggregated.GA !== undefined && aggregated.GAA !== undefined) {
-      // Recalculate GAA from total GA and GP
-      aggregated.GAA = totalGP > 0 ? aggregated.GA / totalGP : aggregated.GAA;
+    // GAA: Recalculate from total GA and total games
+    // Note: GAA is per game, so we sum GA and divide by sum of GP
+    if (aggregated.GA !== undefined && totalGP > 0) {
+      aggregated.GAA = aggregated.GA / totalGP;
     }
     
-    if (aggregated.SV !== undefined && aggregated.SA !== undefined && aggregated["SV%"] !== undefined) {
-      // Recalculate SV% from total SV and SA
-      aggregated["SV%"] = aggregated.SA > 0 ? aggregated.SV / aggregated.SA : aggregated["SV%"];
+    // SV%: Recalculate from total SV and total SA
+    // SV% = Total Saves / Total Shots Against
+    if (aggregated.SV !== undefined && aggregated.SA !== undefined && aggregated.SA > 0) {
+      aggregated["SV%"] = aggregated.SV / aggregated.SA;
+    }
+  }
+  
+  // Ensure saves and save percentage are calculated if missing
+  if (aggregated.SA !== undefined && aggregated.GA !== undefined) {
+    // Calculate saves if missing
+    if (!aggregated.SV || aggregated.SV === 0) {
+      aggregated.SV = Math.max(0, aggregated.SA - aggregated.GA);
+    }
+    // Calculate save percentage if missing
+    if ((!aggregated["SV%"] || aggregated["SV%"] === 0) && aggregated.SA > 0 && aggregated.SV > 0) {
+      aggregated["SV%"] = aggregated.SV / aggregated.SA;
     }
   }
   
@@ -270,8 +283,31 @@ function parseGoaliesCSV(existingStats: HistoricalStatsData): void {
       }
     }
     
+    // Calculate saves if missing (SV = SA - GA)
+    if ((stats.SV === undefined || stats.SV === 0) && headerIndex.SA !== undefined && headerIndex.GA !== undefined) {
+      const sa = parseFloat(values[headerIndex.SA]) || 0;
+      const ga = parseFloat(values[headerIndex.GA]) || 0;
+      if (sa > 0) {
+        stats.SV = sa - ga; // Saves = Shots Against - Goals Against
+      }
+    }
+    
+    // Calculate save percentage if missing (SV% = SV / SA)
+    if ((stats["SV%"] === undefined || stats["SV%"] === 0) && headerIndex.SA !== undefined) {
+      const sa = parseFloat(values[headerIndex.SA]) || 0;
+      const sv = stats.SV || 0;
+      if (sa > 0 && sv > 0) {
+        stats["SV%"] = sv / sa; // Save Percentage = Saves / Shots Against
+      }
+    }
+    
     if (headerIndex.GP !== undefined && values[headerIndex.GP] !== undefined) {
       stats.GP = parseFloat(values[headerIndex.GP]) || 0;
+    }
+    
+    // Also store GS (Games Started) if available
+    if (headerIndex.GS !== undefined && values[headerIndex.GS] !== undefined) {
+      stats.GS = parseFloat(values[headerIndex.GS]) || 0;
     }
     
     teamMap.set(team, stats);

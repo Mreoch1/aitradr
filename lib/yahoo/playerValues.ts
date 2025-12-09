@@ -247,14 +247,17 @@ async function getHistoricalStats(playerId: string): Promise<Map<string, number>
       const weightedSum = values.reduce((sum, v) => sum + (v.value * v.weight), 0);
       const weightedAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
       
-      // Normalize stat name to match SKATER_CATEGORIES format
+      // Normalize stat name to match category format
       let normalizedName = normalizeStatName(statName);
-      // Map NHL stat name variations to SKATER_CATEGORIES format
+      // Map NHL stat name variations to our internal format
       const statNameMapping: Record<string, string> = {
+        // Skater stat mappings
         "power play points": "powerplay points",
         "short handed points": "shorthanded points",
         "game winning goals": "game-winning goals",
         "game-winning goals": "game-winning goals",
+        // Goalie stat mappings
+        "save percentage": "save percentage", // Keep as-is after normalization
       };
       normalizedName = statNameMapping[normalizedName] || normalizedName;
       historicalStats.set(normalizedName, weightedAvg);
@@ -563,21 +566,55 @@ export async function calculateGoalieValue(
     return 40; // Default for players without stats
   }
   
+  // Get historical stats (last 2 seasons) - same as skaters
+  const historicalStats = await getHistoricalStats(playerId);
+  
+  // Get player info
+  const player = await prisma.player.findUnique({
+    where: { id: playerId },
+    select: { name: true }
+  });
+  
   // Calculate z-scores for each category
   const categoryStats = calculateCategoryStats(allGoalieStats, GOALIE_CATEGORIES);
   
   let totalZScore = 0;
   
+  // Debug logging for specific goalies
+  const isDebugGoalie = playerStats.playerName === "Connor Hellebuyck" || 
+                        playerStats.playerName === "Igor Shesterkin" ||
+                        playerStats.playerName === "Jake Oettinger";
+  
+  if (isDebugGoalie) {
+    console.log(`\n[PlayerValues] ===== ${playerStats.playerName} (Goalie) Value Calculation =====`);
+    console.log(`[PlayerValues] Current season stats (sample):`, Array.from(playerStats.stats.entries()).slice(0, 3).map(([k, v]) => `${k}: ${v}`));
+    console.log(`[PlayerValues] Historical stats (sample):`, Array.from(historicalStats.entries()).slice(0, 3).map(([k, v]) => `${k}: ${v}`));
+  }
+  
   for (const category of GOALIE_CATEGORIES) {
-    const playerValue = playerStats.stats.get(category) || 0;
+    // Blend current season (70%) with historical average (30%) for more stable valuation
+    const currentValue = playerStats.stats.get(category) || 0;
+    const historicalValue = historicalStats.get(category);
+    
+    // If we have historical data, blend it; otherwise use current only
+    const blendedValue = historicalValue !== undefined
+      ? (currentValue * 0.7) + (historicalValue * 0.3)
+      : currentValue;
+    
     const catStats = categoryStats.get(category);
     
     if (!catStats) continue;
     
     const isNegative = NEGATIVE_CATEGORIES.includes(category);
-    const z = zScore(playerValue, catStats.mean, catStats.stdDev, isNegative);
+    const z = zScore(blendedValue, catStats.mean, catStats.stdDev, isNegative);
     
     totalZScore += z;
+    
+    // Debug logging
+    if (isDebugGoalie) {
+      const hasHistorical = historicalValue !== undefined ? `(hist:${historicalValue.toFixed(2)})` : '(no hist)';
+      console.log(`[PlayerValues] ${category.padEnd(25)}: curr=${currentValue.toFixed(2).padStart(6)} ${hasHistorical.padEnd(15)} blend=${blendedValue.toFixed(2).padStart(6)} z=${z.toFixed(2).padStart(7)}`);
+    }
   }
   
   // Apply games-started volume adjustment with soft curve

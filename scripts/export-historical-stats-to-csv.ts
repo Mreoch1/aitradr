@@ -15,7 +15,8 @@ interface HistoricalStatsData {
 }
 
 // All possible stat categories (in a consistent order)
-const STAT_CATEGORIES = [
+// Skater categories
+const SKATER_CATEGORIES = [
   "Goals",
   "Assists",
   "Points",
@@ -29,6 +30,20 @@ const STAT_CATEGORIES = [
   "Blocks",
   "Faceoffs Won",
 ];
+
+// Goalie categories
+const GOALIE_CATEGORIES = [
+  "Wins",
+  "Losses",
+  "Goals Against",
+  "Goals Against Average",
+  "Saves",
+  "Save Percentage",
+  "Shutouts",
+];
+
+// Combined list (will use appropriate ones per player)
+const ALL_CATEGORIES = [...SKATER_CATEGORIES, ...GOALIE_CATEGORIES];
 
 function exportToCSV() {
   console.log("[Export CSV] Starting CSV export...");
@@ -53,8 +68,8 @@ function exportToCSV() {
   // Create CSV rows
   const rows: string[][] = [];
 
-  // Header row
-  const header = ["Player Name", "Season", ...STAT_CATEGORIES];
+  // Header row - include all possible categories
+  const header = ["Player Name", "Season", ...ALL_CATEGORIES];
   rows.push(header);
 
   // Sort players alphabetically
@@ -69,8 +84,8 @@ function exportToCSV() {
       const seasonData = playerData[season];
       const row: string[] = [playerName, season];
 
-      // Add stat values in consistent order
-      for (const stat of STAT_CATEGORIES) {
+      // Add stat values in consistent order (all categories)
+      for (const stat of ALL_CATEGORIES) {
         const value = seasonData[stat] ?? "";
         row.push(value.toString());
       }
