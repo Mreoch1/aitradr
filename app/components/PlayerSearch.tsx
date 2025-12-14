@@ -111,18 +111,18 @@ export function PlayerSearch() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-        <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Find Players by Category
+      <div className="rounded-lg border-2 border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 p-6 shadow-lg">
+        <h3 className="text-xl font-bold mb-2 text-purple-900 dark:text-purple-100" style={{ fontFamily: 'monospace' }}>
+          🔍 Find Players by Category
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-purple-700 dark:text-purple-300 mb-4">
           Select categories your team needs help with, and we'll find the top players who excel in those areas.
         </p>
 
         {/* Category Selection */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Select Categories:
+          <label className="block text-sm font-bold text-purple-900 dark:text-purple-100 mb-3" style={{ fontFamily: 'monospace' }}>
+            SELECT CATEGORIES:
           </label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_CATEGORIES.map((category) => (
@@ -130,25 +130,32 @@ export function PlayerSearch() {
                 key={category.value}
                 type="button"
                 onClick={() => toggleCategory(category.value)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all border-2 ${
                   selectedCategories.includes(category.value)
-                    ? "bg-blue-600 text-white dark:bg-blue-500"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    ? "bg-green-500 text-white border-green-600 shadow-md scale-105"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-purple-400"
                 }`}
+                style={{ fontFamily: 'monospace' }}
               >
                 {category.label}
               </button>
             ))}
           </div>
+          {selectedCategories.length > 0 && (
+            <div className="mt-3 text-sm text-purple-700 dark:text-purple-300 font-medium">
+              Selected: {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'}
+            </div>
+          )}
         </div>
 
         {/* Search Button */}
         <button
           onClick={handleSearch}
           disabled={isSearching || selectedCategories.length === 0}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-purple-500 text-white rounded-lg font-bold text-lg hover:from-green-600 hover:to-purple-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all shadow-lg disabled:shadow-none"
+          style={{ fontFamily: 'monospace' }}
         >
-          {isSearching ? "Searching..." : "Search Players"}
+          {isSearching ? "🔍 SEARCHING..." : "🔍 SEARCH PLAYERS"}
         </button>
 
         {error && (
@@ -160,9 +167,9 @@ export function PlayerSearch() {
 
       {/* Results */}
       {results.length > 0 && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <h4 className="text-md font-semibold mb-3 text-gray-900 dark:text-gray-100">
-            Top {results.length} Players for: {requestedCategories.map(getCategoryLabel).join(", ")}
+        <div className="rounded-lg border-2 border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20 p-6 shadow-lg">
+          <h4 className="text-lg font-bold mb-4 text-green-900 dark:text-green-100" style={{ fontFamily: 'monospace' }}>
+            🏆 TOP {results.length} PLAYERS: {requestedCategories.map(getCategoryLabel).join(", ")}
           </h4>
           <div className="space-y-3">
             {results.map((player, index) => (

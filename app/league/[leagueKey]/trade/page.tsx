@@ -962,11 +962,16 @@ export default function TradeBuilderPage() {
               return null;
             })()}
             
-            {/* Player Search Tool */}
-            <div className="mb-6">
-              <PlayerSearch />
-            </div>
-            
+          </div>
+        )}
+        
+        {/* Player Search Tool - Always visible */}
+        <div className="mb-6">
+          <PlayerSearch />
+        </div>
+        
+        {normalizedTradeData.myTeamName && (
+          <div className="mb-6 space-y-4">
             {/* AI Suggestions Button */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
