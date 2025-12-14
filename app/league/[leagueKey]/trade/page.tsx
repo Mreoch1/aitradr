@@ -10,6 +10,7 @@ import { ShakezullaPlayer } from "@/app/components/ShakezullaPlayer";
 import { SignOutButton } from "@/app/components/SignOutButton";
 import { AISuggestionsModal } from "@/app/components/AISuggestionsModal";
 import { SavedTradesModal } from "@/app/components/SavedTradesModal";
+import { PlayerSearch } from "@/app/components/PlayerSearch";
 import type { TradeSuggestion } from "@/lib/ai/cleanTradeAnalyzer";
 import { handleTokenExpiration } from "@/lib/yahoo/client";
 import { toFixedSafe } from "@/lib/utils/numberFormat";
@@ -960,6 +961,11 @@ export default function TradeBuilderPage() {
               
               return null;
             })()}
+            
+            {/* Player Search Tool */}
+            <div className="mb-6">
+              <PlayerSearch />
+            </div>
             
             {/* AI Suggestions Button */}
             <div className="flex flex-wrap justify-center gap-3">
