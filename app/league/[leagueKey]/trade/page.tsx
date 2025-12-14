@@ -962,16 +962,6 @@ export default function TradeBuilderPage() {
               return null;
             })()}
             
-          </div>
-        )}
-        
-        {/* Player Search Tool - Always visible */}
-        <div className="mb-6">
-          <PlayerSearch />
-        </div>
-        
-        {normalizedTradeData.myTeamName && (
-          <div className="mb-6 space-y-4">
             {/* AI Suggestions Button */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -1109,7 +1099,14 @@ export default function TradeBuilderPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : null}
+        
+        {/* Player Search Tool - Always visible */}
+        <div className="mb-6">
+          <PlayerSearch />
+        </div>
+        
+        {!normalizedTradeData.myTeamName && (
           <div className="mb-6 rounded-lg border-2 border-yellow-500 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-6 py-4 shadow-md">
             <p className="text-center text-sm text-yellow-900 dark:text-yellow-300">
               ⚠️ Your team hasn't been identified yet. 
